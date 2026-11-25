@@ -48,8 +48,7 @@ fn repo(upstream: &str) -> Option<String> {
 }
 
 /// Makes sure `root` (from source()) exists: downloads and unpacks the
-/// pinned commit after asking. Older cached commits of the runtime are
-/// removed once the new one is in place.
+/// pinned commit after asking. Older commits are kept as offline copies.
 pub fn ensure(name: &str, vendor_dir: &Path, root: &Path, upstream: Option<&str>) -> Result<(), String> {
     if root == vendor_dir || root.join(".nbfetched").is_file() {
         return Ok(());
@@ -86,17 +85,7 @@ pub fn ensure(name: &str, vendor_dir: &Path, root: &Path, upstream: Option<&str>
     fs::rename(&top, root).map_err(|e| format!("{name}: {e}"))?;
     let _ = fs::remove_dir_all(&work);
     fs::write(root.join(".nbfetched"), &commit).map_err(|e| e.to_string())?;
-    // Drop older cached commits of this runtime.
-    let prefix = format!("{name}-");
-    if let Ok(rd) = fs::read_dir(parent) {
-        for e in rd.flatten() {
-            let p = e.path();
-            let n = e.file_name().to_string_lossy().into_owned();
-            if p != root && n.starts_with(&prefix) && n.len() == prefix.len() + 12 {
-                let _ = fs::remove_dir_all(&p);
-            }
-        }
-    }
+    // Older commits stay: they are the user's offline copies.
     println!("[fetch] {name}: {} ready", root.display());
     Ok(())
 }
