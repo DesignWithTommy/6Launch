@@ -1,0 +1,94 @@
+# Produced by scratch static.py (pub-item name grep vs victory_<crate>:: uses in the host's other crates/apps; rough, ignores types),
+# confirmed by `cargo check -p victory` of mixed scratch workspaces (host workspace + donor crate dir, donor's missing
+# [workspace.dependencies] such as zlib-rs/miniz_oxide added). scarlettport is checked with rt-scarlettport.patch applied.
+# API compatibility only: runtime behaviour, env flags and on-disk cache formats are NOT covered.
+trees = ["victory", "vitoriabr", "scarlettport"]
+crates = ["victory-core", "victory-formats", "victory-game", "victory-gpu", "victory-hle", "victory-loader", "victory-pe", "victory-pipeline", "victory-shader"]
+parts = ["app", "victory-core", "victory-formats", "victory-game", "victory-gpu", "victory-hle", "victory-loader", "victory-pe", "victory-pipeline", "victory-shader"]
+
+[identical]
+# groups of trees whose crate sources (src + Cargo.toml) hash identically; apps/victory differs in all four
+"victory-core" = [["victory"]]
+"victory-game" = [["victory", "vitoriabr"]]
+"victory-loader" = [["victory"]]
+"victory-pe" = [["victory", "scarlettport"]]
+"victory-pipeline" = [["victory", "vitoriabr", "scarlettport"]]
+
+[substitutes]
+# "<crate>.<host>" = donor trees whose crate drops into host's workspace. checked = cargo check ok; static = API grep only
+# (static is unreliable for host scarlettport: its formats/core uses were missed by the grep and failed cargo check)
+"victory-core.victory" = { checked = ["scarlettport"], static = ["vitoriabr"] }
+"victory-core.vitoriabr" = { checked = [], static = ["victory", "scarlettport"] }
+"victory-formats.victory" = { checked = ["scarlettport"], static = ["vitoriabr"] }
+"victory-formats.vitoriabr" = { checked = [], static = ["victory", "scarlettport"] }
+"victory-formats.scarlettport" = { checked = [], static = ["vitoriabr"] }
+"victory-game.victory" = { checked = ["scarlettport"], static = ["vitoriabr"] }
+"victory-game.vitoriabr" = { checked = [], static = ["victory", "scarlettport"] }
+"victory-hle.victory" = { checked = ["vitoriabr"], static = [] }
+"victory-loader.victory" = { checked = ["vitoriabr", "scarlettport"], static = [] }
+"victory-loader.vitoriabr" = { checked = [], static = ["victory", "scarlettport"] }
+"victory-loader.scarlettport" = { checked = [], static = ["victory", "vitoriabr"] }
+"victory-pe.victory" = { checked = ["vitoriabr"], static = ["scarlettport"] }
+"victory-pe.vitoriabr" = { checked = [], static = ["victory", "scarlettport"] }
+"victory-pe.scarlettport" = { checked = [], static = ["victory", "vitoriabr"] }
+"victory-pipeline.victory" = { checked = [], static = ["vitoriabr", "scarlettport"] }
+"victory-pipeline.vitoriabr" = { checked = [], static = ["victory", "scarlettport"] }
+"victory-pipeline.scarlettport" = { checked = [], static = ["victory", "vitoriabr"] }
+"victory-shader.victory" = { checked = ["vitoriabr"], static = [] }
+
+[checked_mixes]
+# "<host>+<crate>:<donor>" = result; first error
+"victory (baseline)" = "ok"
+"scarlettport (baseline)" = "ok"
+"vitoriabr (baseline)" = "ok"
+"victory+gpu:scarlettport" = "fail: crates\\victory-gpu\\src\\descriptor\\host.rs:20:27: error[E0432]: unresolved import `victory_shader::emit::words`: could not find `words` in `emit` (109 errors) [ws deps added: miniz_oxide]"
+"scarlettport+gpu:victory" = "fail: crates\\victory-gpu\\src\\shader_cache.rs:75:37: error[E0425]: cannot find function `translation_fingerprint` in module `victory_shader::emit`: not found in `victory_shader::emit` (2 errors) [ws deps added: zlib-rs]"
+"victory+shader:vitoriabr" = "ok"
+"victory+hle:scarlettport" = "fail: crates\\victory-hle\\src\\modules\\d3d12x.rs:65:33: error[E0432]: unresolved imports `victory_gpu::pipeline::precompile_graphics`, `victory_gpu::pipeline::warm`: no `precompile_graphics` in `pipeline`, no `warm` in `pipeline (75 errors) [ws deps added: miniz_oxide]"
+"victory+gpu:vitoriabr" = "fail: crates\\victory-gpu\\src\\descriptor\\host.rs:953:61: error[E0425]: cannot find value `SLOT_VIEWS_COUNT` in module `victory_shader::emit` (7 errors)"
+"victory+hle:vitoriabr" = "ok"
+"victory+core:scarlettport" = "ok [ws deps added: miniz_oxide]"
+"victory+loader:vitoriabr" = "ok"
+"victory+loader:scarlettport" = "ok [ws deps added: miniz_oxide]"
+"victory+game:scarlettport" = "ok [ws deps added: miniz_oxide]"
+"victory+formats:scarlettport" = "ok [ws deps added: miniz_oxide]"
+"victory+pe:vitoriabr" = "ok"
+"scarlettport+shader:victory" = "fail: crates\\victory-gpu\\src\\descriptor\\host.rs:20:27: error[E0432]: unresolved import `victory_shader::emit::words`: could not find `words` in `emit` (24 errors) [ws deps added: zlib-rs]"
+"scarlettport+hle:victory" = "fail: crates\\victory-hle\\src\\modules\\dstorage.rs:522:30: error[E0432]: unresolved import `victory_gpu::framelog`: could not find `framelog` in `victory_gpu` (7 errors) [ws deps added: zlib-rs]"
+"scarlettport+core:victory" = "fail: crates\\victory-gpu\\src\\list.rs:852:9: error[E0432]: unresolved import `victory_core::sync` (74 errors) [ws deps added: zlib-rs]"
+"scarlettport+formats:victory" = "fail: crates\\victory-gpu\\src\\resource.rs:2084:36: error[E0599]: no method named `bytes_from` found for struct `victory_formats::texture::Layout` in the current scope: method not found in `victory_formats::texture::Layout` (5 errors) [ws deps added: zlib-rs]"
+"vitoriabr+shader:victory" = "fail: crates\\victory-gpu\\src\\descriptor\\host.rs:953:61: error[E0425]: cannot find value `SLOT_VIEWS_COUNT` in module `victory_shader::emit` (7 errors)"
+
+[incompatible]
+# "<part>@<tree> + <part>@<tree>" = why. checked = from cargo check (first error); static = used items missing in the donor
+"victory-core@victory + app@scarlettport" = "static: missing BootPhase, alias_scarlett, atomic, backup, env, read_good (+5)"
+"victory-core@victory + victory-gpu@scarlettport" = "checked: crates\\victory-gpu\\src\\list.rs:852:9: error[E0432]: unresolved import `victory_core::sync` (74 errors) [ws deps added: zlib-rs]"
+"victory-core@victory + victory-hle@scarlettport" = "static: missing A, AliasOp, Aliases, B, Controls, Counts (+40)"
+"victory-core@vitoriabr + app@scarlettport" = "static: missing BootPhase, alias_scarlett, atomic, backup, env, read_good (+5)"
+"victory-core@vitoriabr + victory-gpu@scarlettport" = "static: missing Access, AliasOp, BUCKET_NAMES, Backs, Before, Bytes (+47)"
+"victory-core@vitoriabr + victory-hle@scarlettport" = "static: missing A, AliasOp, Aliases, B, Controls, Counts (+40)"
+"victory-formats@victory + victory-gpu@scarlettport" = "checked: crates\\victory-gpu\\src\\resource.rs:2084:36: error[E0599]: no method named `bytes_from` found for struct `victory_formats::texture::Layout` in the current scope: method not found in `victory_formats::texture::Layout` (5 errors) [ws deps added: zlib-rs]"
+"victory-game@victory + victory-gpu@scarlettport" = "static: missing GraphicsDesc, Place, StencilFace, TargetBlend, pso_cache, pso_state"
+"victory-game@vitoriabr + victory-gpu@scarlettport" = "static: missing GraphicsDesc, Place, StencilFace, TargetBlend, pso_cache, pso_state"
+"victory-gpu@scarlettport + victory-hle@victory" = "static: missing T, create_deserializer, framelog, last_frame, serialize, serialize_versioned (+1)"
+"victory-gpu@scarlettport + victory-hle@vitoriabr" = "static: missing create_deserializer, last_frame, serialize, serialize_versioned, title_memory_written"
+"victory-gpu@scarlettport + victory-shader@victory" = "checked: crates\\victory-gpu\\src\\descriptor\\host.rs:20:27: error[E0432]: unresolved import `victory_shader::emit::words`: could not find `words` in `emit` (109 errors) [ws deps added: miniz_oxide]"
+"victory-gpu@victory + victory-hle@scarlettport" = "static: missing count_remap, create_deserializer, gpu_only_exposed, last_frame, mem2_gpu_only_noview, mem2_nosnap (+15)"
+"victory-gpu@victory + victory-hle@vitoriabr" = "static: missing create_deserializer, last_frame, serialize, serialize_versioned"
+"victory-gpu@victory + victory-shader@scarlettport" = "checked: crates\\victory-gpu\\src\\shader_cache.rs:75:37: error[E0425]: cannot find function `translation_fingerprint` in module `victory_shader::emit`: not found in `victory_shader::emit` (2 errors) [ws deps added: zlib-rs]"
+"victory-gpu@vitoriabr + victory-hle@scarlettport" = "static: missing count_remap, create_deserializer, gpu_only_exposed, last_frame, mem2_gpu_only_noview, mem2_nosnap (+15)"
+"victory-gpu@vitoriabr + victory-hle@victory" = "static: missing T, create_deserializer, framelog, last_frame, serialize, serialize_versioned"
+"victory-gpu@vitoriabr + victory-shader@victory" = "checked: crates\\victory-gpu\\src\\descriptor\\host.rs:953:61: error[E0425]: cannot find value `SLOT_VIEWS_COUNT` in module `victory_shader::emit` (7 errors)"
+"victory-hle@scarlettport + app@victory" = "static: missing Console, SeriesS, SeriesX, current, set, warm_shader"
+"victory-hle@scarlettport + app@vitoriabr" = "static: missing Console, SeriesS, SeriesX, current, set, warm_shader"
+"victory-hle@scarlettport + victory-gpu@victory" = "checked: crates\\victory-hle\\src\\modules\\d3d12x.rs:65:33: error[E0432]: unresolved imports `victory_gpu::pipeline::precompile_graphics`, `victory_gpu::pipeline::warm`: no `precompile_graphics` in `pipeline`, no `warm` in `pipeline (75 errors) [ws deps added: miniz_oxide]"
+"victory-hle@victory + app@scarlettport" = "static: missing Console, LOADER, SeriesS, SeriesX, configure, controls (+10)"
+"victory-hle@victory + app@vitoriabr" = "static: missing Console, SeriesS, SeriesX, current, set"
+"victory-hle@victory + victory-gpu@scarlettport" = "checked: crates\\victory-hle\\src\\modules\\dstorage.rs:522:30: error[E0432]: unresolved import `victory_gpu::framelog`: could not find `framelog` in `victory_gpu` (7 errors) [ws deps added: zlib-rs]"
+"victory-hle@vitoriabr + app@scarlettport" = "static: missing Console, LOADER, SeriesS, SeriesX, configure, controls (+10)"
+"victory-hle@vitoriabr + app@victory" = "static: missing Console, SeriesS, SeriesX, current, set"
+"victory-shader@scarlettport + victory-gpu@victory" = "static: missing translation_fingerprint"
+"victory-shader@scarlettport + victory-gpu@vitoriabr" = "static: missing SLOT_VIEWS, SLOT_VIEWS_COUNT, SLOT_VIEW_BYTES, translation_fingerprint"
+"victory-shader@victory + victory-gpu@scarlettport" = "checked: crates\\victory-gpu\\src\\descriptor\\host.rs:20:27: error[E0432]: unresolved import `victory_shader::emit::words`: could not find `words` in `emit` (24 errors) [ws deps added: zlib-rs]"
+"victory-shader@victory + victory-gpu@vitoriabr" = "checked: crates\\victory-gpu\\src\\descriptor\\host.rs:953:61: error[E0425]: cannot find value `SLOT_VIEWS_COUNT` in module `victory_shader::emit` (7 errors)"
+"victory-shader@vitoriabr + victory-gpu@scarlettport" = "static: missing ImageType, SLOT_ADDRESSES, SLOT_STRIDES_DWORDS, SLOT_WORDS, SOURCE_HASH, USER_GROUP_BASE (+11)"

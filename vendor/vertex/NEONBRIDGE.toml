@@ -1,0 +1,30 @@
+# Neonbridge launcher spec for vendor/vertex: proneonn's Vertex. Build, run and prewarm are its start.ps1.
+name = "vertex"
+fork = "VIctory"
+rank = 9   # launcher list order (Master): 10th on the gta6-pc-race tracker
+about = "Vertex c9caaf3 (GPL-3.0): no crash in 16 of 18 sessions, longest 25 min; not yet run here"
+upstream = "https://github.com/proneonn/Vertex"
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # start.ps1:132
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/diag/victory.exe"   # start.ps1:135
+diag_build = []
+run = ["run", "{game_exe}", "--execute", "--work", "balanced"]   # start.ps1:172
+prewarm = ["translate", "--cache", "--pipelines", "{game_exe}", "{game}/shaders.rpf", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]   # start.ps1:164 (-PrebuildAll)
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+options = ["VICTORY_BVH_BUILDER=1: ray tracing, about 4 fps (README.md:123)"]
+
+[env]
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"

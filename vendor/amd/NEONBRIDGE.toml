@@ -1,0 +1,35 @@
+# Neonbridge launcher spec for vendor/amd: myokex's victory-amd, a VIctory fork for AMD Radeon.
+# Build and run are its README.md "Building" (README.md:391-392); its defaults need no switches.
+name = "amd"
+fork = "VIctory"
+archived = true   # outside the race top 10, kept for comparison (listed under Archived)
+rank = 8   # launcher list order (Master): 12th on the gta6-pc-race tracker
+about = "victory-amd 1544bd5 (GPL-3.0): AMD fork; cutscene and first room at 2-4 fps on its author's RX 7800 XT, ~8 min runs; not yet run here"
+upstream = "https://github.com/myokex/victory-amd"
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:391 (+--locked)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"   # README.md:392
+run = ["run", "{game_exe}", "--execute"]   # README.md:392
+prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]   # apps/victory/src/translate.rs:160
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+options = [
+  "VICTORY_RELAY=2, or VICTORY_LATE_WAIT=3 VICTORY_WIDE_BACK=1 VICTORY_CARD_BUFFERS_MIN_MB=1 VICTORY_CARD_BUFFERS_MB=1024: 240-350 ms a frame (README.md:46)",
+  "VICTORY_WAVE_WIDE=1: wave64 barrier form, off since it hung the driver (README.md:47)",
+]
+
+[env]
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"

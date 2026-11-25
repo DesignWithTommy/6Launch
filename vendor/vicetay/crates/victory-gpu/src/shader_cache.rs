@@ -1,0 +1,588 @@
+//! Translated shaders kept on disk (decision 0003): under the configured
+//! cache folder, keyed by the container's content and by the translator
+//! that translated it (its sources, this file's encoding and the settings,
+//! `build`), so a rebuilt translator never serves an old translation. Entries go through
+//! `victory-pipeline`'s content-addressed cache, which writes them
+//! atomically; an entry that does not read back is translated again.
+//!
+//! The entry is our own encoding of [`HostShader`]: a field added to it
+//! must be added to `encode` and `decode` too (entries encoded the old
+//! way are ignored anyway: this file is part of the key).
+
+use std::path::PathBuf;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+
+use victory_pipeline::{Cache, Converter};
+use victory_shader::emit::{HostShader, StaticSampler, UserData};
+use victory_shader::resource::RootIndexedView;
+use victory_shader::{HwStage, RootType, ShaderError};
+
+struct ShaderCache {
+    path: PathBuf,
+    cache: Cache,
+}
+
+static CACHE: OnceLock<ShaderCache> = OnceLock::new();
+static HITS: AtomicU64 = AtomicU64::new(0);
+static MISSES: AtomicU64 = AtomicU64::new(0);
+
+/// Opens the shader cache once and returns the directory actually in use.
+pub fn use_shader_cache(dir: PathBuf) -> Option<PathBuf> {
+    if let Some(cache) = CACHE.get() {
+        return Some(cache.path.clone());
+    }
+    match Cache::open(&dir) {
+        Ok(cache) => {
+            let cache = CACHE.get_or_init(|| ShaderCache { path: dir, cache });
+            Some(cache.path.clone())
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "no shader cache");
+            None
+        }
+    }
+}
+
+/// Shaders found in the cache and translated since the start.
+pub(crate) fn counts() -> (u64, u64) {
+    (HITS.load(Ordering::Relaxed), MISSES.load(Ordering::Relaxed))
+}
+
+/// What identifies the translations of this build: the translator's
+/// sources ([`victory_shader::SOURCE_HASH`]), this file, which holds the
+/// entry's encoding ([`ENCODING`]), and the settings translation runs with.
+/// Not the whole executable: a build that changes only other code keeps
+/// the translations cached before it.
+fn build() -> &'static [u8; 32] {
+    static BUILD: OnceLock<[u8; 32]> = OnceLock::new();
+    BUILD.get_or_init(|| {
+        let limit = victory_shader::emit::loop_limit();
+        if limit != victory_shader::emit::DEFAULT_LOOP_LIMIT {
+            tracing::warn!(
+                limit,
+                "VICTORY_SHADER_LOOP_LIMIT: translated loops stop sooner"
+            );
+        }
+        key(victory_shader::SOURCE_HASH, ENCODING, limit, &settings())
+    })
+}
+
+/// The translation settings besides the loop limit: which group barriers
+/// wait, the switches that pick the form of a wave64 program (without
+/// them a run with `VICTORY_WAVE_WIDE=0` was served what an earlier run had
+/// cached with the switch unset), and the clean-up passes that ran.
+fn settings() -> Vec<u8> {
+    let mut bytes = vec![victory_shader::emit::group_sync()];
+    for name in [
+        "VICTORY_WAVE_WIDE",
+        "VICTORY_WAVE_DEEP_SKIPS",
+        "VICTORY_WAVE_OWN_BITS",
+        "VICTORY_F16_NEAREST",
+        "VICTORY_WAVE_LOCAL",
+        "VICTORY_STRICT_JOINS",
+        "VICTORY_MESH_OUTPUT_STRICT",
+    ] {
+        bytes.extend_from_slice(name.as_bytes());
+        bytes.push(b'=');
+        if let Some(value) = std::env::var_os(name) {
+            bytes.extend_from_slice(value.as_encoded_bytes());
+        }
+        bytes.push(0);
+    }
+    bytes.extend_from_slice(&victory_shader::emit::shader_opt().to_le_bytes());
+    bytes
+}
+
+/// This file as built: a change to how entries are encoded changes the key.
+const ENCODING: &[u8] = include_bytes!("shader_cache.rs");
+
+fn key(translator: &str, encoding: &[u8], limit: u32, settings: &[u8]) -> [u8; 32] {
+    let mut h = blake3::Hasher::new();
+    h.update(translator.as_bytes());
+    h.update(blake3::hash(encoding).as_bytes());
+    h.update(&limit.to_le_bytes());
+    h.update(settings);
+    *h.finalize().as_bytes()
+}
+
+/// Translates a console shader container and reports whether the cache supplied it.
+pub fn host_shader(container: &[u8]) -> (Result<HostShader, String>, bool) {
+    #[cfg(windows)]
+    let wave_wide = crate::pipeline::warmup_wave_wide(container);
+    #[cfg(not(windows))]
+    let wave_wide = false;
+    host_shader_with_mode(container, wave_wide)
+}
+
+pub(crate) fn host_shader_with_mode(
+    container: &[u8],
+    wave_wide: bool,
+) -> (Result<HostShader, String>, bool) {
+    let translate = |c: &[u8]| {
+        translate_one(|| {
+            if wave_wide {
+                victory_shader::emit::with_wave_wide(|| victory_shader::emit::translate(c))
+            } else {
+                victory_shader::emit::translate(c)
+            }
+        })
+    };
+    match CACHE.get() {
+        Some(cache) => cached_with_hit(
+            &cache.cache,
+            &for_translation_target(build(), victory_shader::emit::view_heap_limit(), wave_wide),
+            victory_shader::emit::host_uses_wave32(),
+            container,
+            translate,
+        ),
+        None => (translate(container), false),
+    }
+}
+
+/// Translations clamp indices to the host's view heap limit (none for 0).
+/// The selective wave-wide setting only changes the chosen shader's key.
+fn for_translation_target(build: &[u8; 32], limit: u32, wave_wide: bool) -> [u8; 32] {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(build);
+    hasher.update(&limit.to_le_bytes());
+    hasher.update(&[u8::from(wave_wide)]);
+    *hasher.finalize().as_bytes()
+}
+
+/// A translator assertion is a failure of this shader, like an unsupported instruction.
+/// Leave the panic hook active so that its diagnostic is still available.
+fn translate_one(
+    translate: impl FnOnce() -> Result<HostShader, ShaderError> + std::panic::UnwindSafe,
+) -> Result<HostShader, String> {
+    match std::panic::catch_unwind(translate) {
+        Ok(result) => result.map_err(|error| error.to_string()),
+        Err(panic) => {
+            let reason = panic
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| panic.downcast_ref::<&str>().copied())
+                .unwrap_or("unknown cause");
+            Err(format!("shader translator panicked: {reason}"))
+        }
+    }
+}
+
+/// The cache entry's converter: the build, host wave mode and container in, the
+/// encoded translation out. `ran` tells a miss from a hit.
+struct Translate<F> {
+    translate: F,
+    ran: AtomicBool,
+}
+
+impl<F: Fn(&[u8]) -> Result<HostShader, String> + Send + Sync> Converter for Translate<F> {
+    fn id(&self) -> &'static str {
+        "shader.dxil"
+    }
+    fn version(&self) -> u32 {
+        // Version 1 did not distinguish translations made for 32-lane hosts.
+        2
+    }
+    fn convert(&self, input: &[u8]) -> anyhow::Result<Vec<u8>> {
+        self.ran.store(true, Ordering::Relaxed);
+        let shader = (self.translate)(&input[33..]).map_err(anyhow::Error::msg)?;
+        Ok(encode(&shader))
+    }
+}
+
+#[cfg(test)]
+fn cached(
+    cache: &Cache,
+    build: &[u8; 32],
+    wave32: bool,
+    container: &[u8],
+    translate: impl Fn(&[u8]) -> Result<HostShader, String> + Send + Sync,
+) -> Result<HostShader, String> {
+    cached_with_hit(cache, build, wave32, container, translate).0
+}
+
+fn cached_with_hit(
+    cache: &Cache,
+    build: &[u8; 32],
+    wave32: bool,
+    container: &[u8],
+    translate: impl Fn(&[u8]) -> Result<HostShader, String> + Send + Sync,
+) -> (Result<HostShader, String>, bool) {
+    let input = [&build[..], &[u8::from(wave32)], container].concat();
+    let converter = Translate {
+        translate,
+        ran: AtomicBool::new(false),
+    };
+    for _ in 0..2 {
+        let path = match cache.get_or_convert(&converter, &input) {
+            Ok(path) => path,
+            Err(e) => return (Err(format!("{e:#}")), false),
+        };
+        if let Some(shader) = std::fs::read(&path).ok().and_then(|b| decode(&b)) {
+            let hit = !converter.ran.load(Ordering::Relaxed);
+            let (counter, what) = if !hit {
+                (&MISSES, "translated and cached")
+            } else {
+                (&HITS, "from the cache")
+            };
+            counter.fetch_add(1, Ordering::Relaxed);
+            tracing::debug!(path = %path.display(), "shader {what}");
+            return (Ok(shader), hit);
+        }
+        tracing::debug!(path = %path.display(), "unreadable shader cache entry; translating again");
+        let _ = std::fs::remove_file(&path);
+    }
+    MISSES.fetch_add(1, Ordering::Relaxed);
+    ((converter.translate)(container), false)
+}
+
+const MAGIC: &[u8; 4] = b"VSH1";
+const STAGES: [HwStage; 8] = [
+    HwStage::Ls,
+    HwStage::Hs,
+    HwStage::Es,
+    HwStage::Gs,
+    HwStage::Vs,
+    HwStage::Ps,
+    HwStage::Ms,
+    HwStage::Cs,
+];
+
+fn root_code(r: RootType) -> u32 {
+    match r {
+        RootType::Constants => 0,
+        RootType::Descriptor => 1,
+        RootType::Table => 2,
+        RootType::ImmediateSampler => 3,
+        RootType::ResourceHeap => 4,
+        RootType::SamplerHeap => 5,
+        RootType::Other(x) => 6 + x,
+    }
+}
+
+fn root_type(code: u32) -> RootType {
+    match code {
+        0 => RootType::Constants,
+        1 => RootType::Descriptor,
+        2 => RootType::Table,
+        3 => RootType::ImmediateSampler,
+        4 => RootType::ResourceHeap,
+        5 => RootType::SamplerHeap,
+        x => RootType::Other(x - 6),
+    }
+}
+
+/// Little-endian words and length-prefixed lists.
+fn encode(s: &HostShader) -> Vec<u8> {
+    let mut out = MAGIC.to_vec();
+    let word = |out: &mut Vec<u8>, v: u32| out.extend(v.to_le_bytes());
+    let stage = STAGES.iter().position(|&x| x == s.stage).unwrap_or(0) as u32;
+    word(&mut out, stage);
+    word(&mut out, s.dxil.len() as u32);
+    out.extend(&s.dxil);
+    word(&mut out, s.user_data.len() as u32);
+    for u in &s.user_data {
+        for v in [u.index, u32::from(u.slot), root_code(u.root), u.dword] {
+            word(&mut out, v);
+        }
+    }
+    word(&mut out, s.samplers.len() as u32);
+    for sampler in &s.samplers {
+        for &v in sampler {
+            word(&mut out, v);
+        }
+    }
+    word(&mut out, s.static_samplers.len() as u32);
+    for t in &s.static_samplers {
+        let [u, v, w] = t.address;
+        let words = [
+            t.filter,
+            u,
+            v,
+            w,
+            t.mip_lod_bias.to_bits(),
+            t.max_anisotropy,
+            t.comparison,
+            t.border,
+            t.min_lod.to_bits(),
+            t.max_lod.to_bits(),
+        ];
+        for v in words {
+            word(&mut out, v);
+        }
+    }
+    for slots in [&s.root_cbvs, &s.root_srvs, &s.root_uavs] {
+        word(&mut out, slots.len() as u32);
+        out.extend(slots);
+    }
+    word(&mut out, s.root_indexed_views.len() as u32);
+    for view in &s.root_indexed_views {
+        for value in [
+            u32::from(view.table_slot),
+            u32::from(view.constant_slot),
+            view.constant_dword,
+            view.byte_offset,
+            u32::from(view.shift),
+        ] {
+            word(&mut out, value);
+        }
+    }
+    out
+}
+
+fn decode(bytes: &[u8]) -> Option<HostShader> {
+    struct Reader<'a>(&'a [u8]);
+    impl<'a> Reader<'a> {
+        fn take(&mut self, n: usize) -> Option<&'a [u8]> {
+            let (head, rest) = self.0.split_at_checked(n)?;
+            self.0 = rest;
+            Some(head)
+        }
+        fn word(&mut self) -> Option<u32> {
+            Some(u32::from_le_bytes(self.take(4)?.try_into().ok()?))
+        }
+        fn list(&mut self) -> Option<Vec<u8>> {
+            let n = self.word()? as usize;
+            Some(self.take(n)?.to_vec())
+        }
+    }
+    let mut r = Reader(bytes);
+    if r.take(4)? != MAGIC {
+        return None;
+    }
+    let stage = *STAGES.get(r.word()? as usize)?;
+    let dxil = r.list()?;
+    let n = r.word()? as usize;
+    let mut user_data = Vec::with_capacity(n.min(256));
+    for _ in 0..n {
+        user_data.push(UserData {
+            index: r.word()?,
+            slot: u8::try_from(r.word()?).ok()?,
+            root: root_type(r.word()?),
+            dword: r.word()?,
+        });
+    }
+    let n = r.word()? as usize;
+    let mut samplers = Vec::with_capacity(n.min(256));
+    for _ in 0..n {
+        samplers.push([r.word()?, r.word()?, r.word()?, r.word()?]);
+    }
+    let n = r.word()? as usize;
+    let mut static_samplers = Vec::with_capacity(n.min(256));
+    for _ in 0..n {
+        static_samplers.push(StaticSampler {
+            filter: r.word()?,
+            address: [r.word()?, r.word()?, r.word()?],
+            mip_lod_bias: f32::from_bits(r.word()?),
+            max_anisotropy: r.word()?,
+            comparison: r.word()?,
+            border: r.word()?,
+            min_lod: f32::from_bits(r.word()?),
+            max_lod: f32::from_bits(r.word()?),
+        });
+    }
+    let root_cbvs = r.list()?;
+    let root_srvs = r.list()?;
+    let root_uavs = r.list()?;
+    let n = r.word()? as usize;
+    let mut root_indexed_views = Vec::with_capacity(n.min(256));
+    for _ in 0..n {
+        root_indexed_views.push(RootIndexedView {
+            table_slot: u8::try_from(r.word()?).ok()?,
+            constant_slot: u8::try_from(r.word()?).ok()?,
+            constant_dword: r.word()?,
+            byte_offset: r.word()?,
+            shift: u8::try_from(r.word()?).ok().filter(|&s| s < 32)?,
+        });
+    }
+    r.0.is_empty().then_some(HostShader {
+        stage,
+        dxil,
+        user_data,
+        samplers,
+        static_samplers,
+        root_cbvs,
+        root_srvs,
+        root_uavs,
+        root_indexed_views,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn shader() -> HostShader {
+        HostShader {
+            stage: HwStage::Ps,
+            dxil: b"DXBC and the rest".to_vec(),
+            user_data: vec![UserData {
+                index: 8,
+                slot: 1,
+                root: RootType::Table,
+                dword: 0,
+            }],
+            samplers: vec![[0x400, 0xc0_0000, 0x18f0_0000, 0]],
+            static_samplers: vec![StaticSampler::from_words([
+                0x400,
+                0xc0_0000,
+                0x18f0_0000,
+                0,
+            ])],
+            root_cbvs: vec![2],
+            root_srvs: vec![0, 3],
+            root_uavs: vec![1],
+            root_indexed_views: vec![RootIndexedView {
+                table_slot: 1,
+                constant_slot: 2,
+                constant_dword: 3,
+                byte_offset: 32,
+                shift: 5,
+            }],
+        }
+    }
+
+    #[test]
+    fn a_panicking_translation_is_not_cached_and_can_be_retried() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = Cache::open(dir.path()).unwrap();
+        let build = [7u8; 32];
+        let container = b"a shader that fails on first translation";
+        let failed = cached(&cache, &build, false, container, |_| {
+            translate_one(|| panic!("forward reference outside a phi"))
+        });
+        assert!(failed.unwrap_err().contains("shader translator panicked: forward reference outside a phi"));
+        let retried = cached(&cache, &build, false, container, |_| translate_one(|| Ok(shader())));
+        assert_eq!(retried, Ok(shader()));
+    }
+
+    #[test]
+    fn translations_come_back_from_the_cache() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = Cache::open(dir.path()).unwrap();
+        let build = [7u8; 32];
+        let container = b"a console container".as_slice();
+        let runs = AtomicU64::new(0);
+        let translate = |_: &[u8]| {
+            runs.fetch_add(1, Ordering::Relaxed);
+            Ok(shader())
+        };
+        assert_eq!(cached(&cache, &build, false, container, translate), Ok(shader()));
+        assert_eq!(cached(&cache, &build, false, container, translate), Ok(shader()));
+        assert_eq!(runs.load(Ordering::Relaxed), 1, "the second came from disk");
+
+        // Another build translates again.
+        assert_eq!(cached(&cache, &[8; 32], false, container, translate), Ok(shader()));
+        assert_eq!(runs.load(Ordering::Relaxed), 2);
+
+        // A damaged entry is a miss, translated and stored again.
+        for e in walk(dir.path()) {
+            std::fs::write(e, b"VSH1 broken").unwrap();
+        }
+        assert_eq!(cached(&cache, &build, false, container, translate), Ok(shader()));
+        assert_eq!(runs.load(Ordering::Relaxed), 3);
+        assert_eq!(cached(&cache, &build, false, container, translate), Ok(shader()));
+        assert_eq!(runs.load(Ordering::Relaxed), 3);
+
+        // Failures are not stored.
+        let fail = |_: &[u8]| Err::<HostShader, _>("unsupported".to_owned());
+        assert!(cached(&cache, &build, false, b"other", fail).is_err());
+    }
+
+    #[test]
+    fn each_view_heap_limit_has_its_own_translations() {
+        let build = [7u8; 32];
+        let capped = for_translation_target(&build, 999_999, false);
+        assert_ne!(capped, for_translation_target(&build, 0, false));
+        assert_ne!(capped, for_translation_target(&build, 999_998, false));
+        assert_ne!(capped, for_translation_target(&[8; 32], 999_999, false));
+        assert_eq!(capped, for_translation_target(&build, 999_999, false));
+    }
+
+    #[test]
+    fn selecting_a_wave_wide_shader_preserves_other_cache_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let plain = for_translation_target(&[7; 32], 999_999, false);
+        let wide = for_translation_target(&[7; 32], 999_999, true);
+        let selected = b"selected shader";
+        let other = b"another shader";
+        let mut wide_shader = shader();
+        wide_shader.dxil.push(32);
+        let cache = Cache::open(dir.path()).unwrap();
+        assert_eq!(cached(&cache, &plain, true, selected, |_| Ok(shader())), Ok(shader()));
+        assert_eq!(cached(&cache, &plain, true, other, |_| Ok(shader())), Ok(shader()));
+        assert_eq!(cached(&cache, &wide, true, selected, |_| Ok(wide_shader.clone())), Ok(wide_shader.clone()));
+
+        let cache = Cache::open(dir.path()).unwrap();
+        let no_translation = |_: &[u8]| -> Result<HostShader, String> { panic!("cached shader translated again") };
+        assert_eq!(cached(&cache, &plain, true, selected, no_translation), Ok(shader()));
+        assert_eq!(cached(&cache, &plain, true, other, no_translation), Ok(shader()));
+        assert_eq!(cached(&cache, &wide, true, selected, no_translation), Ok(wide_shader));
+    }
+
+    #[test]
+    fn reopening_the_cache_preserves_each_host_wave_translation() {
+        let dir = tempfile::tempdir().unwrap();
+        let input = b"synthetic wave reduction";
+        let runs = AtomicU64::new(0);
+        for wave32 in [false, true, false, true] {
+            let cache = Cache::open(dir.path()).unwrap();
+            let mut expected = shader();
+            expected.stage = HwStage::Cs;
+            expected.dxil.push(if wave32 { 32 } else { 64 });
+            let result = cached(&cache, &[7; 32], wave32, input, |container| {
+                assert_eq!(container, input);
+                runs.fetch_add(1, Ordering::Relaxed);
+                Ok(expected.clone())
+            });
+            assert_eq!(result, Ok(expected));
+        }
+        assert_eq!(runs.load(Ordering::Relaxed), 2);
+    }
+
+    #[test]
+    fn the_key_covers_translator_encoding_and_settings() {
+        let k = key("0123456789abcdef", b"encoding", 1 << 20, b"s");
+        assert_eq!(k, key("0123456789abcdef", b"encoding", 1 << 20, b"s"));
+        assert_ne!(k, key("0123456789abcdee", b"encoding", 1 << 20, b"s"));
+        assert_ne!(k, key("0123456789abcdef", b"encoding.", 1 << 20, b"s"));
+        assert_ne!(k, key("0123456789abcdef", b"encoding", 1 << 19, b"s"));
+        assert_ne!(k, key("0123456789abcdef", b"encoding", 1 << 20, b"t"));
+        assert_eq!(
+            *build(),
+            key(
+                victory_shader::SOURCE_HASH,
+                ENCODING,
+                victory_shader::emit::loop_limit(),
+                &settings()
+            )
+        );
+        // The encoding part is this file as built.
+        assert!(
+            std::str::from_utf8(ENCODING)
+                .unwrap()
+                .contains("fn encode(s: &HostShader) -> Vec<u8>")
+        );
+    }
+
+    fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        for e in std::fs::read_dir(dir).unwrap().flatten() {
+            if e.path().is_dir() {
+                files.extend(walk(&e.path()));
+            } else {
+                files.push(e.path());
+            }
+        }
+        files
+    }
+
+    #[test]
+    fn entries_round_trip_and_reject_damage() {
+        let bytes = encode(&shader());
+        assert_eq!(decode(&bytes), Some(shader()));
+        assert_eq!(decode(&bytes[..bytes.len() - 1]), None);
+        assert_eq!(decode(&[bytes.as_slice(), &[0]].concat()), None);
+        assert_eq!(decode(b"VSH0"), None);
+    }
+}
