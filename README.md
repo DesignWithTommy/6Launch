@@ -63,7 +63,7 @@ The first start of a runtime takes a while: it builds the runtime and prepares t
 
 ![The controls overlay](assets/controls.png)
 
-How each runtime is built, prepared and started: [WIRING.md](WIRING.md).
+How each runtime is built, prepared and started: [DEVELOPERS.md](DEVELOPERS.md#how-each-runtime-is-wired).
 
 ## Mix and match (help wanted)
 

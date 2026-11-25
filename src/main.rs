@@ -9,6 +9,7 @@
 //! any game file they replace is moved to `<game>/_6ixpack_orig/` first and
 //! `--restore` puts it back.
 
+mod fetch;
 mod autopress;
 mod verify;
 mod preflight;

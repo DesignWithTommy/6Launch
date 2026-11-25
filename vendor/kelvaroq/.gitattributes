@@ -1,4 +1,0 @@
-*.sh text eol=lf
-.githooks/* text eol=lf
-*.png binary
-native/patches/*.patch text eol=lf -whitespace

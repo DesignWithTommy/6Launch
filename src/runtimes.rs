@@ -194,12 +194,15 @@ pub fn package(stage: &Path) -> Result<(Vec<String>, Vec<(String, String)>), Box
         let rel = exe.strip_prefix(&root).map_err(|_| format!("runtime {name}: {} is outside its tree", exe.display()))?;
         fs::create_dir_all(to.join(rel).parent().unwrap_or(&to))?;
         fs::copy(&exe, to.join(rel))?;
-        fs::copy(root.join("NEONBRIDGE.toml"), to.join("NEONBRIDGE.toml"))?;
-        for f in ["LICENSE", "LICENSE.md", "UPSTREAM", "VENDORED.md"] {
-            if root.join(f).is_file() {
-                fs::copy(root.join(f), to.join(f))?;
+        let dir = vendor().join(&name);
+        for f in ["NEONBRIDGE.toml", "LICENSE", "LICENSE.md", "UPSTREAM", "VENDORED.md"] {
+            // The toml and pin are vendor/<name>'s; the licence may be only in a downloaded tree.
+            if let Some(from) = [dir.join(f), root.join(f)].into_iter().find(|p| p.is_file()) {
+                fs::copy(from, to.join(f))?;
             }
         }
+        // A packaged runtime runs its shipped exe; it is never downloaded.
+        fs::write(to.join(crate::fetch::PACKAGED), "")?;
         done.push(format!("{name} ({})", rel.display()));
     }
     Ok((done, skipped))
@@ -255,6 +258,10 @@ fn prerequisite(root: &Path, spec: &Spec) -> Result<(), String> {
 /// (a release, or built before) or its prerequisites are all there.
 pub fn missing(name: &str) -> Option<(String, Vec<&'static str>)> {
     let (root, spec) = load(name).ok()?;
+    // Not downloaded yet: Play fetches it (after asking).
+    if !root.exists() {
+        return None;
+    }
     if spec.str("exe").is_some_and(|e| root.join(e).is_file()) {
         return None;
     }
@@ -488,10 +495,17 @@ fn strip_comment(v: &str) -> &str {
 }
 
 fn load(name: &str) -> Result<(PathBuf, Spec), Box<dyn Error>> {
-    let root = vendor().join(name);
-    let file = root.join("NEONBRIDGE.toml");
+    let dir = vendor().join(name);
+    let file = dir.join("NEONBRIDGE.toml");
     let text = fs::read_to_string(&file).map_err(|e| format!("runtime {name}: {} ({e}); `neonbridge --list` names the runtimes", file.display()))?;
-    Ok((root, parse(&text).map_err(|e| format!("{}: {e}", file.display()))?))
+    let spec = parse(&text).map_err(|e| format!("{}: {e}", file.display()))?;
+    let root = crate::fetch::source(name, &dir, spec.str("exe"));
+    Ok((root, spec))
+}
+
+/// Where a runtime's sources are: vendor/<name>, or its downloaded copy.
+pub fn root_of(name: &str) -> Option<PathBuf> {
+    load(name).ok().map(|(r, _)| r)
 }
 
 /// One `options` entry: "KEY=a|b|c (default X; more): text" or "--flag=...".
@@ -819,6 +833,7 @@ fn diag_build(name: &str, root: &Path, spec: &Spec, cmd: &[String], exe: &Path) 
 
 /// Builds the tree when its exe is stale. NEONBRIDGE_BUILD=0 never builds.
 fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>> {
+    crate::fetch::ensure(name, &vendor().join(name), root, spec.str("upstream"))?;
     let exe = root.join(spec.str("exe").ok_or_else(|| format!("runtime {name}: NEONBRIDGE.toml names no exe"))?);
     let line = spec.list("build").map(<[String]>::to_vec).unwrap_or_default();
     let (line, target, exe) = match diag_build(name, root, spec, &line, &exe) {
@@ -1028,7 +1043,7 @@ pub fn patch_file(name: &str) -> PathBuf {
 
 /// The runtime's victory tree, if it has one (the mix's parts come from it).
 pub fn victory_tree(name: &str) -> Option<PathBuf> {
-    patch_root(name, &vendor().join(name))
+    patch_root(name, &root_of(name)?)
 }
 
 /// Every vendor runtime with a NEONBRIDGE.toml (not tuxbox).

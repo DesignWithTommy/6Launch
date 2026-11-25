@@ -87,7 +87,7 @@ impl Mix {
 /// (flamingo, klbf, belobug: apps/victory and crates/ at its root).
 pub fn root(name: &str) -> Option<PathBuf> {
     crate::runtimes::victory_tree(name)
-        .or_else(|| Some(crate::runtimes::vendor().join(name)))
+        .or_else(|| crate::runtimes::root_of(name))
         .filter(|t| t.join("apps/victory/Cargo.toml").is_file() && t.join("crates").is_dir())
 }
 
