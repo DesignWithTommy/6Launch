@@ -98,7 +98,7 @@ The `neonbridge-own` runtime keeps its own options (`--debug`, `--rev`, `--tuxbo
 Each step is something an earlier runtime needed (named in brackets).
 
 1. **Check it is a leader.** It must be in the [race tracker](https://github.com/vuyp/gta6-pc-race)'s top 10, and its repository must still exist (ztrx and victory-perf vanished). The licence must be GPL-3.0 or more permissive.
-2. **Pin it.** Create `vendor/<name>/` with only `NEONBRIDGE.toml`, `LICENSE` and `UPSTREAM` (its full commit hash). The launcher downloads that commit from GitHub on first Play (after asking) into `%LOCALAPPDATA%ixpack\src\<name>-<commit>` and builds it there; the repo holds no runtime sources. Only a runtime we must change (ScarlettPort's xcl fix) keeps its tree in `vendor/`.
+2. **Pin it.** Create `vendor/<name>/` with only `NEONBRIDGE.toml`, `LICENSE` and `UPSTREAM` (its full commit hash). The launcher downloads that commit from GitHub on first Play (after asking) into `%LOCALAPPDATA%\6ixpack\src\<name>-<commit>` and builds it there; the repo holds no runtime sources. Only a runtime we must change (ScarlettPort's xcl fix) keeps its tree in `vendor/`.
 3. **Credit it.** Write `VENDORED.md` (source, commit, licence, author, what was removed) and add a row to `CREDITS.md`.
 4. **Write `NEONBRIDGE.toml`, all values from the author.** Cite the README or script line each value came from. Its default launch is the author's own; anything of ours goes in a `preset_*` (tomls: author default).
    - `name`, `fork`, `rank`, `about`, `upstream`.
