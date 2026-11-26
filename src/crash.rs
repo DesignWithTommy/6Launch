@@ -135,7 +135,7 @@ pub fn after_run(name: &str, cache: &std::path::Path, lines: &[String]) -> Optio
 
 /// The tail of the newest `crashes.log` in the family save folder, if written in the last 10 min.
 fn recent_crashes_log() -> Option<String> {
-    let save = std::path::PathBuf::from(std::env::var("LOCALAPPDATA").ok()?).join("6ixpack").join("save");
+    let save = crate::runtimes::pack_dir().join("save");
     let newest = std::fs::read_dir(save).ok()?.flatten()
         .map(|d| d.path().join("crashes.log"))
         .filter_map(|p| Some((p.metadata().ok()?.modified().ok()?, p)))

@@ -816,7 +816,7 @@ fn prewarm_only(tuxbox: &Path, prebuilt: Option<&Path>, game: Option<&Path>) -> 
 
 /// The 6ixpack data dir (`%LOCALAPPDATA%ixpack`).
 pub(crate) fn data_dir() -> PathBuf {
-    env_path("LOCALAPPDATA").unwrap_or_else(std::env::temp_dir).join("6ixpack")
+    runtimes::pack_dir()
 }
 
 static REV_BUILD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -1477,7 +1477,7 @@ fn kill_on_close(child: &std::process::Child) {
 
 fn start(game: &Path, exe: &Path, args: &[OsString], log: Option<PathBuf>, debug: Option<String>, trace_throws: bool, sandbox: bool, env: &[(String, String)], timeout: Option<f64>) -> Result<(), Box<dyn Error>> {
     let log = log.unwrap_or_else(|| {
-        let base = env_path("LOCALAPPDATA").unwrap_or_else(std::env::temp_dir).join("6ixpack/logs");
+        let base = runtimes::pack_dir().join("logs");
         let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
         base.join(format!("{}_{secs}.log", exe.file_stem().unwrap().to_string_lossy()))
     });
@@ -1963,7 +1963,7 @@ fn panic_hook() {
         let thread = std::thread::current().name().unwrap_or("unnamed").to_owned();
         let text = format!("[launch] neonbridge panicked on thread {thread}: {info}\n{}", std::backtrace::Backtrace::force_capture());
         eprintln!("{text}");
-        let path = PANIC_LOG.lock().ok().and_then(|p| p.clone()).unwrap_or_else(|| env_path("LOCALAPPDATA").unwrap_or_else(std::env::temp_dir).join("6ixpack/logs/launcher-panic.log"));
+        let path = PANIC_LOG.lock().ok().and_then(|p| p.clone()).unwrap_or_else(|| runtimes::pack_dir().join("logs/launcher-panic.log"));
         if let Some(d) = path.parent() {
             let _ = fs::create_dir_all(d);
         }

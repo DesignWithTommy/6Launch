@@ -82,7 +82,7 @@ fn wide(s: &str) -> Vec<u16> {
 }
 
 fn saved() -> PathBuf {
-    std::env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(std::env::temp_dir).join("6ixpack/last_game.txt")
+    crate::runtimes::pack_dir().join("last_game.txt")
 }
 
 fn last_pick() -> PathBuf {
@@ -271,6 +271,7 @@ struct Row {
 enum Hit {
     None,
     Repo,
+    Output,
     Row(usize),
     Preset(usize),
     Change,
@@ -637,6 +638,13 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
     text(dc, change, cr, if s.hover == Hit::Change { TEXT } else { SUB }, f.body, DT_LEFT | DT_VCENTER);
     fill_rect(dc, rect(cr.left, mid + 9, cr.right, mid + 10), if s.hover == Hit::Change { TEXT } else { FAINT });
     s.targets.push((cr, Hit::Change));
+    // Output: where i95 saves and installs (builds, shader caches, saves, logs).
+    let out = format!("Output: {}", shortened(&crate::runtimes::pack_dir()));
+    let ox = cr.right + 24;
+    let or = rect(ox, mid - 12, ox + width_of(dc, &out, f.body), mid + 12);
+    text(dc, &out, or, if s.hover == Hit::Output { TEXT } else { SUB }, f.body, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+    fill_rect(dc, rect(or.left, mid + 9, or.right, mid + 10), if s.hover == Hit::Output { TEXT } else { FAINT });
+    s.targets.push((or, Hit::Output));
 
     let play = rect(w - 24 - 128, mid - 20, w - 24, mid + 20);
     let ready = s.game.is_some() && s.rows.get(s.sel).is_none_or(|r| r.missing.is_none());
@@ -833,6 +841,24 @@ fn change_game(hwnd: HWND) {
     }
 }
 
+/// Picks the output folder: builds, shader caches, saves and logs go there from
+/// the next run on. What is already saved stays in the old folder.
+fn change_output(hwnd: HWND) {
+    let now = crate::runtimes::pack_dir();
+    if let Some(p) = pick_folder(hwnd, Some(&now)) {
+        if p == now {
+            return;
+        }
+        match crate::runtimes::set_pack(Some(&p)) {
+            Ok(()) => {
+                message(hwnd, &format!("i95 now saves and installs in {}. Files already in {} stay there; move them yourself to keep your builds and shader caches.", p.display(), now.display()), MB_ICONINFORMATION);
+                unsafe { InvalidateRect(hwnd, null(), 0) };
+            }
+            Err(e) => message(hwnd, &format!("Can't use {}: {e}", p.display()), MB_ICONWARNING),
+        }
+    }
+}
+
 fn click(hwnd: HWND, h: Hit) {
     match h {
         Hit::Row(i) => select(hwnd, i),
@@ -841,6 +867,7 @@ fn click(hwnd: HWND, h: Hit) {
             unsafe { InvalidateRect(hwnd, null(), 0) };
         }
         Hit::Change => change_game(hwnd),
+        Hit::Output => change_output(hwnd),
         Hit::Advanced => show_advanced(),
         Hit::Play => {
             if with_state(|s| s.rows.get(s.sel).is_some_and(|r| r.missing.is_some())) != Some(true) {

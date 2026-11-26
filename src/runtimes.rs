@@ -603,7 +603,7 @@ pub fn setup(name: &str) -> Result<(), Box<dyn Error>> {
     let steps = spec.list("setup").unwrap_or_default();
     // {game}: NEONBRIDGE_GAME, else the picker's last game folder. {exe}: the toml's exe.
     let game = std::env::var_os("NEONBRIDGE_GAME").map(PathBuf::from).or_else(|| {
-        let f = std::env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(std::env::temp_dir).join("6ixpack/last_game.txt");
+        let f = pack_dir().join("last_game.txt");
         fs::read_to_string(f).ok().map(|t| PathBuf::from(t.trim())).filter(|p| p.is_dir())
     });
     if steps.is_empty() {
@@ -1333,7 +1333,30 @@ pub fn pack_dir() -> PathBuf {
 }
 
 fn pack() -> PathBuf {
+    // The output folder the user picked (Output in the launcher), else the default.
+    fs::read_to_string(location_file()).ok().map(|t| PathBuf::from(t.trim())).filter(|p| p.is_absolute()).unwrap_or_else(default_pack)
+}
+
+/// Where i95 saves and installs by default: %LOCALAPPDATA%ixpack.
+pub fn default_pack() -> PathBuf {
     std::env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(std::env::temp_dir).join("6ixpack")
+}
+
+/// The pointer to a chosen output folder; always in the default folder.
+fn location_file() -> PathBuf {
+    default_pack().join("location.txt")
+}
+
+/// Sets the output folder (None: back to the default). Files already saved stay where they are.
+pub fn set_pack(dir: Option<&Path>) -> std::io::Result<()> {
+    fs::create_dir_all(default_pack())?;
+    match dir.filter(|d| *d != default_pack()) {
+        Some(d) => {
+            fs::create_dir_all(d)?;
+            fs::write(location_file(), d.display().to_string())
+        }
+        None => fs::remove_file(location_file()).or_else(|e| if e.kind() == std::io::ErrorKind::NotFound { Ok(()) } else { Err(e) }),
+    }
 }
 
 /// The victory family's one cache, %LOCALAPPDATA%\6ixpack\cache (a real
@@ -1510,7 +1533,7 @@ pub fn cache_of(name: &str) -> PathBuf {
 
 fn cache(name: &str) -> PathBuf {
     std::env::var_os("NEONBRIDGE_CACHE").map(|d| PathBuf::from(d).join(name)).unwrap_or_else(|| {
-        std::env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(std::env::temp_dir).join("6ixpack").join(name).join("cache")
+        pack_dir().join(name).join("cache")
     })
 }
 
@@ -1526,6 +1549,9 @@ struct Places {
 /// unset one stays as written. A toml value like "%LOCALAPPDATA%\6ixpack\save"
 /// reached Flamingo literally, a relative path that resolved inside its tree.
 pub fn expand_env(s: &str) -> String {
+    // Toml paths under %LOCALAPPDATA%ixpack follow the chosen output folder.
+    let moved = s.replacen("%LOCALAPPDATA%\\6ixpack", &pack_dir().display().to_string(), 1);
+    let s = moved.as_str();
     let mut out = String::new();
     let mut rest = s;
     while let Some(i) = rest.find('%') {
