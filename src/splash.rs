@@ -454,12 +454,38 @@ unsafe fn paint(hwnd: HWND) {
             }
             x += 24;
         }
-        // The car: hot-pink body, cyan windshield, rear light.
-        let car = (filled - 26).max(road.left);
-        fill(dc, RECT { left: car, top: road.top + 4, right: car + 26, bottom: road.bottom - 4 }, PINK);
-        fill(dc, RECT { left: car + 15, top: road.top + 6, right: car + 21, bottom: road.bottom - 6 }, CYAN);
-        fill(dc, RECT { left: car, top: road.top + 5, right: car + 2, bottom: road.top + 8 }, rgb(255, 60, 60));
-        fill(dc, RECT { left: car, top: road.bottom - 8, right: car + 2, bottom: road.bottom - 5 }, rgb(255, 60, 60));
+        // The car drifts down the line (a manji): it swings nose-left,
+        // nose-right across the lane, tail out, with tyre smoke behind.
+        let phase = tick as f32 / 9.0;
+        let angle = phase.sin() * 0.45;
+        let (ccx, ccy) = ((filled - 13).max(road.left + 13) as f32, mid as f32 + phase.sin() * 3.0);
+        let quad = |l: f32, t: f32, r: f32, b: f32| -> [windows_sys::Win32::Foundation::POINT; 4] {
+            let (sa, ca) = (angle.sin(), angle.cos());
+            [(l, t), (r, t), (r, b), (l, b)].map(|(x, y)| windows_sys::Win32::Foundation::POINT { x: (ccx + x * ca - y * sa) as i32, y: (ccy + x * sa + y * ca) as i32 })
+        };
+        let poly = |pts: &[windows_sys::Win32::Foundation::POINT], c: COLORREF| {
+            let b = CreateSolidBrush(c);
+            let (ob, op) = (SelectObject(dc, b), SelectObject(dc, GetStockObject(NULL_PEN)));
+            Polygon(dc, pts.as_ptr(), pts.len() as i32);
+            SelectObject(dc, ob);
+            SelectObject(dc, op);
+            DeleteObject(b);
+        };
+        // Smoke: a few grey puffs trailing the tail, swinging opposite.
+        for k in 1..5 {
+            let px = ccx as i32 - 14 - k * 7;
+            if px < road.left {
+                break;
+            }
+            let py = mid - (phase.sin() * 4.0) as i32 + ((phase * 2.0 + k as f32).sin() * 2.0) as i32;
+            let g = (150 - k * 22) as u8;
+            let rr = 5 - k / 2;
+            fill(dc, RECT { left: px - rr, top: (py - rr).max(road.top + 2), right: px + rr, bottom: (py + rr).min(road.bottom - 2) }, rgb(g, g, g + 10));
+        }
+        poly(&quad(-13.0, -6.0, 13.0, 6.0), PINK);
+        poly(&quad(3.0, -4.0, 8.0, 4.0), CYAN);
+        poly(&quad(-13.0, -6.0, -11.0, -3.0), rgb(255, 60, 60));
+        poly(&quad(-13.0, 3.0, -11.0, 6.0), rgb(255, 60, 60));
         text(dc, &format!("{}%", (shown * 100.0).floor() as u32), RECT { left: 32, top: 146, right: WIDTH - 32, bottom: 170 }, TEXT, small, DT_RIGHT | DT_VCENTER);
 
         BitBlt(screen, ox, oy, WIDTH, HEIGHT, dc, 0, 0, SRCCOPY);
