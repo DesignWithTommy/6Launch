@@ -165,47 +165,48 @@ impl HiddenExt for Command {
 /// out, not fatal: it comes back in the second list as (name, reason), for
 /// the package's README.
 pub fn package(stage: &Path) -> Result<(Vec<String>, Vec<(String, String)>), Box<dyn Error>> {
-    let (mut done, mut skipped) = (Vec::new(), Vec::new());
+    // Launcher only: no runtime exe is ever shipped. Each runtime goes in as its
+    // spec, pin and licence; the launcher fetches the pinned source and builds it
+    // on the user's PC, so nobody runs an exe someone else compiled.
+    let (mut done, skipped) = (Vec::new(), Vec::new());
     for (name, _, _) in rows().into_iter().filter(|(n, _, _)| n != TUXBOX) {
-        let (root, spec) = match load(&name) {
-            Ok(l) => l,
-            Err(e) => {
-                println!("[package] {name}: not bundled: {e}");
-                skipped.push((name, e.to_string()));
-                continue;
-            }
-        };
-        if let Err(e) = prerequisite(&root, &spec) {
-            println!("[package] {name}: not bundled: {e}");
-            skipped.push((name, e));
-            continue;
-        }
-        println!("[package] {name}: building");
-        let exe = match build(&name, &root, &spec) {
-            Ok(e) => e,
-            Err(e) => {
-                let reason = e.to_string().lines().next().unwrap_or("its build failed").to_owned();
-                println!("[package] {name}: not bundled: {reason}");
-                skipped.push((name, reason));
-                continue;
-            }
-        };
-        let to = stage.join("vendor").join(&name);
-        let rel = exe.strip_prefix(&root).map_err(|_| format!("runtime {name}: {} is outside its tree", exe.display()))?;
-        fs::create_dir_all(to.join(rel).parent().unwrap_or(&to))?;
-        fs::copy(&exe, to.join(rel))?;
         let dir = vendor().join(&name);
+        let to = stage.join("vendor").join(&name);
+        fs::create_dir_all(&to)?;
         for f in ["NEONBRIDGE.toml", "LICENSE", "LICENSE.md", "UPSTREAM", "VENDORED.md"] {
-            // The toml and pin are vendor/<name>'s; the licence may be only in a downloaded tree.
-            if let Some(from) = [dir.join(f), root.join(f)].into_iter().find(|p| p.is_file()) {
-                fs::copy(from, to.join(f))?;
+            if dir.join(f).is_file() {
+                fs::copy(dir.join(f), to.join(f))?;
             }
         }
-        // A packaged runtime runs its shipped exe; it is never downloaded.
-        fs::write(to.join(crate::fetch::PACKAGED), "")?;
-        done.push(format!("{name} ({})", rel.display()));
+        // No pin to fetch from (our own trees): ship the source itself, never a build.
+        if !dir.join("UPSTREAM").is_file() && dir.join("source").is_dir() {
+            copy_source(&dir.join("source"), &to.join("source"))?;
+        }
+        done.push(name);
+    }
+    // The i95 patches the launcher applies before a build.
+    if vendor().join("patches").is_dir() {
+        copy_source(&vendor().join("patches"), &stage.join("vendor").join("patches"))?;
     }
     Ok((done, skipped))
+}
+
+/// Copies a source tree without build output or git data.
+fn copy_source(from: &Path, to: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(to)?;
+    for e in fs::read_dir(from)? {
+        let e = e?;
+        let n = e.file_name();
+        if matches!(n.to_str(), Some("target" | ".git")) {
+            continue;
+        }
+        let p = e.path();
+        if p.is_dir() { copy_source(&p, &to.join(&n))? } else {
+            if matches!(p.extension().and_then(|x| x.to_str()), Some("exe" | "dll" | "pdb")) { continue }
+            fs::copy(&p, to.join(&n))?;
+        }
+    }
+    Ok(())
 }
 
 /// The tool a toml's build line (or `launcher`) starts must be there: dotnet
