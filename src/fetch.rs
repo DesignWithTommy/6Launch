@@ -15,6 +15,8 @@ pub const PACKAGED: &str = "PACKAGED";
 pub fn source(name: &str, vendor_dir: &Path, exes: &[&str]) -> PathBuf {
     // A tree or a packaged runtime. Shader keys no longer follow the exe
     // (shaderkey.rs), so building from the download keeps the cache.
+    // A tree or a packaged runtime. (An exe built in vendor/<name> before is
+    // the key source for the rebuilt one: shaderkey.rs.)
     let _ = exes;
     if vendored(vendor_dir) || vendor_dir.join(PACKAGED).is_file() {
         return vendor_dir.to_path_buf();

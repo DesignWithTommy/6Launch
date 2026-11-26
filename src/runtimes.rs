@@ -845,6 +845,7 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
         None => (line, None, exe),
     };
     let never = std::env::var("NEONBRIDGE_BUILD").is_ok_and(|v| v.trim() == "0");
+    let rekey = crate::shaderkey::needs_build(root, &exe);
     // No sources here (vendor/<name> with only its built exe): run that exe.
     // Most forks key their shader cache on the exe's bytes, so a rebuild
     // would translate every shader again.
@@ -861,24 +862,24 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
     // so both stale() and cargo's own fingerprints fired.
     let stamp_file = PathBuf::from(format!("{}.nbstamp", exe.display()));
     let stamp = build_stamp(name, root, &line, target.as_deref());
-    if !never && exe.is_file() && let Some(s) = &stamp && fs::read_to_string(&stamp_file).is_ok_and(|t| t == *s) {
+    if !never && !rekey && exe.is_file() && let Some(s) = &stamp && fs::read_to_string(&stamp_file).is_ok_and(|t| t == *s) {
         println!("[launch] {name}: up to date (build stamp matches); not building");
         return Ok(exe);
     }
     // A tree built before stamps existed: an up-to-date exe gets its stamp, no build.
-    if !never && exe.is_file() && let Some(s) = &stamp && !stamp_file.exists() && !stale(root, spec, &exe) {
+    if !never && !rekey && exe.is_file() && let Some(s) = &stamp && !stamp_file.exists() && !stale(root, spec, &exe) {
         let _ = fs::write(&stamp_file, s);
         println!("[launch] {name}: up to date; build stamp written");
         return Ok(exe);
     }
-    if never || (stamp.is_none() && !stale(root, spec, &exe)) {
+    if never || (!rekey && stamp.is_none() && !stale(root, spec, &exe)) {
         return if exe.is_file() { Ok(exe) } else { Err(format!("runtime {name}: {} is missing (NEONBRIDGE_BUILD=0)", exe.display()).into()) };
     }
     let cmd = Some(line.as_slice()).filter(|c| !c.is_empty()).ok_or_else(|| format!("runtime {name}: {} is stale and NEONBRIDGE.toml names no build", exe.display()))?;
     prerequisite(root, spec).map_err(|e| format!("runtime {name} {e}"))?;
     println!("[launch] {name}: building ({})", cmd.join(" "));
     let applied = patch(name, root)?;
-    let (kept, shader_key) = crate::shaderkey::apply(root);
+    let kept = crate::shaderkey::apply(root);
     crate::splash::status(0.1, &format!("Building {name}"));
     let python_build = matches!(cmd.first().map(String::as_str), Some("python" | "python3" | "py"));
     let cmd = interpreter(cmd)?;
@@ -889,9 +890,6 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
     c.args(&cmd[1..]).current_dir(root).env_remove("CARGO_TARGET_DIR").env("CARGO_TERM_PROGRESS_WHEN", "always").env("CARGO_TERM_PROGRESS_WIDTH", "100").stdout(Stdio::piped()).stderr(Stdio::piped());
     if let Some(t) = &target {
         c.env("CARGO_TARGET_DIR", t);
-    }
-    if let Some(k) = &shader_key {
-        c.env("NEONBRIDGE_SHADER_KEY", k);
     }
     let status = hidden(&mut c).spawn().and_then(|mut child| {
         // cargo's "Building [..] N/M" (or a Python build's N/M) moves the
@@ -917,6 +915,12 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
     }
     if !exe.is_file() {
         return Err(format!("runtime {name}: the build made no {}", exe.display()).into());
+    }
+    // The exe the cache was made with: the earlier build at the same place in
+    // vendor/<name> (before downloads), else this one.
+    if !kept.is_empty() {
+        let old = exe.strip_prefix(root).ok().map(|rel| vendor().join(name).join(rel));
+        crate::shaderkey::seed(&exe, old.as_deref());
     }
     if let Some(s) = &stamp {
         let _ = fs::write(&stamp_file, s);
@@ -948,7 +952,7 @@ fn build_stamp(name: &str, root: &Path, line: &[String], target: Option<&Path>) 
         h.update(&p);
     }
     if crate::shaderkey::on() && !crate::shaderkey::files(root).is_empty() {
-        h.update(b"shader key follows the translator v1");
+        h.update(b"shader key from neonbridge-key.bin v2");
     }
     h.update(line.join("\x1f").as_bytes());
     if let Some(t) = target {
