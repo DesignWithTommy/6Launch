@@ -4,7 +4,7 @@
 //! One-click hardware report: GPU and driver, CPU, RAM, Windows build, runtime version, the last
 //! run's frame-rate lines and the last 200 log lines (user name and paths scrubbed), opened as a
 //! prefilled "Hardware report" issue (issue-template URL parameters, no token).
-const REPO_URL: &str = "https://github.com/DesignWithTommy/i95";
+const REPO_URL: &str = "https://github.com/DesignWithTommy/i95-GTA6-PC-Launcher";
 
 #[derive(Default, Debug, Clone)]
 pub struct System {

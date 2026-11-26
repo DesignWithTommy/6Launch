@@ -1,4 +1,4 @@
-# i95: one launcher for every GTA VI (GTA 6) Xbox Series runtime on PC
+# i95: GTA 6 PC Launcher for every GTA VI Xbox Series runtime (VIctory, Kelvaroq, VItoriaBr and more)
 
 ![i95: GTA 6 Xbox Series launcher for Windows PC](assets/banner.svg)
 
