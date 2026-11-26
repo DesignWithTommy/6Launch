@@ -319,21 +319,21 @@ VICTORY_RAYTRACING = "0"            # launcher/src/engine.rs:80 world_env (Confi
 VICTORY_PRESS_FILE = "{press}"      # play-victory.ps1:63
 
 # Keyboard as the gamepad, shown by the controls overlay (F1). From
-# runtime/victory/crates/victory-hle/src/modules/gameinput.rs FALLBACK_BUTTONS and fallback();
+# runtime/victory/crates/victory-core/src/kbm.rs COMMON + ON_FOOT ([controls] enabled by default);
 # a real controller plays as well.
 [controls]
 left_stick = "W A S D"
-right_stick = "I J K L"
-a = "Enter"
-b = "Backspace"
-x = "X"
-y = "Y"
+right_stick = "Mouse"
+a = "Shift / Enter"
+b = "Backspace / Esc"
+x = "Space"
+y = "E / F"
 lb = "Q"
-rb = "E"
-lt = "Z"
-rt = "C"
-ls = "F"
-rs = "H"
-dpad = "Arrows"
+rb = "R"
+lt = "Right mouse"
+rt = "Left mouse"
+ls = "Ctrl"
+rs = "C / Middle mouse"
+dpad = "Arrows / Wheel up-down"
 view = "Tab"
-menu = "Esc"
+menu = "P"

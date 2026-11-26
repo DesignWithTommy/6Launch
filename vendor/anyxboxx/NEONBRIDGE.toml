@@ -79,11 +79,17 @@ VICTORY_OCEAN_READBACK = "1"   # lancer_victory.ps1:143: boats float
 
 [controls]
 left_stick = "W A S D"
-right_stick = "I J K L"
+right_stick = "I J K L / Mouse"
 a = "Enter"
 b = "Backspace"
 x = "X"
 y = "Y"
+lb = "Q"
+rb = "E"
+lt = "Z / Right mouse"
+rt = "C / Left mouse"
+ls = "F / Shift"
+rs = "H / Ctrl"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
