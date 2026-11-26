@@ -58,9 +58,19 @@ The first start of a runtime takes a while. It builds the runtime and prepares t
 - **32 GB of RAM** is best.
 - **Disk space** for the game, plus up to about 20 GB per runtime.
 
+## Presets
+
+The default launch is each runtime's own, the way its author starts it. Each runtime also has presets you can pick before pressing Play:
+
+- **series_s**: runs as a Series S, which uses less GPU memory. Try it on 8 GB cards.
+- **dred**: writes D3D12 crash details to the log. Turn it on when the game crashes and you want to report it.
+- **warp**: draws on the CPU instead of the GPU. It's very slow, but it shows whether a crash comes from your graphics driver.
+
+Some runtimes add their own, like VItoriaBr's `8gb` or KLBF's `fsr`. **Advanced** takes any other `KEY=VALUE` setting, and **Options list** there shows what that runtime reads.
+
 ## Screenshots
 
-**The launcher.** Pick a runtime and a preset, then press Play.
+**The launcher.** Pick a runtime and a preset, then press Play. **Advanced** sets extra options for a run.
 
 ![The launcher: runtimes, details, preset and the game](assets/picker.png)
 
