@@ -1050,6 +1050,49 @@ fn starter(name: &str, root: &Path, spec: &Spec, program: &Path) -> Result<Comma
             Ok(c)
         }
     }
+    .map(|mut c| {
+        clear_leftovers(&mut c);
+        c
+    })
+}
+
+/// VICTORY_* variables left in the launcher's own environment (an earlier
+/// shell, another fork's script) would change how a runtime runs: cleared,
+/// as VIctory-7900XTX's scripts/play.ps1:32-35 does, keeping the four
+/// places. The spec's [env] and presets are set after this.
+/// NEONBRIDGE_KEEP_ENV=1 keeps them.
+fn clear_leftovers(c: &mut Command) {
+    if std::env::var("NEONBRIDGE_KEEP_ENV").is_ok_and(|v| v.trim() == "1") {
+        return;
+    }
+    for (k, _) in std::env::vars_os() {
+        let n = k.to_string_lossy().to_ascii_uppercase();
+        if n.starts_with("VICTORY_") && !matches!(n.as_str(), "VICTORY_CONFIG" | "VICTORY_GAME_DIR" | "VICTORY_CACHE_DIR" | "VICTORY_DATA_DIR") {
+            println!("[launch] leftover {n} cleared (NEONBRIDGE_KEEP_ENV=1 keeps it)");
+            c.env_remove(&k);
+        }
+    }
+}
+
+/// Run as administrator: the GPU driver then keeps its shader cache in
+/// another place, so warmed pipelines are not found (VIctory-7900XTX
+/// scripts/play.ps1:7).
+pub fn elevated() -> bool {
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows_sys::Win32::Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation};
+    use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+    // SAFETY: plain token query on our own process; the handle is closed.
+    unsafe {
+        let mut t: HANDLE = std::ptr::null_mut();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut t) == 0 {
+            return false;
+        }
+        let mut e = TOKEN_ELEVATION { TokenIsElevated: 0 };
+        let mut len = 0u32;
+        let ok = GetTokenInformation(t, TokenElevation, (&raw mut e).cast(), size_of::<TOKEN_ELEVATION>() as u32, &mut len) != 0;
+        CloseHandle(t);
+        ok && e.TokenIsElevated != 0
+    }
 }
 
 /// NEONBRIDGE_PATCHES=0: the trees build as vendored, without vendor/patches.
@@ -1925,6 +1968,10 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     }
     // The shared family cache is only for the runtimes that always used it;
     // the method-102 patched forks keep their own cache (their warmed files).
+    if elevated() {
+        println!("[launch] running as administrator: the GPU driver keeps its shader cache elsewhere, so warmed pipelines may not be found. Start Neonbridge normally.");
+        crate::splash::status(0.02, "Running as administrator: start Neonbridge normally to keep the driver's shader cache");
+    }
     let family = victory_tree(name).is_some() && matches!(name, "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo");
     // The victory family's cache is the one shared folder; this runtime's
     // own files (press.txt, warm-total.txt, last-run.log) stay in its own.
