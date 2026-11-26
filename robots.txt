@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://designwithtommy.github.io/i95-GTA6-PC-Launcher/sitemap.xml
