@@ -12,8 +12,10 @@ use std::path::{Path, PathBuf};
 /// Written by --package beside a shipped runtime's exe.
 pub const PACKAGED: &str = "PACKAGED";
 
-pub fn source(name: &str, vendor_dir: &Path, _exe: Option<&str>) -> PathBuf {
-    if vendored(vendor_dir) || vendor_dir.join(PACKAGED).is_file() {
+pub fn source(name: &str, vendor_dir: &Path, exes: &[&str]) -> PathBuf {
+    // A tree, a packaged runtime, or an exe built here before: stay with it
+    // (a rebuild elsewhere changes the exe, and with it the shader cache keys).
+    if vendored(vendor_dir) || vendor_dir.join(PACKAGED).is_file() || exes.iter().any(|e| vendor_dir.join(e).is_file()) {
         return vendor_dir.to_path_buf();
     }
     match pin(vendor_dir) {
@@ -22,7 +24,12 @@ pub fn source(name: &str, vendor_dir: &Path, _exe: Option<&str>) -> PathBuf {
     }
 }
 
-/// vendor/<name> holds a tree (or a packaged build) of its own.
+/// The folder holds a runtime's sources.
+pub fn has_sources(dir: &Path) -> bool {
+    vendored(dir)
+}
+
+/// vendor/<name> holds a tree of its own.
 fn vendored(dir: &Path) -> bool {
     ["Cargo.toml", "apps", "crates", "third_party", "src", "runtime"].iter().any(|p| dir.join(p).exists())
 }

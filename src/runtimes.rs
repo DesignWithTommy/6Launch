@@ -499,7 +499,8 @@ fn load(name: &str) -> Result<(PathBuf, Spec), Box<dyn Error>> {
     let file = dir.join("NEONBRIDGE.toml");
     let text = fs::read_to_string(&file).map_err(|e| format!("runtime {name}: {} ({e}); `neonbridge --list` names the runtimes", file.display()))?;
     let spec = parse(&text).map_err(|e| format!("{}: {e}", file.display()))?;
-    let root = crate::fetch::source(name, &dir, spec.str("exe"));
+    let exes: Vec<&str> = ["exe", "diag_exe"].iter().filter_map(|k| spec.str(k)).collect();
+    let root = crate::fetch::source(name, &dir, &exes);
     Ok((root, spec))
 }
 
@@ -844,6 +845,16 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
         None => (line, None, exe),
     };
     let never = std::env::var("NEONBRIDGE_BUILD").is_ok_and(|v| v.trim() == "0");
+    // No sources here (vendor/<name> with only its built exe): run that exe.
+    // Most forks key their shader cache on the exe's bytes, so a rebuild
+    // would translate every shader again.
+    if !crate::fetch::has_sources(root) {
+        let other = spec.str("diag_exe").map(|e| root.join(e)).filter(|e| *e != exe);
+        if let Some(e) = [Some(exe.clone()), other, spec.str("exe").map(|e| root.join(e))].into_iter().flatten().find(|e| e.is_file()) {
+            println!("[launch] {name}: using its built exe {} (no sources here; not rebuilding)", e.display());
+            return Ok(e);
+        }
+    }
     // The build stamp beside the exe: when it matches, neither the patch nor
     // cargo runs. The mtime check alone rebuilt on every launch: applying and
     // reverting the rt patch rewrites the patched sources' mtimes each time,
@@ -1140,7 +1151,10 @@ pub fn cargo(cmd: &[String], cwd: &Path, target: &Path, label: &str) -> Result<(
 
 fn patch_root(name: &str, root: &Path) -> Option<PathBuf> {
     match name {
-        "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo" | "klbf" | "xtx" | "vicetay" | "vertex" | "belobug" | "amd" => Some(root.to_path_buf()),
+        "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo" => Some(root.to_path_buf()),
+        // Their method-102 patch rebuilds the exe, and the exe's bytes key their
+        // shader cache: opt in with NEONBRIDGE_NEW_PATCHES=1.
+        "klbf" | "xtx" | "vicetay" | "vertex" | "belobug" | "amd" if std::env::var("NEONBRIDGE_NEW_PATCHES").is_ok_and(|v| v.trim() == "1") => Some(root.to_path_buf()),
         "scarlettport" => Some(root.join("runtime").join("victory")),
         "anyxboxx" => Some(root.join("third_party").join("victory")),
         _ => None,
