@@ -260,6 +260,8 @@ struct Row {
     version: String,
     licence: String,
     upstream: String,
+    /// The runtime's GitHub page (its toml's upstream), opened by the Source link.
+    repo: Option<String>,
     frames: Option<u64>,
     /// A missing prerequisite: (reason, official download pages). Greyed out.
     missing: Option<(String, Vec<&'static str>)>,
@@ -268,6 +270,7 @@ struct Row {
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Hit {
     None,
+    Repo,
     Row(usize),
     Preset(usize),
     Change,
@@ -552,6 +555,15 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
             text(dc, v, rect(x + 112, y, w - 32, y + 28), TEXT, f.body, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
             y += 32;
         }
+        // Source: the runtime's own repo, opened in the browser.
+        if let Some(repo) = &row.repo {
+            let label = repo.trim_start_matches("https://");
+            text(dc, "Source", rect(x, y, x + 104, y + 28), SUB, f.body, DT_LEFT | DT_VCENTER);
+            let b = rect(x + 112, y, (x + 112 + width_of(dc, label, f.body)).min(w - 32), y + 28);
+            text(dc, label, b, if s.hover == Hit::Repo { TEXT } else { CYAN }, f.body, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+            s.targets.push((b, Hit::Repo));
+            y += 32;
+        }
         // A missing prerequisite: why, and a button to its download pages.
         if let Some((why, pages)) = &row.missing {
             let why = why.strip_prefix("needs ").map_or_else(|| why.clone(), |w| format!("Needs {w}"));
@@ -701,7 +713,10 @@ fn rows() -> Vec<Row> {
             };
             let licence = ["GPL-3.0", "GPL-2.0", "MIT", "Apache-2.0"].iter().find(|l| about.contains(*l)).map_or("-".to_owned(), |l| (*l).to_owned());
             let upstream = fs::read_to_string(crate::runtimes::vendor().join(&n).join("UPSTREAM")).ok().and_then(|u| u.lines().next().map(|l| l.trim().chars().take(12).collect())).unwrap_or_else(|| "-".into());
-            Row { frames: crate::runtimes::last_run_frames(&n), missing: crate::runtimes::missing(&n), name: n, title: name_part, version, licence, upstream }
+            let repo = fs::read_to_string(crate::runtimes::vendor().join(&n).join("NEONBRIDGE.toml")).ok().and_then(|t| {
+                t.lines().find_map(|l| l.strip_prefix("upstream = \"").and_then(|r| r.split('"').next()).filter(|u| u.starts_with("https://")).map(str::to_owned))
+            });
+            Row { frames: crate::runtimes::last_run_frames(&n), missing: crate::runtimes::missing(&n), name: n, title: name_part, version, licence, upstream, repo }
         })
         .collect();
     // Best first by each toml's rank (as runs come in, the ranks change);
@@ -840,6 +855,11 @@ fn click(hwnd: HWND, h: Hit) {
                 } else {
                     let _ = crate::runtimes::command("explorer").arg(page).spawn();
                 }
+            }
+        }
+        Hit::Repo => {
+            if let Some(url) = with_state(|s| s.rows.get(s.sel).and_then(|r| r.repo.clone())).flatten() {
+                let _ = crate::runtimes::command("explorer").arg(url).spawn();
             }
         }
         Hit::None => {}
