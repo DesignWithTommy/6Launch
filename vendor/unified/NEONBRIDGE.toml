@@ -24,8 +24,6 @@ options = [
 ]
 
 preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
-preset_dred = ["VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log
-preset_warp = ["VICTORY_D3D12_WARP=1"]   # software GPU (slow; for GPU-driver faults)
 
 [env]   # scripts/play.ps1:19-46, its own settings
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family

@@ -1904,6 +1904,12 @@ pub struct Choice<'a> {
 pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: Option<PathBuf>, timeout: Option<f64>, game_args: &[std::ffi::OsString], choice: Choice) -> Result<(), Box<dyn Error>> {
     let (root, spec) = load(name)?;
     let sets = settings(&spec, choice.preset, choice.sets)?;
+    // A preset's NEONBRIDGE_* settings are the launcher's own (dred and warp
+    // carry NEONBRIDGE_DIAG=1: those switches only exist in the runtime's
+    // diagnostics build), so they apply before the build.
+    for (k, v) in sets.iter().filter(|(k, _)| k.starts_with("NEONBRIDGE_")) {
+        unsafe { std::env::set_var(k, v) };
+    }
     // The loader window (NEONBRIDGE_SPLASH=0: none): patches, build, setup,
     // the shader warm, then the launch; it closes at the first frame.
     // Logging is on for every run (NEONBRIDGE_LOG=0 turns it off): with no

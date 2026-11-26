@@ -66,7 +66,7 @@ The default launch is each runtime's own, the way its author starts it. Each run
 - **dred**: writes D3D12 crash details to the log. Turn it on when the game crashes and you want to report it.
 - **warp**: draws on the CPU instead of the GPU. It's very slow, but it shows whether a crash comes from your graphics driver.
 
-Some runtimes add their own, like VItoriaBr's `8gb` or KLBF's `fsr`. **Advanced** takes any other `KEY=VALUE` setting, and **Options list** there shows what that runtime reads.
+dred and warp make the launcher use the runtime's diagnostics build, because those switches only exist there. Runtimes whose author ships no diagnostics build (AnyXboxx, Flamingo, KLBF, Unified) don't get them. Some runtimes add their own, like VItoriaBr's `8gb` or KLBF's `fsr`. **Advanced** takes any other `KEY=VALUE` setting, and **Options list** there shows what that runtime reads.
 
 ## Screenshots
 

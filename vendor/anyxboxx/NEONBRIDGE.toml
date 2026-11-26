@@ -29,8 +29,6 @@ options = [
 preset_quality = ["VICTORY_CARD_WINDOWS_MB=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_LIST_POOL_MOST=256", "VICTORY_LIST_POOL_MB=256", "VICTORY_TEXTURE_STAGE_MB=192"]   # lancer_victory.ps1 -Quality: picture first, about half the fps
 
 preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
-preset_dred = ["VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log
-preset_warp = ["VICTORY_D3D12_WARP=1"]   # software GPU (slow; for GPU-driver faults)
 
 [env]   # lancer_victory.ps1:121-163, Neptune's switch set as it sets it
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
