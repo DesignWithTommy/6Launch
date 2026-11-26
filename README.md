@@ -14,16 +14,16 @@ The race's top 10 from the [GTA VI PC race tracker](https://github.com/vuyp/gta6
 
 | Race | Runtime | Forks | Its author reports | Here |
 |---:|---|---|---|---|
-| 1 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | Neptune | ~12 fps in the world, RTX 4070 SUPER | ✅ 10 min, no crash, ~14 fps; then out of card memory on 8 GB |
-| 2 | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | VIctory | 30 fps in the world, RX 7900 XTX | Testing |
+| 1 | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | VIctory | 13–22 fps, 41 min no crash, RX 7900 XTX | Testing |
+| 2 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | Neptune | 14–17 fps in the world, RTX 4070 SUPER | ✅ 10 min, no crash, ~14 fps (earlier build); **try this one first on NVIDIA** |
 | 3 | [Kelvaroq](https://github.com/fablinoo/kelvaroq) | victory-fork | ~10 fps, 36 min no crash, RTX 5080 | Testing |
-| 4 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | victory-fork | 5–9 fps, 77 min | Testing |
-| 5 | [Flamingo](https://github.com/realblastex/flamingo) | victory-fork | 7.8–14 fps, 24 min | ⚠️ was 5–7 fps in the first mission; crashes since fe12291, listed last |
+| 4 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | victory-fork | 5–9 fps, 77 min, RX 9070 XT | ❌ RTX 4060, game 1.0.2.1: the game stops itself at the intro; klbf lacks device method 102 (slot 0x330). Its bug, not the launcher's |
+| 5 | [Flamingo](https://github.com/realblastex/flamingo) | victory-fork | 7.8–14 fps, 24 min | ⚠️ crashed since fe12291 |
 | 6 | [victory-fork](https://github.com/fxceless/victory-fork) | VIctory | 4.5–7.6 fps, 30 min | ✅ intro 30 fps, 3D scene ~1 fps |
 | 7 | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | VIctory | 30 min in the world, RTX 4090 | Testing |
-| 8 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | victory-fork | 4–7 fps, hour-long, RTX 4060 Ti | ❌ game stops ~20 s in (method 102); Neonbridge patch testing |
+| 8 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | victory-fork | 4–7 fps, hour-long, RTX 4060 Ti | ❌ game stops ~20 s in (method 102) |
 | 9 | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | VIctory | 5–8 fps, 15 min drive | ❌ |
-| 10 | [Vertex](https://github.com/proneonn/Vertex) | VIctory | 16 of 18 sessions no crash, 25 min | Testing |
+| 10 | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | VIctory | 8 GB preset in its README | Testing |
 
 **Archived** (in the launcher under Archived, below Mix): [victory-amd](https://github.com/myokex/victory-amd), [victory-unified](https://github.com/Itsbatt/victory-unified), [VItoriaBr](https://github.com/uiliannn/VItoriaBr) (✅ 3D prison scene at 2–3 fps, best verified here) and [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) (✅ 3D at 2–3 fps). xcl and ztrx-victory are out of the tree: `git checkout 5a8260ee -- vendor/xcl` or `git checkout 2210a250 -- vendor/ztrx-victory` brings them back.
 
