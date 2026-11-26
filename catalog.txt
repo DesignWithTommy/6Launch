@@ -712,7 +712,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== kitty6 def1eff88e57c94808d5d3873e30b8ada9086d96
+=== kitty6 9a20551a25a1bdca70f04a88066f45dff6dcf7e2
 # Launcher spec for vendor/kitty6: kitty-core's Kitty6 (VIctory-7900XTX fork tuned for an RTX 4070 12 GB, 32 GB RAM).
 # Build, run and env are its README "Build" and scripts/play.ps1 (default: no switches, Series X, diag build, its mods on).
 name = "kitty6"
