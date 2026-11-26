@@ -21,6 +21,7 @@ preset_series_x = ["--console=series-x", "VICTORY_OWN_UPSCALER=", "VICTORY_RENDE
 preset_8gb = ["VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours: its 2048 MB card buffers trimmed for 8 GB cards
 
 [env]   # launch-curated.cmd :profile
+VICTORY_PRESS_FILE = "{press}"   # read at crates/victory-core/src/config.rs:4
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_LEVELS_ON_DEMAND = "1"
 VICTORY_CARD_BUFFERS_MIN_MB = "1"
