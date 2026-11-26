@@ -29,23 +29,11 @@ impl DisplaySurface {
         // SAFETY: the window belongs to the UI thread and outlives this surface.
         unsafe {
             let factory: IDXGIFactory6 = CreateDXGIFactory1()?;
-            for index in 0.. {
-                let adapter: IDXGIAdapter1 = match factory
-                    .EnumAdapterByGpuPreference(index, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE)
-                {
-                    Ok(adapter) => adapter,
-                    Err(e) if e.code() == DXGI_ERROR_NOT_FOUND => break,
-                    Err(e) => return Err(e.into()),
+            for entry in crate::adapters::hardware(&factory) {
+                let (adapter, info) = entry?;
+                let Some(device) = crate::adapters::device(&adapter) else {
+                    continue;
                 };
-                let info = adapter.GetDesc1()?;
-                if info.Flags & DXGI_ADAPTER_FLAG_SOFTWARE.0 as u32 != 0 {
-                    continue;
-                }
-                let mut device: Option<ID3D12Device> = None;
-                if D3D12CreateDevice(&adapter, D3D_FEATURE_LEVEL_12_0, &mut device).is_err() {
-                    continue;
-                }
-                let device = device.context("D3D12 returned no device")?;
                 let queue: ID3D12CommandQueue =
                     device.CreateCommandQueue(&D3D12_COMMAND_QUEUE_DESC::default())?;
                 let desc = DXGI_SWAP_CHAIN_DESC1 {
@@ -73,14 +61,9 @@ impl DisplaySurface {
                     );
                 }
                 factory.MakeWindowAssociation(window, DXGI_MWA_NO_ALT_ENTER)?;
-                let length = info
-                    .Description
-                    .iter()
-                    .position(|&c| c == 0)
-                    .unwrap_or(info.Description.len());
                 return Ok(Self {
                     _chain: chain,
-                    adapter_name: String::from_utf16_lossy(&info.Description[..length]),
+                    adapter_name: crate::adapters::name(&info),
                 });
             }
         }
@@ -105,12 +88,7 @@ pub fn probe(selected: Option<u32>) -> Result<()> {
         {
             continue;
         }
-        let length = desc
-            .Description
-            .iter()
-            .position(|&c| c == 0)
-            .unwrap_or(desc.Description.len());
-        let name = String::from_utf16_lossy(&desc.Description[..length]);
+        let name = crate::adapters::name(&desc);
         tested += 1;
         match verify(&adapter) {
             Ok(()) => println!(

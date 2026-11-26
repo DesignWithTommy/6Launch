@@ -2,7 +2,7 @@
 name = "vinividivici"
 fork = "VIctory"
 rank = 16   # #16 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIniVIdiVIci 88cd989 (GPL-3.0): victory-fork for NVIDIA cards"
+about = "VIniVIdiVIci 499b439 (GPL-3.0): victory-fork for NVIDIA cards"
 upstream = "https://github.com/KomanderDG88/VIniVIdiVIci"
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:79
 exe = "target/release/victory.exe"
@@ -18,6 +18,8 @@ preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # D3D12 crash brea
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (slow; diagnostics build only, host.rs cfg!(feature = "diagnostics"))
 
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads
+
+preset_fast = ["VICTORY_SKIP_WC_BACK=1", "VICTORY_COPY_PLAIN=1", "VICTORY_TEXTURE_DROP_MIPS=1", "VICTORY_HEAP_SYNC_TABLES=1"]   # README Status: 5.95 fps, median 168 ms, first room, RTX 4060 Ti (build bfb2072)
 
 [env]
 

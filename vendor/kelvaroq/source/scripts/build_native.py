@@ -21,7 +21,8 @@ OUTPUT = ROOT / "target/release/native"
 UPSTREAM = "https://github.com/fxceless/victory-fork.git"
 REVISION = "f85101b6095e8cf3cecf8f0647cc7f5428daa177"
 PLATFORM = "x86_64-pc-windows-msvc"
-FILES = ("victory.exe", "LICENSE", "source.zip", "build.json")
+ENGINE = "kelvaroq-engine.exe"
+FILES = (ENGINE, "LICENSE", "source.zip", "build.json")
 
 
 def sha256(path):
@@ -53,6 +54,20 @@ def install_render_source(checkout, crate):
         copy.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, copy)
     git(checkout, "add", "--force", "--", "crates/kelvaroq-render")
+    # The public integration patch pins the first render crate. Keep the
+    # staged source lock in step with the local crate included in this ZIP.
+    lock = checkout / "Cargo.lock"
+    if lock.is_file():
+        version = tomllib.loads((dest / "Cargo.toml").read_text("utf8"))["package"]["version"]
+        data, count = re.subn(
+            rb'(\[\[package\]\]\nname = "kelvaroq-render"\nversion = ")[^"]+(")',
+            lambda match: match[1] + version.encode("ascii") + match[2],
+            lock.read_bytes(),
+        )
+        if count != 1:
+            raise ValueError("expected one local render crate in the native lockfile")
+        lock.write_bytes(data)
+        git(checkout, "add", "--", "Cargo.lock")
 
 
 def checkout_source(checkout, source, revision, patch_dir, render_crate):
@@ -124,7 +139,7 @@ def archive_source(checkout, tree, epoch, dest):
         checkout,
         "archive",
         "--format=zip",
-        "--prefix=victory/",
+        "--prefix=kelvaroq-engine/",
         f"--mtime=@{epoch}",
         f"--output={dest}",
         tree,
@@ -239,7 +254,7 @@ def run(source, output):
         archive_source(checkout, tree, epoch, staging / "source.zip")
         with build_drive(folder) as drive:
             binary, channel = compile_backend(drive / "source", tree, epoch)
-        shutil.copyfile(binary, staging / "victory.exe")
+        shutil.copyfile(binary, staging / ENGINE)
         shutil.copyfile(checkout / "LICENSE", staging / "LICENSE")
         manifest = {
             "upstream": UPSTREAM,
@@ -285,5 +300,5 @@ if __name__ == "__main__":
         str(args.source.resolve()) if args.source else UPSTREAM, args.output.resolve()
     )
     print(
-        f"Installed {args.output} (victory.exe SHA-256 {result['sha256']['victory.exe']})"
+        f"Installed {args.output} ({ENGINE} SHA-256 {result['sha256'][ENGINE]})"
     )

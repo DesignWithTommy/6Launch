@@ -1,6 +1,7 @@
 //! The reader follows the writer's column dictionary, including counters
 //! introduced after this launcher was built. A lost lap leaves a sequence gap.
 
+use crate::preload::visual::t;
 use anyhow::{Context, Result, ensure};
 use kelvaroq_render::stats_ring::{ABSENT, CAPACITY, Reader, Writer};
 use std::{
@@ -84,7 +85,7 @@ impl History {
         (n > 0).then(|| sum / n as f64)
     }
     pub fn csv(&self, file: &Path) -> Result<()> {
-        ensure!(!self.rows.is_empty(), "Aucune image à enregistrer");
+        ensure!(!self.rows.is_empty(), "{}", t("noFrames"));
         let mut w = BufWriter::new(File::options().write(true).create_new(true).open(file)?);
         writeln!(w, "sequence,{}", self.names.join(","))?;
         let cutoff = self
@@ -149,7 +150,7 @@ impl Feed {
             inspection: None,
             show_drops: false,
             pid: None,
-            status: "Recherche du moteur".into(),
+            status: t("searchEngine").into(),
             last: Instant::now(),
             reader: None,
             desired,
@@ -177,7 +178,7 @@ impl Feed {
             if self.pid.is_some_and(|p| !pids.contains(&p)) {
                 self.reader = None;
                 self.pid = None;
-                self.status = "Moteur arrêté".into();
+                self.status = t("stopped").into();
             }
             if self.reader.is_none() {
                 for pid in pids
@@ -195,18 +196,18 @@ impl Feed {
                             self.pid = Some(pid);
                             self.reader = Some(r);
                             self.status = if self.demo.is_some() {
-                                "Démonstration · données synthétiques".into()
+                                t("synthetic").into()
                             } else {
-                                format!("Moteur connecté · PID {pid}")
+                                t("connected").replace("{0}", &pid.to_string())
                             };
                             break;
                         }
-                        Ok(_) => self.status = "Colonnes de mesure incompatibles".into(),
+                        Ok(_) => self.status = t("columns").into(),
                         Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
-                            self.status = "Version du protocole incompatible".into()
+                            self.status = t("protocol").into()
                         }
                         Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
-                            self.status = "Accès aux mesures refusé".into()
+                            self.status = t("denied").into()
                         }
                         _ => {}
                     }
@@ -256,26 +257,24 @@ impl Feed {
         use std::time::{SystemTime, UNIX_EPOCH};
         let stamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
         let name = format!("kelvaroq-{}-{stamp}.csv", self.pid.unwrap_or(0));
-        self.view()
-            .csv(Path::new(&name))
-            .context("Écriture du CSV dans le dossier courant")?;
+        self.view().csv(Path::new(&name)).context(t("csvError"))?;
         Ok(name)
     }
 }
 pub const STAGES: &[(&str, &str, u32)] = &[
-    ("descriptors_us", "Descripteurs", 0x63b5db),
-    ("watch_us", "Suivi et cohérence", 0xa1f4d4),
-    ("deferred_us", "Copies et barrières", 0xf1bc77),
-    ("snapshots_us", "Instantanés", 0xc4a5ec),
-    ("card_setup_us", "Préparation GPU", 0x649ddc),
-    ("execute_us", "Exécution des listes", 0xe9879a),
-    ("submit_other_us", "Autre travail", 0x8296aa),
-    ("relay_wait_us", "Attente du relais", 0xcf8867),
-    ("submit_lock_us", "Verrous", 0xe2aeb5),
-    ("submit_card_us", "Attente GPU", 0xaab66f),
-    ("submit_fetch_us", "Attente de lecture", 0xb39980),
-    ("submit_dependency_us", "Dépendances", 0x8879aa),
-    ("submit_idle_us", "Sans travail", 0x334955),
+    ("descriptors_us", "desc", 0x63b5db),
+    ("watch_us", "watch", 0xa1f4d4),
+    ("deferred_us", "copies", 0xf1bc77),
+    ("snapshots_us", "snaps", 0xc4a5ec),
+    ("card_setup_us", "setup", 0x649ddc),
+    ("execute_us", "lists", 0xe9879a),
+    ("submit_other_us", "other", 0x8296aa),
+    ("relay_wait_us", "relay", 0xcf8867),
+    ("submit_lock_us", "locks", 0xe2aeb5),
+    ("submit_card_us", "gpuWait", 0xaab66f),
+    ("submit_fetch_us", "readWait", 0xb39980),
+    ("submit_dependency_us", "deps", 0x8879aa),
+    ("submit_idle_us", "idle", 0x334955),
 ];
 const DEMO_NAMES: &[&str] = &[
     "frame",

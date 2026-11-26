@@ -173,6 +173,7 @@ def rust_notices(archive, metadata):
 def package(archive, release, cache, metadata, native):
     mapping = {
         "kelvaroq-launcher.exe": "Kelvaroq.exe",
+        "kelvaroq-desktop.exe": "kelvaroq-desktop.exe",
         "kelvaroq.exe": "kelvaroq-cli.exe",
         "kelvaroq_simd.dll": "kelvaroq_simd.dll",
     }
@@ -186,7 +187,7 @@ def package(archive, release, cache, metadata, native):
     receipt = (native / "build.json").read_bytes()
     recorded = json.loads(receipt)["sha256"]
     for source, dest in (
-        ("victory.exe", "native/victory.exe"),
+        ("kelvaroq-engine.exe", "native/kelvaroq-engine.exe"),
         ("LICENSE", "notices/native/LICENSE"),
         ("source.zip", "sources/native.zip"),
     ):
@@ -196,6 +197,7 @@ def package(archive, release, cache, metadata, native):
         put(archive, dest, data)
     put(archive, "native/build.json", receipt)
     put(archive, "LICENSE.txt", (ROOT / "LICENSE").read_bytes())
+    put(archive, "RELEASE_NOTES.md", (ROOT / "RELEASE_NOTES.md").read_bytes())
     # The reference CPU module imports Unicorn (GPLv2 only): GPL-2.0-or-later.
     put(archive, "runtime/kelvaroq_reference/LICENSE", (ROOT / "research/LICENSE").read_bytes())
     for module in sorted((ROOT / "research/kelvaroq_reference").glob("*.py")):
@@ -233,7 +235,8 @@ def package(archive, release, cache, metadata, native):
             b"Kelvaroq is free software under the GNU General Public License, version 3 or "
             b"later (LICENSE.txt); its reference CPU module (runtime/kelvaroq_reference) is "
             b"under version 2 or later (runtime/kelvaroq_reference/LICENSE).\n"
-            b"Native play uses the VIctory backend and Kelvaroq rendering code. "
+            b"Native play uses VIctory and victory-fork (both GPL-3.0-or-later) "
+            b"with Kelvaroq rendering code. "
             b"See notices/native/LICENSE, native/build.json and sources/native.zip.\n"
             b"The reference CPU uses CPython 3.14.10 (runtime/LICENSE.txt and notices/python), "
             b"Capstone 5.0.7 (notices/capstone), and Unicorn Engine 2.1.4 "
@@ -285,7 +288,11 @@ def verify(path):
             env=env,
         )
         subprocess.run(
-            [str(copied / "native/victory.exe"), "run", "--help"],
+            [str(copied / "Kelvaroq.exe"), "--ui-demo", "--capture", str(Path(tmp) / "screens")],
+            check=True, cwd=tmp, env=env,
+        )
+        subprocess.run(
+            [str(copied / "native/kelvaroq-engine.exe"), "run", "--help"],
             check=True,
             cwd=tmp,
             env=env,

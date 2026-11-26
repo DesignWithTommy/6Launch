@@ -1,3 +1,6 @@
+#[path = "launcher/visual.rs"]
+pub(crate) mod visual;
+
 use anyhow::{Context, Result};
 use std::time::{Duration, Instant};
 use windows::{
@@ -135,6 +138,7 @@ unsafe extern "system" fn events(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -
 
 impl Window {
     pub fn open() -> Result<Self> {
+        visual::enable_dpi();
         // SAFETY: the form and drawing resources are owned by this STA thread.
         unsafe {
             CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok()?;
@@ -149,15 +153,22 @@ impl Window {
                 ..Default::default()
             };
             RegisterClassW(&wc);
+            let dpi = if *visual::RESTYLE {
+                windows::Win32::UI::HiDpi::GetDpiForSystem() as i32
+            } else {
+                96
+            };
+            let w = (WIDTH * dpi / 96).min(GetSystemMetrics(SM_CXSCREEN));
+            let h = (HEIGHT * dpi / 96).min(GetSystemMetrics(SM_CYSCREEN));
             let form = Form(CreateWindowExW(
                 WS_EX_APPWINDOW,
                 class,
                 w!("Kelvaroq"),
                 WS_POPUP,
-                (GetSystemMetrics(SM_CXSCREEN) - WIDTH) / 2,
-                (GetSystemMetrics(SM_CYSCREEN) - HEIGHT) / 2,
-                WIDTH,
-                HEIGHT,
+                (GetSystemMetrics(SM_CXSCREEN) - w) / 2,
+                (GetSystemMetrics(SM_CYSCREEN) - h) / 2,
+                w,
+                h,
                 None,
                 None,
                 Some(instance),
@@ -185,6 +196,7 @@ impl Window {
         let mut fraction = 0.;
         let mut skip = false;
         let mut hover = false;
+        let mut focused = false;
         let hwnd = self.form.0;
         // SAFETY: timer messages wake the UI even when the child is silent.
         unsafe {
@@ -204,9 +216,14 @@ impl Window {
                 if msg.hwnd == hwnd {
                     let x = (msg.lParam.0 as i16) as i32;
                     let y = ((msg.lParam.0 >> 16) as i16) as i32;
+                    let mut area = windows::Win32::Foundation::RECT::default();
+                    GetClientRect(hwnd, &mut area)?;
+                    let x = x * WIDTH / area.right.max(1);
+                    let y = y * HEIGHT / area.bottom.max(1);
                     let on_button = (790..=906).contains(&x) && (448..=496).contains(&y);
                     match msg.message {
                         WM_MOUSEMOVE => hover = on_button,
+                        WM_KEYDOWN if *visual::RESTYLE && msg.wParam.0 == 9 => focused = true,
                         WM_LBUTTONUP if on_button => skip = true,
                         WM_KEYDOWN if matches!(msg.wParam.0, 13 | 27 | 32) => skip = true,
                         SKIP => skip = true,
@@ -220,8 +237,13 @@ impl Window {
                                 fraction = target;
                             }
                             frame = now;
-                            self.canvas
-                                .draw(value, fraction as f32, now - start, hover, skip)?;
+                            self.canvas.draw(
+                                value,
+                                fraction as f32,
+                                now - start,
+                                hover || focused,
+                                skip,
+                            )?;
                             if close {
                                 return Ok(());
                             }
@@ -253,17 +275,19 @@ impl Canvas {
     fn new(hwnd: HWND) -> Result<Self> {
         unsafe {
             let factory: ID2D1Factory = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, None)?;
+            let mut size = windows::Win32::Foundation::RECT::default();
+            GetClientRect(hwnd, &mut size)?;
             let target = factory.CreateHwndRenderTarget(
                 &D2D1_RENDER_TARGET_PROPERTIES {
-                    dpiX: 96.,
-                    dpiY: 96.,
+                    dpiX: 96. * size.right as f32 / WIDTH as f32,
+                    dpiY: 96. * size.bottom as f32 / HEIGHT as f32,
                     ..Default::default()
                 },
                 &D2D1_HWND_RENDER_TARGET_PROPERTIES {
                     hwnd,
                     pixelSize: D2D_SIZE_U {
-                        width: WIDTH as u32,
-                        height: HEIGHT as u32,
+                        width: size.right as u32,
+                        height: size.bottom as u32,
                     },
                     ..Default::default()
                 },
@@ -357,6 +381,103 @@ impl Canvas {
         }
     }
 
+    fn draw_desktop(
+        &self,
+        value: Progress,
+        fraction: f32,
+        elapsed: Duration,
+        hover: bool,
+        skip: bool,
+    ) -> Result<()> {
+        use visual::{t, tone};
+        let ink = tone(0x202925, 0xedf2ef);
+        let muted = tone(0x52635b, 0xb3c1b9);
+        let accent = tone(0x17634c, 0x8ad7b5);
+        unsafe {
+            self.target.BeginDraw();
+            self.target
+                .Clear(Some(&color(tone(0xf7f9f7, 0x1b211e), 1.)));
+        }
+        self.text("Kelvaroq", &self.brand, rect(52., 42., 410., 44.), ink);
+        self.text(
+            t("warmTitle"),
+            &self.heading,
+            rect(50., 128., 870., 80.),
+            ink,
+        );
+        self.text(t("warmHint"), &self.body, rect(54., 216., 840., 58.), muted);
+        self.block(
+            rect(32., 294., 896., 216.),
+            6.,
+            tone(0xffffff, 0x252c28),
+            1.,
+        );
+        self.text(
+            &format!("{:.0} %", fraction * 100.),
+            &self.number,
+            rect(55., 312., 132., 54.),
+            accent,
+        );
+        let count = |n: u32| {
+            if visual::english() {
+                grouped(n).replace(' ', ",")
+            } else {
+                grouped(n)
+            }
+        };
+        self.text(
+            &t("pipelines")
+                .replace("{0}", &count(value.done))
+                .replace("{1}", &count(value.total)),
+            &self.body,
+            rect(185., 329., 395., 32.),
+            ink,
+        );
+        let eta = if value.done == 0 {
+            t("estimating").into()
+        } else if value.total == value.done {
+            if value.failed == 0 {
+                t("done").into()
+            } else {
+                t("warmFailed").replace("{0}", &count(value.failed))
+            }
+        } else {
+            let seconds = (elapsed.as_secs_f64() * f64::from(value.total - value.done)
+                / f64::from(value.done))
+            .ceil()
+            .max(1.) as u64;
+            if seconds < 60 {
+                t("seconds").replace("{0}", &seconds.to_string())
+            } else {
+                t("minutes").replace("{0}", &seconds.div_ceil(60).to_string())
+            }
+        };
+        self.text(&eta, &self.right, rect(580., 329., 324., 32.), muted);
+        self.block(rect(55., 378., 850., 5.), 2., tone(0xd7dfda, 0x414b44), 1.);
+        if fraction > 0. {
+            self.block(rect(55., 378., 850. * fraction, 5.), 2., accent, 1.);
+        }
+        if skip {
+            self.text(t("skipping"), &self.body, rect(55., 454., 680., 44.), muted);
+        }
+        self.block(
+            rect(790., 448., 116., 48.),
+            5.,
+            if hover { accent } else { muted },
+            1.,
+        );
+        self.block(
+            rect(791., 449., 114., 46.),
+            4.,
+            tone(0xffffff, 0x252c28),
+            1.,
+        );
+        self.text(t("skip"), &self.button, rect(790., 448., 116., 48.), ink);
+        unsafe {
+            self.target.EndDraw(None, None)?;
+        }
+        Ok(())
+    }
     fn draw(
         &self,
         value: Progress,
@@ -365,6 +486,9 @@ impl Canvas {
         hover: bool,
         skip: bool,
     ) -> Result<()> {
+        if *visual::RESTYLE {
+            return self.draw_desktop(value, fraction, elapsed, hover, skip);
+        }
         let t = elapsed.as_secs_f32();
         unsafe {
             self.target.BeginDraw();

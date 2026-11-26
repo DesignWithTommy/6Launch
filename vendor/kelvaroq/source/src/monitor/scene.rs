@@ -1,4 +1,5 @@
 use super::feed::{Feed, STAGES};
+use crate::preload::visual::{self, t, tone};
 use crate::preload::{color, rect};
 use anyhow::Result;
 use std::time::Duration;
@@ -18,13 +19,42 @@ const MINT: u32 = 0xa1f4d4;
 const GOLD: u32 = 0xf1bc77;
 const BLUE: u32 = 0x75b5ec;
 
+fn mib() -> &'static str {
+    t("mib")
+}
+fn gib() -> &'static str {
+    t("gib")
+}
+fn palette(c: u32) -> u32 {
+    if !*visual::RESTYLE {
+        return c;
+    }
+    match c {
+        BG => tone(0xf7f9f7, 0x1b211e),
+        PANEL => tone(0xffffff, 0x252c28),
+        WHITE => tone(0x202925, 0xedf2ef),
+        MUTED => tone(0x52635b, 0xb3c1b9),
+        MINT => tone(0x17634c, 0x8ad7b5),
+        GOLD => tone(0x965410, 0xf1bc77),
+        BLUE => tone(0x32678c, 0x8fbddd),
+        0x3a505c | 0x354a58 | 0x455864 => tone(0xcbd7cf, 0x48524b),
+        other => other,
+    }
+}
+
 pub struct Scene {
+    pub focus: std::cell::Cell<Option<usize>>,
     target: ID2D1RenderTarget,
     brush: ID2D1SolidColorBrush,
     fonts: Vec<IDWriteTextFormat>,
 }
 fn num(n: f64, places: usize) -> String {
-    format!("{n:.places$}").replace('.', ",")
+    let value = format!("{n:.places$}");
+    if visual::english() {
+        value
+    } else {
+        value.replace('.', ",")
+    }
 }
 fn amount(v: Option<u64>, scale: f64, places: usize) -> String {
     v.map_or_else(|| "—".into(), |v| num(v as f64 / scale, places))
@@ -55,6 +85,7 @@ impl Scene {
                 fonts.push(font);
             }
             Ok(Self {
+                focus: Default::default(),
                 target,
                 brush,
                 fonts,
@@ -66,13 +97,13 @@ impl Scene {
             return;
         }
         unsafe {
-            self.brush.SetColor(&color(r, 1.));
+            self.brush.SetColor(&color(palette(r), 1.));
             self.target.FillRectangle(&rect(x, y, w, h), &self.brush);
         }
     }
     fn label(&self, s: &str, x: f32, y: f32, w: f32, font: usize, c: u32) {
         unsafe {
-            self.brush.SetColor(&color(c, 1.));
+            self.brush.SetColor(&color(palette(c), 1.));
             self.target.DrawText(
                 &s.encode_utf16().collect::<Vec<_>>(),
                 &self.fonts[font],
@@ -85,7 +116,7 @@ impl Scene {
     }
     fn line(&self, x: f32, y: f32, x2: f32, y2: f32, c: u32, width: f32) {
         unsafe {
-            self.brush.SetColor(&color(c, 1.));
+            self.brush.SetColor(&color(palette(c), 1.));
             self.target.DrawLine(
                 Vector2 { X: x, Y: y },
                 Vector2 { X: x2, Y: y2 },
@@ -106,16 +137,16 @@ impl Scene {
         let stalled = feed.last.elapsed() > Duration::from_secs(1) || feed.pid.is_none();
         unsafe {
             self.target.BeginDraw();
-            self.target.Clear(Some(&color(BG, 1.)));
+            self.target.Clear(Some(&color(palette(BG), 1.)));
         }
         self.label("Kelvaroq", 28., 17., 104., 2, MINT);
         self.fill(133., 21., 1., 21., 0x455864);
-        self.label("Moniteur de performances", 149., 17., 445., 2, WHITE);
+        self.label(t("monitor"), 149., 17., 445., 2, WHITE);
         self.label(&feed.status, 29., 48., 620., 0, MUTED);
         let has_frames = !h.rows.is_empty();
         self.fill(939., 17., 232., 44., if has_frames { MINT } else { PANEL });
         self.label(
-            &format!("Enregistrer les {} s en CSV", h.seconds),
+            &t("saveCsv").replace("{0}", &h.seconds.to_string()),
             954.,
             28.,
             210.,
@@ -130,16 +161,16 @@ impl Scene {
         };
         self.metric(
             28.,
-            "Cadence",
+            t("rate"),
             &fps.map_or_else(|| "—".into(), |v| num(v, 1)),
-            "images/s · dernière seconde",
+            t("fpsUnit"),
             MINT,
         );
         self.metric(
             315.,
-            "Dernière image",
+            t("lastFrame"),
             &amount(ft, 1000., 1),
-            "ms · cible 33,3 ms",
+            t("targetMs"),
             if ft.is_some_and(|n| n > 33333) {
                 GOLD
             } else {
@@ -153,26 +184,26 @@ impl Scene {
             .map(|(v, t)| format!("{} %", num(v as f64 * 100. / t as f64, 0)));
         self.metric(
             602.,
-            "Occupation GPU estimée",
+            t("gpuBusy"),
             &busy.unwrap_or_else(|| "—".into()),
-            "horloge de la file directe",
+            t("queueClock"),
             BLUE,
         );
         self.metric(
             889.,
-            "GPU inactif pendant le travail CPU",
+            t("gpuIdle"),
             &amount(h.latest("gpu_idle_behind_us"), 1000., 1),
-            "ms · dernière image",
+            t("lastMs"),
             WHITE,
         );
 
         self.fill(28., 194., 731., 342., PANEL);
-        self.label("Temps par image", 45., 205., 245., 2, WHITE);
+        self.label(t("frameTimes"), 45., 205., 245., 2, WHITE);
         self.label(
             if feed.inspection.is_some() {
-                "Revenir au direct"
+                t("live")
             } else {
-                "Choisir une image sur la courbe"
+                t("inspect")
             },
             496.,
             210.,
@@ -207,7 +238,7 @@ impl Scene {
         );
         self.line(left, bottom, right, bottom, 0x3a505c, 1.);
         self.line(left, y(33333), right, y(33333), GOLD, 1.);
-        self.label("33,3", 48., y(33333) - 10., 52., 0, GOLD);
+        self.label(&num(33.3, 1), 48., y(33333) - 10., 52., 0, GOLD);
         let mut previous = None;
         for (i, r) in rows.iter().enumerate() {
             let current = h.get(r, "frame_us").map(|us| (x(i), y(us)));
@@ -216,16 +247,9 @@ impl Scene {
             }
             previous = current;
         }
-        self.label("Activité simultanée", 44., 348., 330., 2, WHITE);
-        self.label(
-            "Échelle commune à la dernière série",
-            450.,
-            355.,
-            292.,
-            0,
-            MUTED,
-        );
-        for (name, base) in [("Titre", 413.), ("Envoi", 461.), ("GPU", 508.)] {
+        self.label(t("activity"), 44., 348., 330., 2, WHITE);
+        self.label(t("scale"), 450., 355., 292., 0, MUTED);
+        for (name, base) in [(t("titleThread"), 413.), (t("submit"), 461.), ("GPU", 508.)] {
             self.label(name, 45., base - 27., 59., 1, WHITE);
             self.line(left, base, right, base, 0x354a58, 1.);
         }
@@ -246,27 +270,13 @@ impl Scene {
                 }
             }
         }
-        self.label(
-            "Titre : temps entre appels de présentation sur les fils appelants.",
-            45.,
-            512.,
-            690.,
-            0,
-            MUTED,
-        );
+        self.label(t("titleTime"), 45., 512., 690., 0, MUTED);
         self.fill(772., 194., 392., 342., PANEL);
-        self.label("Où passe le temps ?", 790., 205., 361., 2, WHITE);
-        self.label(
-            "Envoi · moyenne par image sur 1 s",
-            790.,
-            237.,
-            365.,
-            0,
-            MUTED,
-        );
-        self.label("Étape", 790., 268., 170., 0, MUTED);
+        self.label(t("stages"), 790., 205., 361., 2, WHITE);
+        self.label(t("avg"), 790., 237., 365., 0, MUTED);
+        self.label(t("stage"), 790., 268., 170., 0, MUTED);
         self.label("ms", 1013., 268., 48., 0, MUTED);
-        self.label("Écart / s préc.", 1062., 268., 96., 0, MUTED);
+        self.label(t("delta"), 1062., 268., 96., 0, MUTED);
         let mut ranked: Vec<_> = STAGES
             .iter()
             .filter_map(|&(key, title, c)| h.mean(key, 0).map(|v| (v, key, title, c)))
@@ -275,11 +285,12 @@ impl Scene {
         for (i, (v, key, title, c)) in ranked.iter().take(7).enumerate() {
             let y = 294. + i as f32 * 30.;
             self.fill(790., y + 6., 8., 8., *c);
-            self.label(title, 807., y, 190., 1, WHITE);
+            self.label(t(title), 807., y, 190., 1, WHITE);
             self.label(&num(v / 1000., 1), 1004., y, 68., 1, WHITE);
-            let trend = h
-                .mean(key, 1)
-                .map(|prev| format!("{:+.1}", (v - prev) / 1000.).replace('.', ","));
+            let trend = h.mean(key, 1).map(|prev| {
+                format!("{:+.1}", (v - prev) / 1000.)
+                    .replace('.', if visual::english() { "." } else { "," })
+            });
             self.label(
                 &trend.unwrap_or_else(|| "—".into()),
                 1080.,
@@ -290,35 +301,21 @@ impl Scene {
             );
         }
         if rows.is_empty() {
-            self.label(
-                "En attente de la première image",
-                790.,
-                297.,
-                352.,
-                1,
-                MUTED,
-            );
+            self.label(t("waitingFrame"), 790., 297., 352., 1, MUTED);
         }
-        self.label(
-            "Le relais est compté sur le fil d’envoi.",
-            790.,
-            505.,
-            355.,
-            0,
-            MUTED,
-        );
+        self.label(t("relayNote"), 790., 505., 355., 0, MUTED);
         let cols = [
-            (28., 371., "Mémoire"),
+            (28., 371., t("memory")),
             (
                 411.,
                 370.,
                 if feed.show_drops {
-                    "Pertes par motif"
+                    t("drops")
                 } else {
-                    "Commandes"
+                    t("commands")
                 },
             ),
-            (793., 371., "Préparation"),
+            (793., 371., t("preparation")),
         ];
         for (x, w, title) in cols {
             self.fill(x, 550., w, 210., PANEL);
@@ -328,37 +325,39 @@ impl Scene {
         let pair = |a: &str, b: &str, s: f64, p| format!("{} / {}", val(a, s, p), val(b, s, p));
         let memory = [
             (
-                "Vers / depuis la carte",
+                t("transfer"),
                 format!(
-                    "{} Mio",
-                    pair("to_card_bytes", "from_card_bytes", 1048576., 1)
+                    "{} {}",
+                    pair("to_card_bytes", "from_card_bytes", 1048576., 1),
+                    mib()
                 ),
             ),
             (
-                "En place",
-                format!("{} Mio", val("inplace_bytes", 1048576., 1)),
+                t("inPlace"),
+                format!("{} {}", val("inplace_bytes", 1048576., 1), mib()),
             ),
-            ("Pages en place", val("inplace_pages", 1., 0)),
+            (t("pages"), val("inplace_pages", 1., 0)),
             (
-                "VRAM utilisée / budget",
+                t("vram"),
                 format!(
-                    "{} Gio",
-                    pair("vram_usage_bytes", "vram_budget_bytes", 1073741824., 1)
+                    "{} {}",
+                    pair("vram_usage_bytes", "vram_budget_bytes", 1073741824., 1),
+                    gib()
                 ),
             ),
             (
-                "RAM résidente",
-                format!("{} Gio", val("ram_bytes", 1073741824., 1)),
+                t("ram"),
+                format!("{} {}", val("ram_bytes", 1073741824., 1), gib()),
             ),
         ];
         let drop_text = [
-            ("drop_compiling", "compilation"),
-            ("drop_unset", "absent"),
-            ("drop_refused", "refus"),
-            ("drop_skipped", "ignoré"),
-            ("drop_signature", "indirect"),
-            ("drop_builder", "structure"),
-            ("drop_translation", "traduction"),
+            ("drop_compiling", t("shortComp")),
+            ("drop_unset", t("shortAbsent")),
+            ("drop_refused", t("shortRefused")),
+            ("drop_skipped", t("shortSkipped")),
+            ("drop_signature", t("shortIndirect")),
+            ("drop_builder", t("shortBuild")),
+            ("drop_translation", t("shortTranslation")),
         ];
         let mut drops: Vec<_> = drop_text
             .iter()
@@ -372,20 +371,14 @@ impl Scene {
             .collect::<Vec<_>>()
             .join(" · ");
         let commands = [
-            ("Dessins émis / exécutés", pair("draws", "drawn", 1., 0)),
+            (t("draws"), pair("draws", "drawn", 1., 0)),
+            (t("dispatch"), pair("dispatches", "dispatched", 1., 0)),
+            (t("dropPair"), pair("drop_pipeline", "drop_indirect", 1., 0)),
             (
-                "Calculs émis / exécutés",
-                pair("dispatches", "dispatched", 1., 0),
-            ),
-            (
-                "Pertes pipeline / indirect",
-                pair("drop_pipeline", "drop_indirect", 1., 0),
-            ),
-            (
-                "Motifs principaux",
+                t("mainReasons"),
                 if reasons.is_empty() {
                     if h.latest("drop_compiling").is_some() {
-                        "Aucun".into()
+                        t("none").into()
                     } else {
                         "—".into()
                     }
@@ -393,32 +386,26 @@ impl Scene {
                     reasons
                 },
             ),
-            (
-                "Présent côté titre",
-                format!("{} ms", val("present_us", 1000., 2)),
-            ),
+            (t("present"), format!("{} ms", val("present_us", 1000., 2))),
         ];
         let queues = [
-            ("Pipelines en construction", val("pipelines_making", 1., 0)),
+            (t("building"), val("pipelines_making", 1., 0)),
             (
-                "Attente des pipelines",
+                t("pipelineWait"),
                 format!("{} ms", val("pipeline_wait_us", 1000., 1)),
             ),
+            (t("textures"), val("textures_waiting", 1., 0)),
             (
-                "Textures en attente mémoire",
-                val("textures_waiting", 1., 0),
+                t("uploads"),
+                format!("{} {}", val("texture_upload_bytes", 1048576., 1), mib()),
             ),
-            (
-                "Textures indexées envoyées",
-                format!("{} Mio", val("texture_upload_bytes", 1048576., 1)),
-            ),
-            ("Interrogations write-watch", val("watch_calls", 1., 0)),
+            (t("queries"), val("watch_calls", 1., 0)),
         ];
         self.label(
             if feed.show_drops {
-                "Retour"
+                t("back")
             } else {
-                "Voir les motifs"
+                t("reasons")
             },
             663.,
             568.,
@@ -429,13 +416,13 @@ impl Scene {
         for (x, items) in [(28., &memory), (411., &commands), (793., &queues)] {
             if x == 411. && feed.show_drops {
                 for (i, (key, label)) in [
-                    ("drop_compiling", "Pipeline en construction"),
-                    ("drop_unset", "Pipeline absent"),
-                    ("drop_refused", "Pipeline refusé"),
-                    ("drop_skipped", "Shader ignoré"),
-                    ("drop_signature", "Commande indirecte"),
-                    ("drop_builder", "Construction de structure"),
-                    ("drop_translation", "Échec de traduction"),
+                    ("drop_compiling", t("dropComp")),
+                    ("drop_unset", t("dropUnset")),
+                    ("drop_refused", t("dropRefused")),
+                    ("drop_skipped", t("dropSkip")),
+                    ("drop_signature", t("dropIndirect")),
+                    ("drop_builder", t("dropBuild")),
+                    ("drop_translation", t("dropTranslate")),
                 ]
                 .iter()
                 .enumerate()
@@ -455,24 +442,31 @@ impl Scene {
         let text = if !notice.is_empty() {
             notice.into()
         } else if feed.pid.is_none() {
-            "En attente du moteur · VICTORY_STATS_SHM=1 active la publication.".into()
+            t("waitingEngine").into()
         } else if feed.inspection.is_some() {
-            format!(
-                "Image {} sélectionnée · Échap pour revenir au direct",
-                val("frame", 1., 0)
-            )
+            t("selectedFrame").replace("{0}", &val("frame", 1., 0))
         } else if let Some(status) = h.latest("present_status").filter(|&v| v != 0) {
-            format!("Image non affichée · état DXGI 0x{status:08x}")
+            t("noPresent").replace("{0}", &format!("0x{status:08x}"))
         } else if stalled {
-            "Présentation interrompue · dernières mesures conservées".into()
+            t("stalled").into()
         } else {
-            format!(
-                "Image {}   ·   {} intervalles perdus à la lecture",
-                val("frame", 1., 0),
-                h.lost
-            )
+            t("intervals")
+                .replace("{0}", &val("frame", 1., 0))
+                .replace("{1}", &h.lost.to_string())
         };
         self.label(&text, 29., 774., 1140., 0, MUTED);
+        if let Some(index) = self.focus.get() {
+            let (x, y, w, h) = [
+                (936., 14., 238., 50.),
+                (100., 238., 642., 103.),
+                (494., 200., 250., 37.),
+                (410., 550., 372., 210.),
+            ][index];
+            self.line(x, y, x + w, y, WHITE, 2.);
+            self.line(x, y + h, x + w, y + h, WHITE, 2.);
+            self.line(x, y, x, y + h, WHITE, 2.);
+            self.line(x + w, y, x + w, y + h, WHITE, 2.);
+        }
         unsafe {
             self.target.EndDraw(None, None)?;
         }

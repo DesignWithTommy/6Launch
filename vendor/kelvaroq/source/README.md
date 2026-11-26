@@ -36,7 +36,7 @@ We traced how the game really uses its memory, from the first instruction of the
 
 - **Goal:** the game runs from boot to credits exactly as it does on an Xbox Series X, with what a PC adds on top: DLSS super resolution, frame generation, higher resolutions and an unlocked frame rate.
 - **Modest PCs too:** the copy loop is what eats the processor today, and that is what shuts smaller machines out. Removing it lowers the bar for everyone, so the aim is a game that also runs well on mid-range and older PCs, not only on high-end ones. Minimum requirements will be published once they are measured.
-- **Release policy:** the next public pushes will land once the memory layer is validated across the whole game, DLSS and frame generation are integrated, the remaining visual effects are in place, and every test suite passes. Until then, the public build stays on the current engine while the new layer is tested.
+- **Release policy:** the next public engine changes will land once the memory layer is validated across the whole game, DLSS and frame generation are integrated, the remaining visual effects are in place, and every test suite passes. Until then, the public build stays on the current engine while the new layer is tested.
 
 ## Status
 
@@ -119,15 +119,57 @@ A tester played a build from this public repository and monitored it, on a Ryzen
 
 1. Extract the entire Windows x64 ZIP into a folder.
 2. Open **Kelvaroq.exe** and select the game folder or its executable. You can also drag either onto Kelvaroq.exe.
-3. The launcher uses the native engine in the ZIP. The game opens a rendering window and a console named **Kelvaroq | Journal du jeu**.
+3. The launcher uses the native engine in the ZIP. The engine opens a rendering window and a Kelvaroq session log.
 
 `Kelvaroq.exe --experimental-render` (or `kelvaroq play --experimental-render <folder>`) starts an older experimental profile that reserves up to 256 MiB for VRAM transfers and 128 MiB for small read-only resources. It is not faster on the RTX 5080; the default settings are recommended. User-defined `VICTORY_*` settings take precedence. [Memory and submission settings](documentation.md#placement-mémoire-et-soumission)
 
 The native engine uses VIctory's loader, audio and input. Kelvaroq's Rust crate prepares textures and measures frame pacing. The package also includes the reference engine and its interpreter. You can move the folder as long as its files stay together.
 
-When you select a folder, the launcher uses the Series executable declared in `MicrosoftGame.config`. If the manifest is missing, the launcher accepts a folder containing a single `.exe`. If the choice is ambiguous, select the executable directly.
+When you select a folder, the workspace reads the Series executable declared in `MicrosoftGame.config`. If several executables are declared, select the intended executable directly. The original picker and CLI also accept a folder containing a single `.exe` when the manifest is missing.
 
 The Series X profile presents to a 3840×2160 surface and fits the window to the desktop. Intermediate rendering passes can use other resolutions.
+
+### Desktop launcher
+
+Kelvaroq.exe opens the desktop workspace by default. Set `VICTORY_LAUNCHER_V2=0` to open the original picker. The workspace accepts the executable declared in MicrosoftGame.Config, including a declared executable in a subfolder. Drop a folder or executable onto the window to change the selection. `Kelvaroq.exe --ui-demo` opens the synthetic workspace. Add `--capture <directory>` to render the launcher, preload and monitor screens in English and French, in both themes.
+
+Settings are stored in `%APPDATA%\Kelvaroq\settings` (schema 2). Storage moves create a dedicated child folder in the selected destination, verify its contents and switch the engine to the new location. Clearing shaders removes the translated shader directory. Clearing title data takes a recovery snapshot first.
+
+Save history stores ZIP archives in `%APPDATA%\Kelvaroq\snapshots`. Each version 1 manifest records the launcher version, engine build, UTC creation time, optional label, directories, file sizes and SHA-256 digests. Restore and import validate the archive and snapshot the current data before replacing it. The default retention keeps the eight latest snapshots and the newest snapshot on each of the last fourteen UTC calendar days. Settings lets you change both limits.
+
+Startup, Settings and About share one update check per 24 hours, including offline attempts. Settings remembers your choice to disable checks. A newer release appears in the workspace with its notes and a link to GitHub. The check sends only a standard HTTPS request with the launcher version in its User-Agent.
+
+These switches default to enabled in the desktop workspace.
+
+| Switch | Effect of setting it to 0 |
+| --- | --- |
+| `VICTORY_LAUNCHER_UPDATES` | Disable release checks and hide update controls. |
+| `VICTORY_LAUNCHER_STORAGE` | Use the engine's standard storage locations or its inherited folder overrides. Hide storage actions. |
+| `VICTORY_SAVE_HISTORY` | Hide save management and disable automatic snapshots. |
+| `VICTORY_SAVE_SNAPSHOTS` | Skip pre-launch and clean-exit snapshots. Manual snapshots and recovery before restore remain available. |
+| `VICTORY_LAUNCHER_DROP` | Disable drag-and-drop selection. |
+| `VICTORY_LAUNCHER_I18N` | Use French and hide the language selector. |
+| `VICTORY_LAUNCHER_NATIVE_STYLE` | Use the original auxiliary-window styling. |
+
+The monitor starts disabled and attaches to the launched engine's process ID when selected. `VICTORY_LAUNCHER_MONITOR=0` suppresses it. Shader preload starts enabled and honours the existing `VICTORY_PIPELINE_PRECOMPILE=0` override. The desktop form uses the .NET Framework 4.8 WPF assemblies supplied by Windows. The package ships the desktop companion alongside the Rust entry point.
+
+### Hardware profiles
+
+The workspace shows the high-performance hardware adapter, its driver and dedicated VRAM, the CPU and its physical and logical core counts, RAM, and the Windows build. It checks feature level 12.0, Shader Model 6.6, mesh shaders, resource binding tier 3 and root signature 1.1. The engine builds directly indexed descriptor heaps. Settings also reports wave widths, enhanced barriers and GPU upload heap support. On discrete GPUs the upload heap query reports whether the engine can use CPU-visible VRAM. A separate advisory appears below 16 GiB of system memory because loading reached 15.5 GB in the measured session above.
+
+Automatic uses the following limits for the preferred compatible discrete GPU. The memory classes use total physical memory reported by Windows, rounded to the nearest GiB. Texture residency continues to follow the current DXGI budget, and the engine already trims idle pipeline library pages according to available RAM.
+
+| Engine setting | Smaller configurations | At least 10 GiB VRAM and 16 GiB RAM | At least 16 GiB VRAM and 32 GiB RAM |
+|---|---:|---:|---:|
+| `VICTORY_TEXTURE_STAGE_MB` per frame | 64 | 128 | 192 |
+| `VICTORY_CARD_BUFFERS_MB` | 256 | 512 | 1024 |
+| `VICTORY_QUEUE2_LANDING_MB` | 32 | 64 | 96 |
+
+`VICTORY_WIDE_THREADS` uses half the physical core count, with a minimum of one worker and a maximum of twelve. Custom mode offers `VICTORY_WAVE64_PAIRED` on adapters that support 32 lanes and report a maximum of 32. It defaults to zero pending physical GPU validation. The launcher leaves inherited environment values in control and displays them in Settings.
+
+On multi-GPU PCs the launcher profiles the preferred discrete device. Windows selects the adapter for each executable. Select **High performance** for `kelvaroq-engine.exe` in Windows Graphics settings to use that device. The engine checks the active adapter's wave width again before pairing. An unsupported or unverified graphics requirement leaves the engine settings at their inherited values.
+
+Set `VICTORY_LAUNCHER_PROFILES=0` for detection alone. Set `VICTORY_LAUNCHER_HARDWARE=0` to restore the previous workspace and launch environment.
 
 ## Build from source
 
@@ -143,7 +185,7 @@ git config core.hooksPath .githooks
 
 The native build script fetches the pinned revision, applies the rendering patches and adds `native/kelvaroq-render` to the build. To use an existing clone, run `python scripts/build_native.py --source <clone>`. The native engine can use VIctory's local saves and cache.
 
-To rebuild the prototype ZIP on Windows, run `python scripts/package_windows.py`. The script includes third-party notices, verifies checksums and tests the extracted archive outside the repository. It writes the ZIP to `target/dist/`. The reference engine uses Unicorn under GPLv2. The package includes its notice and corresponding upstream source. [Unicorn license](https://github.com/unicorn-engine/unicorn/blob/2.1.4/COPYING)
+To rebuild the release ZIP on Windows, run `python scripts/package_windows.py`. The script includes third-party notices, verifies checksums and tests the extracted archive outside the repository. It writes the ZIP to `target/dist/`. The reference engine uses Unicorn under GPLv2. The package includes its notice and corresponding upstream source. [Unicorn license](https://github.com/unicorn-engine/unicorn/blob/2.1.4/COPYING)
 
 ## Command line
 
@@ -159,7 +201,7 @@ $image = 'D:\images\example.exe'
 
 `boot` writes a JSON report. Exit code 0 means the entry point returned, 2 means guest execution stopped with a diagnostic, and 1 indicates a tool or loading error.
 
-`play` uses the native engine installed at `native/victory.exe` beside the CLI. `play --reference` opens the debugger. The CLI also opens the debugger in a development build without a native backend.
+`play` uses the native engine installed at `native/kelvaroq-engine.exe` beside the CLI, with a fallback to the previous executable name. `play --reference` opens the debugger. The CLI also opens the debugger in a development build without a native backend.
 
 Both commands default to the Series X profile and accept `--console series-s`. The manifest selects the SMT setting. To compare CPU discovery results, `--host-topology` exposes the host PC's Windows topology records and `--processor-info <capture.bin>` replays raw x64 records. Keep `kelvaroq_simd.dll` beside the CLI. The standalone graphics probe accepts `gpu --adapter 0`.
 
@@ -178,7 +220,6 @@ Git and Cargo are required. The first run fetches the revisions and caches the G
 These documents are written in French.
 
 - [Architecture, compatibility criteria and measurement protocol](documentation.md)
-- [Decompilation notes on the binary, addresses and reproducible stop](décompile.md)
 - [Contribution guidelines for building, reviewing and testing changes](CONTRIBUTING.md)
 
 ## Contributing
@@ -194,7 +235,6 @@ Kelvaroq is developed by **Stellarr Studio SAS**, a French company ([stellarrstu
 - **VIctory**, by Marvisak and contributors, provides the native engine's loader, runtime services, Direct3D 12 renderer and shader recompiler. Its license is GPL-3.0-or-later. [VIctory](https://github.com/Marvisak/VIctory)
 - **victory-fork**, by fxceless and contributors, provides the pinned revision to which Kelvaroq applies `native/patches`. Its license is GPL-3.0-or-later. [victory-fork](https://github.com/fxceless/victory-fork)
 - **Unicorn** runs the CPU reference engine and is licensed under GPLv2. [Unicorn](https://github.com/unicorn-engine/unicorn)
-- **AI tools:** the AI tools used in this project are [Moon AI](https://realmoon.ai); all of the work is done through it.
 
 Kelvaroq provides the launcher, the `native/kelvaroq-render` rendering crate, the patches in `native/patches`, the reference engine and the measurement tools.
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kelvaroq-reference"
-version = "0.1.0"
+version = "0.2.0"
 description = "Single-threaded x64 startup reference for Kelvaroq"
 requires-python = ">=3.10"
 # GPL-2.0-or-later, not 3: it imports Unicorn, which is GPLv2 only.

@@ -2,6 +2,7 @@
 
 mod feed;
 mod scene;
+use crate::preload::visual::t;
 use anyhow::{Result, ensure};
 use clap::Parser;
 use feed::Feed;
@@ -10,6 +11,7 @@ use std::{
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
+use windows::core::HSTRING;
 use windows::{
     Win32::{
         Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM},
@@ -84,6 +86,7 @@ unsafe extern "system" fn events(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -
     }
 }
 fn window(mut feed: Feed) -> Result<()> {
+    crate::preload::visual::enable_dpi();
     unsafe {
         let class = w!("KelvaroqPerformanceMonitor");
         let instance = GetModuleHandleW(None)?.into();
@@ -106,7 +109,7 @@ fn window(mut feed: Feed) -> Result<()> {
         let form = Form(CreateWindowExW(
             WS_EX_APPWINDOW,
             class,
-            w!("Kelvaroq · Moniteur de performances"),
+            &HSTRING::from(format!("Kelvaroq · {}", t("monitor"))),
             style,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
@@ -134,6 +137,7 @@ fn window(mut feed: Feed) -> Result<()> {
         let mut size = (0, 0);
         let mut notice = String::new();
         let mut notified = Instant::now();
+        let mut column = 119usize;
         if SetTimer(Some(hwnd), 1, 50, None) == 0 {
             return Err(Error::from_thread().into());
         }
@@ -152,6 +156,42 @@ fn window(mut feed: Feed) -> Result<()> {
                     }
                     m if m == WM_APP + 1 || (m == WM_KEYDOWN && msg.wParam.0 == 27) => {
                         return Ok(());
+                    }
+                    WM_KEYDOWN if *crate::preload::visual::RESTYLE && msg.wParam.0 == 9 => {
+                        use windows::Win32::UI::Input::KeyboardAndMouse::{GetKeyState, VK_SHIFT};
+                        let reverse = GetKeyState(VK_SHIFT.0 as i32) < 0;
+                        let next = scene.focus.get().map_or(if reverse { 3 } else { 0 }, |i| {
+                            (i + if reverse { 3 } else { 1 }) % 4
+                        });
+                        scene.focus.set(Some(next));
+                    }
+                    WM_KEYDOWN
+                        if scene.focus.get() == Some(1) && matches!(msg.wParam.0, 37 | 39) =>
+                    {
+                        column = if msg.wParam.0 == 37 {
+                            column.saturating_sub(1)
+                        } else {
+                            (column + 1).min(119)
+                        };
+                        feed.inspection = None;
+                        feed.select_column(column);
+                    }
+                    WM_KEYDOWN
+                        if matches!(msg.wParam.0, 13 | 32) && scene.focus.get().is_some() =>
+                    {
+                        match scene.focus.get() {
+                            Some(0) if !feed.view().rows.is_empty() => {
+                                notice = feed
+                                    .record()
+                                    .map(|s| t("csvSaved").replace("{0}", &s))
+                                    .unwrap_or_else(|e| e.to_string());
+                                notified = Instant::now();
+                            }
+                            Some(1) => feed.select_column(column),
+                            Some(2) => feed.inspection = None,
+                            Some(3) => feed.show_drops = !feed.show_drops,
+                            _ => {}
+                        }
                     }
                     WM_TIMER => {
                         feed.tick();
@@ -175,6 +215,7 @@ fn window(mut feed: Feed) -> Result<()> {
                         }
                     }
                     WM_LBUTTONUP if size.0 > 0 && size.1 > 0 => {
+                        scene.focus.set(None);
                         let x = (msg.lParam.0 as i16) as i32 * W as i32 / size.0;
                         let y = ((msg.lParam.0 >> 16) as i16) as i32 * H as i32 / size.1;
                         if (496..742).contains(&x) && (200..237).contains(&y) {
@@ -188,9 +229,7 @@ fn window(mut feed: Feed) -> Result<()> {
                             && !feed.view().rows.is_empty()
                         {
                             notice = match feed.record() {
-                                Ok(name) => {
-                                    format!("CSV enregistré dans le dossier courant · {name}")
-                                }
+                                Ok(name) => t("csvSaved").replace("{0}", &name),
                                 Err(e) => format!("{e:#}"),
                             };
                             notified = Instant::now();
@@ -224,10 +263,7 @@ fn capture(mut feed: Feed, dir: &Path) -> Result<()> {
         let waiting = Feed::new(30, Some(u32::MAX), false)?;
         scene.draw(&waiting, "")?;
         crate::preload::save_png(&wic, &bitmap, &dir.join("monitor-attente.png"), W, H)?;
-        ensure!(
-            !feed.history.rows.is_empty(),
-            "Flux de démonstration introuvable"
-        );
+        ensure!(!feed.history.rows.is_empty(), "{}", t("demoFeed"));
         feed.demo_frame(196);
         scene.draw(&feed, "")?;
         crate::preload::save_png(&wic, &bitmap, &dir.join("monitor-charge.png"), W, H)?;

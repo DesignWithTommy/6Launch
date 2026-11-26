@@ -1,6 +1,14 @@
 //! Fixed x64 arithmetic operations for the reference CPU. Only operand data
 //! crosses this ABI. The guest's FP environment is isolated from the caller.
 
+#[cfg(windows)]
+mod launcher_http;
+
+#[cfg(windows)]
+mod adapters;
+#[cfg(windows)]
+mod hardware;
+
 #[cfg(target_arch = "x86_64")]
 #[path = "simd_half.rs"]
 mod simd_half;

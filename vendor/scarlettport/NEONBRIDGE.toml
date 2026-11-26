@@ -4,7 +4,7 @@
 name = "scarlettport"
 fork = "victory-fork"
 rank = 26   # #26 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ScarlettPort 771f5ce (victory runtime), GPL-3.0"
+about = "ScarlettPort be7717f (victory runtime), GPL-3.0"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 # scripts/setup-victory.ps1:18,21 (run in runtime\victory; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "runtime/victory/Cargo.toml", "--release", "-p", "victory", "--bin", "victory", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]

@@ -13,7 +13,11 @@ fn main() -> std::process::ExitCode {
     match launcher::run() {
         Ok(code) => code,
         Err(error) => {
-            launcher::error_box(&format!("{error:#}"));
+            if std::env::args_os().any(|arg| arg == "--capture") {
+                eprintln!("{error:#}");
+            } else {
+                launcher::error_box(&format!("{error:#}"));
+            }
             std::process::ExitCode::FAILURE
         }
     }
@@ -51,8 +55,15 @@ mod launcher {
     const PICK_FILE: usize = 101;
     const PICK_FOLDER: usize = 102;
 
+    fn workspace_enabled(setting: Option<&OsStr>) -> bool {
+        setting != Some(OsStr::new("0"))
+    }
+
     pub(super) fn run() -> Result<ExitCode> {
-        if let Some(result) = crate::monitor::command() { result?; return Ok(ExitCode::SUCCESS); }
+        if let Some(result) = crate::monitor::command() {
+            result?;
+            return Ok(ExitCode::SUCCESS);
+        }
         let mut args = std::env::args_os().skip(1).peekable();
         if args.next_if(|a| a == "--preload-demo").is_some() {
             if args.next_if(|a| a == "--capture").is_some() {
@@ -71,6 +82,38 @@ mod launcher {
             );
             crate::preload::demo(percent)?;
             return Ok(ExitCode::SUCCESS);
+        }
+        if args.peek().is_some_and(|a| a == "--ui-demo")
+            || workspace_enabled(std::env::var_os("VICTORY_LAUNCHER_V2").as_deref())
+        {
+            let launcher = std::env::current_exe()?;
+            let args: Vec<_> = args.collect();
+            let status = Command::new(launcher.with_file_name("kelvaroq-desktop.exe"))
+                .env("VICTORY_LAUNCHER_EXE", &launcher)
+                .args(&args)
+                .status()?;
+            if status.success()
+                && args.len() == 3
+                && args[0] == "--ui-demo"
+                && args[1] == "--capture"
+            {
+                for language in ["en", "fr"] {
+                    for (theme, dark) in [("light", "0"), ("dark", "1")] {
+                        let folder = Path::new(&args[2]).join(language).join(theme);
+                        for demo in ["--preload-demo", "--monitor-demo"] {
+                            let result = Command::new(&launcher)
+                                .args([demo, "--capture"])
+                                .arg(&folder)
+                                .env("VICTORY_LAUNCHER_UI", "1")
+                                .env("VICTORY_LAUNCHER_LANGUAGE", language)
+                                .env("VICTORY_LAUNCHER_DARK", dark)
+                                .status()?;
+                            anyhow::ensure!(result.success(), "{demo} ({result})");
+                        }
+                    }
+                }
+            }
+            return Ok(ExitCode::from(status.code().unwrap_or(1) as u8));
         }
         let experimental = args.next_if(|arg| arg == "--experimental-render").is_some();
         let argument = args.next();
@@ -322,6 +365,83 @@ mod launcher {
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        #[test]
+        fn workspace_defaults_on_and_zero_selects_the_picker() {
+            assert!(workspace_enabled(None));
+            assert!(workspace_enabled(Some(OsStr::new("1"))));
+            assert!(!workspace_enabled(Some(OsStr::new("0"))));
+        }
+
+        fn desktop_test(suite: &str) {
+            let exe = std::path::Path::new(env!("OUT_DIR")).join("kelvaroq-desktop.exe");
+            let result = Command::new(exe)
+                .args(["--self-test", suite])
+                .output()
+                .unwrap();
+            assert!(
+                result.status.success(),
+                "{}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+        }
+
+        #[test]
+        fn hardware_profiles_and_overrides() {
+            desktop_test("hardware");
+        }
+        #[test]
+        fn release_tags_and_notes() {
+            desktop_test("releases");
+        }
+        #[test]
+        fn disabled_and_daily_update_checks() {
+            desktop_test("updatePolicy");
+        }
+        #[test]
+        fn desktop_prefers_branded_engine() {
+            desktop_test("engine");
+        }
+        #[test]
+        fn interrupted_restore_recovers() {
+            desktop_test("recovery");
+        }
+        #[test]
+        fn session_snapshots_follow_process_status() {
+            desktop_test("session");
+        }
+        #[test]
+        fn child_receives_selected_options() {
+            desktop_test("options");
+        }
+        #[test]
+        fn clear_respects_storage_boundaries() {
+            desktop_test("clear");
+        }
+        #[test]
+        fn settings_migration() {
+            desktop_test("settings");
+        }
+        #[test]
+        fn manifest_selection() {
+            desktop_test("paths");
+        }
+        #[test]
+        fn snapshot_retention() {
+            desktop_test("retention");
+        }
+        #[test]
+        fn archive_round_trip_and_rejections() {
+            desktop_test("archive");
+        }
+        #[test]
+        fn storage_move_and_rollback() {
+            desktop_test("move");
+        }
+        #[test]
+        fn translation_completeness() {
+            desktop_test("language");
+        }
 
         #[test]
         fn packaged_name_never_runs_itself_and_development_prefers_packaged_cli() -> Result<()> {

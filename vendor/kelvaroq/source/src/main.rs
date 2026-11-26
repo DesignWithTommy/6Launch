@@ -1,4 +1,6 @@
 #[cfg(windows)]
+mod adapters;
+#[cfg(windows)]
 mod desktop;
 #[cfg(windows)]
 mod monitor;
@@ -167,10 +169,8 @@ fn run(args: Args) -> Result<ExitCode> {
                 && options.processor_info.is_none()
                 && !options.host_topology
             {
-                let engine = std::env::current_exe()?
-                    .with_file_name("native")
-                    .join("victory.exe");
-                if engine.is_file() {
+                let folder = std::env::current_exe()?.with_file_name("native");
+                if let Some(engine) = native::find_engine(&folder) {
                     let image = package::image_path(&options.image)?;
                     return native::run(&engine, &image, &options.console, experimental_render);
                 }
