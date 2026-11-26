@@ -254,13 +254,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== cgbj 8f34ba7bc7db83e05944f6396ba9ed4c3dc70cff
+=== cgbj 28ebb28044d63355665d6879685c2d9d8eed0c3c
 # Neonbridge launcher spec for vendor/cgbj: DoubleGhosty's cool_fox, a continuation of CGBJ (codec-d/cool_fox, no longer on GitHub).
 # Build, run and env are its README and Play-VIctory.cmd (VICTORY_LOG=warn left out: the loader reads the info-level fps line).
 name = "cgbj"
 fork = "VIctory"
 rank = 12   # #12 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "CGBJ (cool_fox 8f34ba7, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
+about = "CGBJ (cool_fox 28ebb28, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:34
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -810,7 +810,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== klbf 0c529ca05c68e3d8a77f2a66143cb43b6b90e225
+=== klbf 0644091954d0dceccb8c269606775b8251f89df5
 # Neonbridge launcher spec for vendor/klbf: PastiiJay's KLBF Lab, a victory/victory-fork
 # build vendored clean. Build, pre-build and run settings are its README.md "Run"
 # (README.md:116-160). Its claim: new game to free roam, 77 minutes without a crash,
@@ -818,7 +818,7 @@ menu = "Esc"
 name = "klbf"
 fork = "victory-fork"
 rank = 4   # #4 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "KLBF Lab 0c529ca (GPL-3.0): 'Player in control' through the prologue, ~5.7 to 7.3 fps, 77 min session, RX 9070 XT"
+about = "KLBF Lab 0644091 (GPL-3.0): 'Player in control' through the prologue, ~5.7 to 7.3 fps, 77 min session, RX 9070 XT"
 upstream = "https://github.com/PastiiJay/klbf-lab"
 build = ["cargo", "build", "--release", "--locked"]   # README.md:127
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -1622,13 +1622,13 @@ rs = "C / Middle mouse / H"
 dpad = "Arrows / 1 2 3 4 (E right)"
 view = "V"
 menu = "Esc / P"
-=== vibrport 2aa1895d716472e9ec0d187c9f9c9183f316bfb4
+=== vibrport a31b9b128b773666352c23f4216bd8a98c7a1e2f
 # Neonbridge launcher spec for vendor/vibrport: edsuuu's VI-BR-PORT, a victory-fork fork for
 # 8 GB NVIDIA cards (its author's RTX 4060 Ti 8 GB). Default launch is scripts/play.ps1.
 name = "vibrport"
 fork = "victory-fork"
 rank = 24   # #24 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VI-BR-PORT 2aa1895 (GPL-3.0): ~5.6 fps on Series X at 1080p and ~14 fps on Series S in the prison, RTX 4060 Ti 8 GB; the opening cutscene at ~18–19 fps; 'Ainda não está jogável' (not playable yet)"
+about = "VI-BR-PORT a31b9b1 (GPL-3.0): ~5.6 fps on Series X at 1080p and ~14 fps on Series S in the prison, RTX 4060 Ti 8 GB; the opening cutscene at ~18–19 fps; 'Ainda não está jogável' (not playable yet)"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # play.ps1:5 (diag is its default; README.md:75 builds release)
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)
@@ -1661,7 +1661,7 @@ VICTORY_CARD_STEPS = "2"
 VICTORY_INDIRECT_BATCH = "2"
 VICTORY_MAP_THREADS = "1"
 VICTORY_TITLE_PRIORITIES = "0"
-VICTORY_CARD_AWAKE = "1"
+VICTORY_CARD_AWAKE = "0"   # play.ps1 (a31b9b1)
 VICTORY_SHOW_AFTER = "1"
 VICTORY_AMBIENT = "constant:0.1"
 VICTORY_AMBIENT_AIR = "1.5"   # play.ps1
@@ -1688,13 +1688,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vicetay cc4a5db938cb0e9e603dbd8000224cc7cb3f1d07
+=== vicetay a2523483dc8f5f7378d1f41160d914648fbab649
 # Neonbridge launcher spec for vendor/vicetay: TaynanGT's Vice-Tay. Build and run are its README "How to run it"
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
 fork = "VIctory"
 rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vice-Tay cc4a5db (GPL-3.0): The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet; not yet run here"
+about = "Vice-Tay a252348 (GPL-3.0): The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet; not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
@@ -1715,6 +1715,7 @@ preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # full D3D12 bread
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (slow; crates/victory-gpu/src/host.rs, diagnostics build)
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads (VICTORY_FILL_WAIT is not)
 
+preset_4070 = ["VICTORY_THIN_THREADS=8", "VICTORY_UNDER_THREADS=6", "VICTORY_LAND_THREADS=4", "VICTORY_MAP_THREADS=1", "VICTORY_PIPELINE_WORKERS=3", "VICTORY_CARD_RESERVE_BUDGETS=1", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1536", "VICTORY_CARD_WINDOWS_MB=1024"]   # play.ps1 -Machine 4070 (a252348:62-73)
 preset_no_panel = ["VICTORY_PANEL="]   # play.ps1 -NoPanel
 
 [env]   # play.ps1 default path

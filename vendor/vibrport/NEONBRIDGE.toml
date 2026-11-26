@@ -3,7 +3,7 @@
 name = "vibrport"
 fork = "victory-fork"
 rank = 24   # #24 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VI-BR-PORT 2aa1895 (GPL-3.0): ~5.6 fps on Series X at 1080p and ~14 fps on Series S in the prison, RTX 4060 Ti 8 GB; the opening cutscene at ~18–19 fps; 'Ainda não está jogável' (not playable yet)"
+about = "VI-BR-PORT a31b9b1 (GPL-3.0): ~5.6 fps on Series X at 1080p and ~14 fps on Series S in the prison, RTX 4060 Ti 8 GB; the opening cutscene at ~18–19 fps; 'Ainda não está jogável' (not playable yet)"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # play.ps1:5 (diag is its default; README.md:75 builds release)
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)
@@ -36,7 +36,7 @@ VICTORY_CARD_STEPS = "2"
 VICTORY_INDIRECT_BATCH = "2"
 VICTORY_MAP_THREADS = "1"
 VICTORY_TITLE_PRIORITIES = "0"
-VICTORY_CARD_AWAKE = "1"
+VICTORY_CARD_AWAKE = "0"   # play.ps1 (a31b9b1)
 VICTORY_SHOW_AFTER = "1"
 VICTORY_AMBIENT = "constant:0.1"
 VICTORY_AMBIENT_AIR = "1.5"   # play.ps1
