@@ -14,11 +14,11 @@ The race's top 10 from the [GTA VI PC race tracker](https://github.com/vuyp/gta6
 
 | Race | Runtime | Forks | Its author reports | Here |
 |---:|---|---|---|---|
-| 1 | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | VIctory | 13–22 fps, 41 min no crash, RX 7900 XTX | Testing |
+| 1 | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | VIctory | 13–22 fps, 41 min no crash, RX 7900 XTX | ⚠️ RTX 4060 8 GB: past the intro at ~15 fps, then out of graphics memory |
 | 2 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | Neptune | 14–17 fps in the world, RTX 4070 SUPER | ✅ 10 min, no crash, ~14 fps (earlier build); **try this one first on NVIDIA** |
 | 3 | [Kelvaroq](https://github.com/fablinoo/kelvaroq) | victory-fork | ~10 fps, 36 min no crash, RTX 5080 | Testing |
-| 4 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | victory-fork | 5–9 fps, 77 min, RX 9070 XT | ❌ RTX 4060, game 1.0.2.1: the game stops itself at the intro; klbf lacks device method 102 (slot 0x330). Its bug, not the launcher's |
-| 5 | [Flamingo](https://github.com/realblastex/flamingo) | victory-fork | 7.8–14 fps, 24 min | ⚠️ crashed since fe12291 |
+| 4 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | victory-fork | 5–9 fps, 77 min, RX 9070 XT | Testing again: its intro crash was i95 leaving TuxBox DLLs in the game folder (fixed); intro video flickers (klbf bug) |
+| 5 | [Flamingo](https://github.com/realblastex/flamingo) | victory-fork | 7.8–14 fps, 24 min | ⚠️ bc06faf on RTX 4060: runs (~20 fps average), but models very dark and black-and-white flashing; worse than its earlier build |
 | 6 | [victory-fork](https://github.com/fxceless/victory-fork) | VIctory | 4.5–7.6 fps, 30 min | ✅ intro 30 fps, 3D scene ~1 fps |
 | 7 | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | VIctory | 30 min in the world, RTX 4090 | Testing |
 | 8 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | victory-fork | 4–7 fps, hour-long, RTX 4060 Ti | ❌ game stops ~20 s in (method 102) |
