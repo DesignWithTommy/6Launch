@@ -1,0 +1,31 @@
+# Neonbridge launcher spec for i95-Victory: Kelvaroq's patched victory-fork plus 8 GB fixes (README.md).
+name = "i95-victory"
+fork = "victory-fork"
+about = "i95-Victory b83c1d0: Kelvaroq 0a3c30d + VI-BR-PORT heap marks, TEXTURE_DROP_MIPS, AMBIENT (GPL-3.0); not yet run"
+upstream = "https://github.com/DesignWithTommy/i95-Victory"
+build = ["cargo", "build", "--release", "--locked", "-p", "victory", "--bin", "victory"]
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = []
+run = ["run", "{game_exe}", "--console", "series-x", "--execute"]
+prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]   # prints "warm-up      N shaders so far, S s" (apps/victory/src/translate.rs:211) for the i95 loader
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080", "VICTORY_HEAP_RECHECK=1", "VICTORY_TEXTURE_DROP_MIPS=2", "VICTORY_AMBIENT=0.6"]   # Kelvaroq's 8gb preset + DROP_MIPS=2 (soldsawn) + AMBIENT=0.6 (VItoriaBr); heap marks are on by default
+preset_8gb_low = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=2560", "VICTORY_PAGE_WRITES=slots", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080", "VICTORY_HEAP_RECHECK=1", "VICTORY_TEXTURE_DROP_MIPS=2", "VICTORY_AMBIENT=0.6"]   # the same with a 2560 MB texture budget
+
+[env]
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # one save/settings folder for the victory family
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"
