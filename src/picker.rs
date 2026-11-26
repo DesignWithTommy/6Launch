@@ -667,7 +667,8 @@ fn rows() -> Vec<Row> {
     let group = |n: &str| crate::runtimes::fork(n).unwrap_or_else(|| "Own engine".into());
     let best = |g: &str| rows.iter().filter(|r| group(&r.name) == g).filter_map(|r| crate::runtimes::rank(&r.name)).min().unwrap_or(u32::MAX);
     let mut keyed: Vec<((u32, String, u32), Row)> = rows.iter().cloned().map(|r| { let g = group(&r.name); ((best(&g), g, crate::runtimes::rank(&r.name).unwrap_or(u32::MAX)), r) }).collect();
-    keyed.sort_by(|a, b| a.0.cmp(&b.0));
+    // Flat, by leaderboard rank (grouping by fork put #2 below #27).
+    keyed.sort_by_key(|k| (k.0.2, k.0.1.clone()));
     let mut rows: Vec<Row> = keyed.into_iter().map(|((_, g, rk), mut r)| { r.title = if rk == u32::MAX { format!("{g} \u{00B7} {}", r.title) } else { format!("#{rk} {g} \u{00B7} {}", r.title) }; r }).collect();
     rows.push(Row { name: MIX.into(), title: "Mix".into(), version: String::new(), licence: String::new(), upstream: String::new(), frames: None, missing: None });
     for r in &mut old {
