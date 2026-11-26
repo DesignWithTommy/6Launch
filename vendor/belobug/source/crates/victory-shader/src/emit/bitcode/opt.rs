@@ -1,7 +1,3 @@
-//! From the VIctory fork at commit ba8697aa (its `emit/bitcode/opt.rs`,
-//! GPL-3.0-or-later), adapted to this tree's module: local arrays and
-//! doubles, and no first-lane pass.
-//!
 //! Clean-up of a finished module before it is written: the lowering emits
 //! one instruction after another as the console code names them, and
 //! nothing stands between it and the driver's compiler. Every pass here is
@@ -51,10 +47,27 @@ pub const REUSE: u32 = 4;
 pub const FACTS: u32 = 8;
 /// One read for one place within a block, while nothing is stored.
 pub const LOADS: u32 = 16;
+/// Not a pass over the module: the lowering of a first-lane read in a
+/// wave64 program run as two host waves skips the exchange that asks which
+/// half has a lane where every lane is in EXEC (`lower.rs`,
+/// `v_readfirstlane_b32`).
+pub const FIRST: u32 = 32;
+/// Not a pass over the module either: the lowering reads the dwords of one
+/// console load (`s_buffer_load_dwordx2` to `x16` from an SRV, a
+/// `global_load_dwordx2` to `x4`) by one call for every four of them, not
+/// by a call each (`lower.rs`, `raw_dwords`). The same bytes are read.
+/// From fxceless/victory-fork c36971b2. On an RX 7900 XTX it is worth nothing:
+/// the yard's frame replayed turn by turn, dispatches and draws 18.47 -> 18.45
+/// ms (12 loops) and 18.23 -> 18.16 (5 loops): the driver joins the loads.
+pub const WIDE: u32 = 64;
 /// The passes over the module.
 pub const MODULE: u32 = DEAD | FOLD | REUSE | FACTS | LOADS;
 /// Every pass.
-pub const ALL: u32 = MODULE;
+pub const ALL: u32 = MODULE | FIRST | WIDE;
+/// The passes that run when nothing says which: every one but [`WIDE`],
+/// which no card has shown a gain for yet (`VICTORY_SHADER_OPT=127` asks
+/// for it).
+pub const DEFAULT: u32 = ALL & !WIDE;
 
 /// What the instructions a module writes use, of the features a shader
 /// declares by flag (the validator's "flags must match usage").
@@ -62,6 +75,8 @@ pub const ALL: u32 = MODULE;
 pub(crate) struct Usage {
     /// A wave or quad operation.
     pub wave_ops: bool,
+    /// A rasterizer ordered view.
+    pub rovs: bool,
     /// A 64-bit integer, as a result or an operand.
     pub int64: bool,
     /// A typed load of several components from a UAV.
@@ -172,8 +187,6 @@ fn map_operands(op: &mut Op, mut f: impl FnMut(V) -> V) {
             *p = f(*p);
             idx.iter_mut().for_each(|i| *i = f(*i));
         }
-        // The size is a constant.
-        Op::Alloca(..) => {}
     }
 }
 
@@ -381,10 +394,6 @@ impl Module {
         }
     }
 
-    fn is_undef(&self, v: V) -> bool {
-        matches!(v, V::Const(c) if matches!(self.consts[c as usize].1, Const::Undef))
-    }
-
     fn int_bits(&self, ty: Ty) -> Option<u32> {
         match self.types[ty.0 as usize] {
             TypeDef::Int(bits) => Some(bits),
@@ -393,13 +402,89 @@ impl Module {
     }
 
     /// An integer constant's width and value (the bits of that width).
-    fn int_k(&self, v: V) -> Option<(u32, u64)> {
+    pub(crate) fn int_k(&self, v: V) -> Option<(u32, u64)> {
         let V::Const(i) = v else { return None };
         let (ty, Const::Int(x)) = &self.consts[i as usize] else {
             return None;
         };
         let bits = self.int_bits(*ty)?;
         Some((bits, *x as u64 & mask(bits)))
+    }
+
+    /// The bits of a 32-bit float that is a constant, given as one or as a
+    /// cast of an integer constant.
+    pub(crate) fn float_k(&self, v: V) -> Option<f32> {
+        let (v, cast) = match v {
+            V::Inst(i) => match self.insts[i as usize].op {
+                Op::Cast(Cast::Bitcast, x) => (x, true),
+                _ => return None,
+            },
+            _ => (v, false),
+        };
+        let V::Const(i) = v else { return None };
+        match &self.consts[i as usize].1 {
+            Const::Float(bits) if !cast => Some(f32::from_bits(*bits)),
+            Const::Int(_) if cast => {
+                let (bits, x) = self.int_k(v)?;
+                (bits == 32).then_some(f32::from_bits(x as u32))
+            }
+            _ => None,
+        }
+    }
+
+    /// For a float that is a number and not an infinity whatever the program
+    /// reads: a power of two its magnitude does not pass.
+    pub(crate) fn bounded(&self, v: V, depth: u32) -> Option<f32> {
+        if let Some(k) = self.float_k(v) {
+            return k.is_finite().then(|| k.abs().max(1e-30).log2().ceil());
+        }
+        let V::Inst(i) = v else { return None };
+        let depth = depth.checked_sub(1)?;
+        let of = |v: V| self.bounded(v, depth);
+        // (A power that overflows, or might with rounding, is no bound.)
+        let held = |b: f32| (b < 126.0).then_some(b);
+        match &self.insts[i as usize].op {
+            Op::Cast(Cast::UiToFp | Cast::SiToFp, _) => Some(32.0),
+            Op::Cast(Cast::Bitcast, x) => match *x {
+                V::Inst(j) => match self.insts[j as usize].op {
+                    Op::Cast(Cast::Bitcast, y) if self.type_of(y) == self.type_of(v) => of(y),
+                    _ => None,
+                },
+                _ => None,
+            },
+            Op::Bin(Bin::Mul, a, b) => held(of(*a)? + of(*b)?),
+            Op::Bin(Bin::Add | Bin::Sub, a, b) => held(of(*a)?.max(of(*b)?) + 1.0),
+            Op::Select(_, a, b) => Some(of(*a)?.max(of(*b)?)),
+            Op::Call(_, args) => {
+                let (_, code) = self.int_k(*args.first()?)?;
+                match (code, &args[1..]) {
+                    // Saturated, a fraction, a cosine or sine (of a number).
+                    (7, [_]) => Some(0.0),
+                    (6, [x]) => of(*x),
+                    (22 | 12 | 13, [x]) => of(*x).map(|_| 0.0),
+                    (26..=29, [x]) => held(of(*x)? + 1.0),
+                    // Of two numbers; or one of them the other way round: the
+                    // minimum (36) of a constant and a maximum of another.
+                    (35 | 36, [a, b]) => match (of(*a), of(*b)) {
+                        (Some(x), Some(y)) => Some(x.max(y)),
+                        _ => {
+                            let other = if code == 35 { 36 } else { 35 };
+                            let (inner, k) = if self.float_k(*b).is_some() { (*a, *b) } else { (*b, *a) };
+                            let k = self.float_k(k).and_then(|_| of(k))?;
+                            let V::Inst(j) = inner else { return None };
+                            let Op::Call(_, inner) = &self.insts[j as usize].op else { return None };
+                            let (_, code) = self.int_k(*inner.first()?)?;
+                            let low = inner[1..].iter().find(|x| self.float_k(**x).is_some())?;
+                            (code == other).then_some(())?;
+                            Some(k.max(of(*low)?))
+                        }
+                    },
+                    (46, [a, b, c]) => held((of(*a)? + of(*b)?).max(of(*c)?) + 1.0),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
     }
 
     /// The constant `x` of the integer type `ty`, kept sign-extended as
@@ -471,9 +556,6 @@ impl Module {
                     return None;
                 };
                 let (x, y) = (f32::from_bits(*x), f32::from_bits(*y));
-                if !matches!(self.types[self.type_of(a).0 as usize], TypeDef::Float) {
-                    return None;
-                }
                 let unordered = x.is_nan() || y.is_nan();
                 // Bits 0-2 of a predicate: equal, greater, less; bit 3:
                 // or unordered.
@@ -580,10 +662,7 @@ impl Module {
                             Const::Int(bits) if to_float && self.int_bits(from) == Some(32) => {
                                 Some(self.f32(bits as u32))
                             }
-                            Const::Float(bits)
-                                if self.int_bits(ty) == Some(32)
-                                    && matches!(self.types[from.0 as usize], TypeDef::Float) =>
-                            {
+                            Const::Float(bits) if self.int_bits(ty) == Some(32) => {
                                 Some(self.int_const(ty, i64::from(bits as i32)))
                             }
                             _ => None,
@@ -639,8 +718,7 @@ impl Module {
                 }
             }
             Op::Store(..) | Op::AtomicRmw(..) | Op::CmpXchg(..) => Effect::Writes,
-            // Each is memory of its own: never one for another (no key).
-            Op::Phi(_) | Op::Alloca(..) => Effect::Lanes,
+            Op::Phi(_) => Effect::Lanes,
             Op::Call(f, _) => effects[*f as usize],
         }
     }
@@ -709,13 +787,7 @@ impl Module {
                                 Some(_) => same = false,
                             }
                         }
-                        // Not by an undefined value: this tree's lowering
-                        // joins a register nothing writes with itself, and
-                        // what read the join would read the undefined value
-                        // itself, which the validator refuses.
-                        if let (true, Some(v)) = (same, one)
-                            && !self.is_undef(v)
-                        {
+                        if let (true, Some(v)) = (same, one) {
                             repl[p as usize] = Some(v);
                             again = true;
                             changed = true;
@@ -817,7 +889,6 @@ impl Module {
                 }
                 if passes & FOLD != 0
                     && let Some(v) = self.simplify(i, &mut changed)
-                    && !self.is_undef(v)
                 {
                     repl[i as usize] = Some(v);
                     changed = true;
@@ -969,23 +1040,6 @@ impl Module {
                 mark(&mut live, &mut work, v)
             });
         }
-        // Diagnostics (`VICTORY_SHADER_OPT_TRACE=1`): the calls that leave,
-        // by function, on the error output.
-        if std::env::var_os("VICTORY_SHADER_OPT_TRACE").is_some() {
-            let mut gone: std::collections::BTreeMap<String, u32> = Default::default();
-            for (b, blk) in self.blocks.iter().enumerate() {
-                for &i in blk.body.iter().filter(|&&i| !reached[b] || !live[i as usize]) {
-                    let what = match &self.insts[i as usize].op {
-                        Op::Call(f, _) => self.funcs[*f as usize].name.clone(),
-                        Op::Load(_) => "load".into(),
-                        Op::Alloca(..) => "alloca".into(),
-                        _ => continue,
-                    };
-                    *gone.entry(what).or_default() += 1;
-                }
-            }
-            eprintln!("clean-up: calls dropped as dead: {gone:?}");
-        }
         for (b, blk) in self.blocks.iter_mut().enumerate() {
             if reached[b] {
                 blk.body.retain(|&i| live[i as usize]);
@@ -1045,6 +1099,8 @@ impl Module {
                         Some((_, 0)) => u.heap_views = true,
                         _ => u.heap_samplers = true,
                     }
+                } else if name == "annotateHandle" {
+                    u.rovs |= annotation(V::Inst(i)).is_some_and(|(kind, _)| kind & 0x2000 != 0);
                 } else if name.starts_with("atomic") && name.ends_with(".i64") {
                     u.atomic64 = true;
                 } else if name.starts_with("textureLoad") || name.starts_with("bufferLoad") {
