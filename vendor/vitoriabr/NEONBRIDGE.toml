@@ -13,7 +13,7 @@ cwd = "target/release"
 run = ["run", "{game_exe}", "--execute"]   # README.md:98,117 (no --console given)
 game_env = "VICTORY_GAME_DIR"   # Neonbridge: the game folder for victory's config
 cache_env = "VICTORY_CACHE_DIR"   # Neonbridge: this runtime's own %LOCALAPPDATA%\6ixpack\vitoriabr\cache (translators differ)
-prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]   # Neonbridge: apps/victory/src/translate.rs:159 (`--warm all`: every container), as vendor/victory
+prewarm = ["warm", "{game}"]   # README.md:97,106
 agility = false   # no D3D12SDKVersion/D3D12SDKPath export anywhere in the tree
 
 # options: KEY=values (default X): text. Env names grepped from the Rust source (first read site); defaults "unset" unless noted
@@ -205,11 +205,21 @@ preset_play = ["VICTORY_RELAY=2", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_CARD_BUF
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # README.md:290-305, 8 GB cards
 preset_warp = ["VICTORY_D3D12_WARP=1"]
 preset_dred = ["VICTORY_D3D12_DRED=1"]
-[env]   # README.md:109-115
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
+[env]   # README.md:103-125, its recommended preset (RTX 5060 Ti 16 GB; preset_8gb for 8 GB cards)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
 VICTORY_RELAY = "2"
+VICTORY_QUEUE2 = "1"
+VICTORY_ASYNC_SUBMIT = "1"
+VICTORY_COPY_PLAIN = "1"
+VICTORY_INDIRECT_GATHER = "1"
+VICTORY_TABLE_BUFFERS = "1"
+VICTORY_TEXTURE_BACK = "1"
 VICTORY_TEXTURE_NO_WAIT = "1"
-VICTORY_CARD_BUFFERS_MB = "6144"
+VICTORY_CARD_BUFFERS_MB = "2048"
+VICTORY_TEXTURE_BUDGET_MB = "10240"
+VICTORY_PAGE_WRITES = "slots"
+VICTORY_AMBIENT = "0.6"
+VICTORY_UNWATCHED_FRAMES = "4"
 VICTORY_WIDE_REFRESH = "1"
 VICTORY_WIDE_MERGE = "1"
 VICTORY_JOIN_COPIES = "1"

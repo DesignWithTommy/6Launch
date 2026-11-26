@@ -14,7 +14,7 @@ diag_build = []   # its README names no diagnostics build
 # README.md:153: without --console series-s it renders native (~5 fps) and needs no
 # FidelityFX SDK; the series-s + FSR setting is the "fsr" preset (needs VICTORY_FFX_DIR).
 run = ["run", "{game_exe}", "--execute"]
-prewarm = ["translate", "{game}", "--cache", "--pipelines", "--jobs", "{jobs}"]   # README.md:137
+prewarm = ["translate", "{game}/shaders.rpf", "--cache", "--pipelines", "--jobs", "{jobs}"]   # README.md:155
 game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
 agility = false

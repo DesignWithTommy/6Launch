@@ -15,7 +15,8 @@ game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
-[env]   # README.md:28
+[env]
+VICTORY_WINDOW_MAX = "1920x1080"   # README.md:97   # README.md:28
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_RELAY = "2"
 VICTORY_BACK_ALIAS = "1"

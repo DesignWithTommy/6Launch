@@ -2,37 +2,44 @@
 # victory fork vendored clean (README.md:202-203 build and run). Its claim:
 # the world renders lit with textures, people, vehicles, water and sky at 3-5 fps
 # on an RX 9070 XT; the depth-shaded ambient light most forks copy starts here.
-# No rt patch: rt-victory.patch does not apply to this tree (draw.rs, list.rs,
-# pipeline/library.rs moved) and the tree runs rays off, as its README says.
 name = "belobug"
 fork = "VIctory"
 rank = 9   # launcher list order: 9th on the gta6-pc-race tracker
-about = "VIctory-Belobug-AMD 4f62c2a (GPL-3.0), unverified here: claims a lit world with vehicles at 3-5 fps (AMD)"
+about = "VIctory-Belobug-AMD 81ebb7b (GPL-3.0): now built on VIctory-7900XTX's tree with RX 9070 XT fixes (magenta filter, VRAM eviction)"
 upstream = "https://github.com/Belobug/VIctory-Belobug-AMD"
-build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:202 (+--locked)
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:49
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
-exe = "target/release/victory.exe"
-# NEONBRIDGE_DIAG (on unless 0): the author's diagnostics build, used in place of build/exe; [] = none.
-diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # README.md:245 (+--locked)
-diag_exe = "target/diag/victory.exe"   # README.md:245
-run = ["run", "{game_exe}", "--execute", "--console", "series-x"]   # README.md:138
-prewarm = ["translate", "{game}", "--jobs", "{jobs}"]
+exe = "target/diag/victory.exe"   # play.ps1:29 (-Build diag default)
+diag_build = []
+run = ["run", "{game_exe}", "--execute"]   # play.ps1:38
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]   # README.md:59
 game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
+options = ["VICTORY_BVH_BUILDER=1: ray-traced indirect light, a third slower (play.ps1 -RayTracing)"]
+preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=0", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD="]
 
-options = [
-  "VICTORY_AMBIENT=<level>|off (default 0.6): README.md:40",
-  "VICTORY_AMBIENT_TINT=r,g,b: README.md:41",
-  "VICTORY_AMBIENT_SHADE=strength,radius: depth-based ambient shade, README.md:43",
-  "VICTORY_ASYNC_SUBMIT=1: README.md:68",
-  "VICTORY_RAYS=1: ray-tracing builders translate and run (unstable), README.md:125",
-]
-[env]
-VICTORY_PRESENT_TARGET = "1x1:1"   # README.md:135-136
-VICTORY_HAIR = "1"
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
-VICTORY_PRESS_FILE = "{press}"
+[env]   # scripts/play.ps1:15-25 (this tree is VIctory-7900XTX's, README.md:46)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_SKIP_PIPELINES = "none"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
 
 # Keyboard as the gamepad, shown by the controls overlay (F1). From
 # crates/victory-hle/src/modules/gameinput.rs FALLBACK_BUTTONS and fallback();

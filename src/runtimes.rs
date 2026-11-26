@@ -1768,7 +1768,8 @@ fn warm(name: &str, mut cmd: Command, cache: &Path, to: f32) -> Result<(), Strin
         if let Some((d, Some(m))) = crate::progress::count(&l) {
             total = Some(m);
             seen = seen.max(d);
-            crate::splash::step(0.5, to, &format!("Warming the shaders ({name}): translating shaders"), d, total);
+            let what = if l.contains(" pipelines, ") { "building GPU pipelines" } else { "translating shaders" };
+            crate::splash::step(0.5, to, &format!("Warming the shaders ({name}): {what}"), d, total);
             continue;
         }
         // xcl's --pipelines pass after its shaders: "  pipelines: 800 made, 0 refused"

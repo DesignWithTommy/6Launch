@@ -109,6 +109,17 @@ pub fn count(line: &str) -> Option<(u64, Option<u64>)> {
     if let Some(rest) = t.strip_prefix("warm-up") && let Some((n, _)) = rest.trim_start().split_once(" shaders so far") {
         return num(n.trim()).map(|n| (n, None));
     }
+    // Vice-Tay's `12 of 40 containers (30%)` (translate.rs:469) and
+    // VI-BR-PORT's `12 / 40 (30%)` (translate.rs:439).
+    let words: Vec<&str> = t.split_whitespace().collect();
+    for w in words.windows(4) {
+        if (w[1] == "of" || w[1] == "/") && w[3].starts_with('(') || w[1] == "/" {
+            if let (Some(d), Some(m)) = (num(w[0]), num(w[2].trim_end_matches(','))) && m > 0 && d <= m {
+                return Some((d, Some(m)));
+            }
+        }
+    }
+    let t = &t.replace(" / ", "/");
     for tok in t.split(|c: char| c.is_whitespace() || matches!(c, '[' | ']' | ':' | '(' | ')')) {
         if let Some((a, b)) = tok.split_once('/') && let (Some(d), Some(m)) = (num(a), num(b)) && m > 0 && d <= m {
             return Some((d, Some(m)));
