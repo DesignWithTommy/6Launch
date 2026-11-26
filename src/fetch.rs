@@ -13,8 +13,6 @@ use std::path::{Path, PathBuf};
 pub const PACKAGED: &str = "PACKAGED";
 
 pub fn source(name: &str, vendor_dir: &Path, exes: &[&str]) -> PathBuf {
-    // A tree or a packaged runtime. Shader keys no longer follow the exe
-    // (shaderkey.rs), so building from the download keeps the cache.
     // A tree or a packaged runtime. (An exe built in vendor/<name> before is
     // the key source for the rebuilt one: shaderkey.rs.)
     let _ = exes;
@@ -64,6 +62,18 @@ pub fn ensure(name: &str, vendor_dir: &Path, root: &Path, upstream: Option<&str>
         return Ok(());
     }
     let commit = pin(vendor_dir).ok_or_else(|| format!("{name}: vendor/{name}/UPSTREAM has no commit"))?;
+    // Bundled with i95: vendor/<name>/source holds the pinned commit's tree
+    // (no download, works offline). Copied, so builds and exes stay in the
+    // source cache and the shader keys and caches made there are kept.
+    let bundled = vendor_dir.join(BUNDLED);
+    if fs::read_to_string(bundled.join(BUNDLED_COMMIT)).is_ok_and(|c| c.trim() == commit) {
+        crate::splash::status(0.05, &format!("Unpacking {name} (bundled)"));
+        copy_tree(&bundled, root).map_err(|e| format!("{name}: copying the bundled source: {e}"))?;
+        let _ = fs::remove_file(root.join(BUNDLED_COMMIT));
+        fs::write(root.join(".nbfetched"), &commit).map_err(|e| e.to_string())?;
+        println!("[fetch] {name}: bundled source {} ready", root.display());
+        return Ok(());
+    }
     let repo = upstream.and_then(repo).ok_or_else(|| format!("{name}: its toml's upstream is not a github.com repository"))?;
     let url = format!("https://codeload.github.com/{repo}/zip/{commit}");
     if !ask(&format!("Download {name}'s source from github.com/{repo} (commit {}) into {}?\n\nIt is downloaded once and kept; it is built on this PC.", &commit[..7], root.display())) {
@@ -97,6 +107,24 @@ pub fn ensure(name: &str, vendor_dir: &Path, root: &Path, upstream: Option<&str>
     fs::write(root.join(".nbfetched"), &commit).map_err(|e| e.to_string())?;
     // Older commits stay: they are the user's offline copies.
     println!("[fetch] {name}: {} ready", root.display());
+    Ok(())
+}
+
+/// vendor/<name>/source: the bundled tree, with the commit it is in COMMIT.
+pub const BUNDLED: &str = "source";
+const BUNDLED_COMMIT: &str = "COMMIT";
+
+fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(to)?;
+    for e in fs::read_dir(from)? {
+        let e = e?;
+        let dst = to.join(e.file_name());
+        if e.file_type()?.is_dir() {
+            copy_tree(&e.path(), &dst)?;
+        } else {
+            fs::copy(e.path(), dst)?;
+        }
+    }
     Ok(())
 }
 

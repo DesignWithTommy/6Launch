@@ -1140,6 +1140,7 @@ fn options_window(owner: HWND, title: &str, body: &str) {
     wc.lpfnWndProc = Some(proc);
     wc.hInstance = instance;
     wc.lpszClassName = class.as_ptr();
+    wc.hIcon = crate::picker::app_icon();
     wc.hbrBackground = brushes().1;
     wc.hCursor = unsafe { LoadCursorW(null_mut(), IDC_ARROW) };
     unsafe { RegisterClassW(&wc) };
@@ -1342,6 +1343,7 @@ fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     wc.lpfnWndProc = Some(advanced_proc);
     wc.hInstance = instance;
     wc.lpszClassName = class.as_ptr();
+    wc.hIcon = crate::picker::app_icon();
     wc.hCursor = unsafe { LoadCursorW(null_mut(), IDC_ARROW) };
     unsafe { RegisterClassW(&wc) };
     let parts_n = 1 + crate::mix::crates().len();
@@ -1431,6 +1433,7 @@ pub fn pick() -> Option<Pick> {
     wc.lpfnWndProc = Some(proc);
     wc.hInstance = instance;
     wc.lpszClassName = class.as_ptr();
+    wc.hIcon = crate::picker::app_icon();
     wc.hCursor = unsafe { LoadCursorW(null_mut(), IDC_ARROW) };
     unsafe { RegisterClassW(&wc) };
     let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
@@ -1479,5 +1482,16 @@ mod tests {
         assert_eq!(resolve(dir.join("Game.exe").to_str().unwrap()).unwrap(), (dir.clone(), Some("Game.exe".into())));
         assert_eq!(resolve(&format!("\"{}\"", dir.join("MicrosoftGame.Config").display())).unwrap(), (dir.clone(), None));
         assert!(resolve("").is_err());
+    }
+}
+
+/// The exe's own icon (assets/i95.ico, resource 1, build.rs) for title bars.
+pub fn app_icon() -> windows_sys::Win32::UI::WindowsAndMessaging::HICON {
+    // SAFETY: our own module's icon resource, by its id.
+    unsafe {
+        windows_sys::Win32::UI::WindowsAndMessaging::LoadIconW(
+            windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null()),
+            1 as windows_sys::core::PCWSTR,
+        )
     }
 }
