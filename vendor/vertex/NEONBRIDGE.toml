@@ -2,7 +2,7 @@
 name = "vertex"
 fork = "VIctory"
 rank = 16   # #16 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vertex 33f26c4 (GPL-3.0): no crash in 16 of 18 sessions, longest 25 min; not yet run here"
+about = "Vertex 33f26c4 (GPL-3.0): 'Not playable yet.' 6.4 to 9.9 fps median by run, longest run 25 min, RTX 5070; not yet run here"
 upstream = "https://github.com/proneonn/Vertex"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # start.ps1:132
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]

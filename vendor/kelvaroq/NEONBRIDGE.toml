@@ -3,7 +3,7 @@
 name = "kelvaroq"
 fork = "victory-fork"
 rank = 5   # #5 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Kelvaroq e062a82 (GPL-3.0): ~10 fps, 36 min without a crash on its author's RTX 5080; not yet run here"
+about = "Kelvaroq e062a82 (GPL-3.0): ~10 fps in typical views on an RTX 5080; a tester's 36 min session without a crash; shaders now translated once (heavy frames ~18 s to ~60 ms); not yet run here"
 upstream = "https://github.com/stellarr-studio/kelvaroq"
 build = ["python", "scripts/build_native.py"]   # README.md "Build from source" (fetches victory-fork f85101b)
 watch = ["native", "scripts/build_native.py"]

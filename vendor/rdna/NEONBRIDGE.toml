@@ -3,7 +3,7 @@
 name = "rdna"
 fork = "VIctory"
 rank = 6   # #6 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-RDNA 2c5a395 (GPL-3.0): 23.1 fps median in gameplay at Series X 4K on an RX 7900 XT, ~40 min by hand; not yet run here"
+about = "VIctory-RDNA 2c5a395 (GPL-3.0): 23.1 fps median in gameplay at Series X 4K on an RX 7900 XT; about 40 minutes played by hand; not yet run here"
 upstream = "https://github.com/XaviFortes/VIctory-RDNA"
 build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:88
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]

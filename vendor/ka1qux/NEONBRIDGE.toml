@@ -2,7 +2,7 @@
 name = "ka1qux"
 fork = "VIctory"
 rank = 23   # #23 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "BRVIctory-ka1qux 05e4d50 (GPL-3.0): victory-fork tuned on an AMD Radeon; 10.5 fps Series X, 15 fps Series S, ray tracing off (its author's RX 7800 XT)"
+about = "BRVIctory-ka1qux 05e4d50 (GPL-3.0): 10.5 fps on Series X with ray tracing off, 6.7 with it on, 15 fps on Series S, RX 7800 XT"
 upstream = "https://github.com/ka1qux/BRVIctory-ka1qux"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:73
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)

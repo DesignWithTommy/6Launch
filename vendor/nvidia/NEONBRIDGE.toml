@@ -3,7 +3,7 @@
 name = "nvidia"
 fork = "VIctory"
 rank = 13   # #13 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-NVIDIA 6a31e43 (GPL-3.0): 20-22 fps indoors on its author's RTX 5070 at half render scale; not yet run here"
+about = "VIctory-NVIDIA 6a31e43 (GPL-3.0): 20 to 22 fps indoors on an RTX 5070, at half render scale on the Series S profile; no session length given; not yet run here"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:234
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]

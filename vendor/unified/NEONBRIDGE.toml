@@ -5,7 +5,7 @@
 name = "unified"
 fork = "Belobug"
 rank = 18   # #18 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "victory-unified e20f64c (GPL-3.0): 8 GB NVIDIA fork; ~58 min without a crash into the camp mission at 2-3 fps (its author's RTX 3070 8 GB); not yet run here"
+about = "victory-unified e20f64c (GPL-3.0): 'A unified fork' of several, tuned for an RTX 3070 8 GB; ~22 fps on its RX 7900 XTX dev machine; not yet run here"
 upstream = "https://github.com/Itsbatt/victory-unified"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md (e20f64c): the launcher defaults to the diag build
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
