@@ -327,11 +327,16 @@ fn font(face: &str, height: i32, weight: i32) -> HFONT {
     unsafe { CreateFontW(height, 0, 0, 0, weight, 0, 0, 0, DEFAULT_CHARSET as u32, 0, 0, CLEARTYPE_QUALITY as u32, 0, face.as_ptr()) }
 }
 
+fn font_italic(face: &str, height: i32, weight: i32) -> HFONT {
+    let face = wide(face);
+    unsafe { CreateFontW(height, 0, 0, 0, weight, 1, 0, 0, DEFAULT_CHARSET as u32, 0, 0, CLEARTYPE_QUALITY as u32, 0, face.as_ptr()) }
+}
+
 fn fonts<R>(f: impl FnOnce(&Fonts) -> R) -> R {
     FONTS.with(|c| {
         let mut c = c.borrow_mut();
         let fonts = c.get_or_insert_with(|| Fonts {
-            word: font("Segoe UI Variable Display", 20, 700),
+            word: font_italic("Segoe UI Black", 44, 900),
             title: font("Segoe UI Variable Display", 28, 600),
             body: font("Segoe UI Variable Text", 16, 400),
             strong: font("Segoe UI Variable Text", 16, 600),
@@ -460,10 +465,26 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
     fill_rect(dc, rect(0, 0, w, h), BACKGROUND);
 
     // Header: the wordmark, small, and one 1 px line.
-    let neon = width_of(dc, "i", f.word);
-    text(dc, "i", rect(24, 0, 200, HEADER), PINK, f.word, DT_LEFT | DT_VCENTER);
-    text(dc, "95", rect(24 + neon, 0, 240, HEADER), CYAN, f.word, DT_LEFT | DT_VCENTER);
-    fill_rect(dc, rect(0, HEADER, w, HEADER + 1), BORDER);
+    // The loader's sunset (splash.rs): night to dusk to glow, a striped sun
+    // on the right, a pink horizon, and "i95" white over a pink shadow.
+    let mix = |a: (u8, u8, u8), b: (u8, u8, u8), t: f32| rgb((a.0 as f32 + (b.0 as f32 - a.0 as f32) * t) as u8, (a.1 as f32 + (b.1 as f32 - a.1 as f32) * t) as u8, (a.2 as f32 + (b.2 as f32 - a.2 as f32) * t) as u8);
+    for y in 0..HEADER {
+        let t = y as f32 / HEADER as f32;
+        let c = if t < 0.6 { mix((22, 10, 40), (88, 20, 92), t / 0.6) } else { mix((88, 20, 92), (255, 120, 70), (t - 0.6) / 0.4) };
+        fill_rect(dc, rect(0, y, w, y + 1), c);
+    }
+    let (cx, cy, r) = (w - 90, HEADER + 6, 34);
+    for y in (cy - r).max(0)..HEADER {
+        let dy = y - cy;
+        if dy * dy > r * r || (y > cy - 14 && (y - (cy - 14)) % 7 >= 5) {
+            continue;
+        }
+        let dx = ((r * r - dy * dy) as f32).sqrt() as i32;
+        fill_rect(dc, rect(cx - dx, y, cx + dx, y + 1), rgb(255, 196, 64));
+    }
+    fill_rect(dc, rect(0, HEADER - 2, w, HEADER + 1), PINK);
+    text(dc, "i95", rect(26, 3, 260, HEADER + 3), PINK, f.word, DT_LEFT | DT_VCENTER);
+    text(dc, "i95", rect(23, 0, 260, HEADER), rgb(255, 255, 255), f.word, DT_LEFT | DT_VCENTER);
 
     // Left: the runtimes.
     let foot = h - FOOTER;

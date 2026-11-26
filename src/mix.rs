@@ -86,9 +86,14 @@ impl Mix {
 /// scarlettport's runtime/victory) or any vendored fork with the same layout
 /// (flamingo, klbf, belobug: apps/victory and crates/ at its root).
 pub fn root(name: &str) -> Option<PathBuf> {
-    crate::runtimes::victory_tree(name)
-        .or_else(|| crate::runtimes::root_of(name))
-        .filter(|t| t.join("apps/victory/Cargo.toml").is_file() && t.join("crates").is_dir())
+    let ok = |t: &PathBuf| t.join("apps/victory/Cargo.toml").is_file() && t.join("crates").is_dir();
+    let src = crate::runtimes::vendor().join(name).join("source");
+    // The patched tree, the fetched tree, or the bundled source (before a
+    // first launch); AnyXboxX keeps its victory under third_party/victory.
+    [crate::runtimes::victory_tree(name), crate::runtimes::root_of(name), Some(src.clone()), Some(src.join("third_party/victory"))]
+        .into_iter()
+        .flatten()
+        .find(ok)
 }
 
 /// The runtimes a mix can take parts from: those with a victory tree.
