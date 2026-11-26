@@ -24,3 +24,15 @@ All of the VIctory forks build on [VIctory](https://github.com/Marvisak/VIctory)
 - `vendor/neonbridge-own`: [TuxBox](https://github.com/brcly/TuxBox) by brcly at `938c402`, with i95's runtime fixes on top. `runtime/dxbc` is Apache-2.0 (`vendor/neonbridge-own/LICENSE`); the rest of TuxBox ships no top-level licence.
 - `vendor/ztrx/victory-shader`: the victory-shader translator from VItoriaBr `2b3c339` (ztrx and VIctory lineage), GPL-3.0-or-later, used by i95's shader path.
 - Code and ideas in i95's own sources are credited in the code where they are used: [VIctory](https://github.com/Marvisak/VIctory) (Marvisak), [xcl](https://github.com/ivall/xcl) (ivall), [Xbox2Windows](https://github.com/R0Y00/Xbox2Windows) (R0Y00), [xbox-emulator](https://github.com/omonkeyz/xbox-emulator) (omonkeyz), [OpenScarlett](https://github.com/californiaAlmonds/OpenScarlett) (californiaAlmonds), [rebox](https://github.com/puffnfresh/rebox) (puffnfresh, GPL-2.0-only), [palmetto](https://github.com/luizwidmer/palmetto) (luizwidmer), [leonida-ce](https://github.com/IAmNotSiob/leonida-ce) (IAmNotSiob), [five-star-recomp](https://github.com/ThatRecompDev/five-star-recomp) (ThatRecompDev; xshader's DXIL writer is ported from theirs), [KestrelX](https://github.com/Batushn/KestrelX) (Batushn), [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) (OnlyMoisties), [Leonida](https://github.com/ubiquitarianism/leonida) (ubiquitarianism), and Microsoft (GDK headers, dxc, the D3D12 Agility SDK).
+
+## Added runtimes
+
+- [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) by ka1qux, GPL-3.0 (vendor/ka1qux)
+- [cblvictoryvi](https://github.com/cocainebunnylaboratories/cblvictoryvi) by cocainebunnylaboratories, GPL-3.0 (vendor/cblvictory)
+- [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) by KomanderDG88, GPL-3.0 (vendor/vinividivici)
+- [victory-fork-darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) by darkworldhm, GPL-3.0 (vendor/darkworld)
+- [VIctory](https://github.com/Marvisak/VIctory) by Marvisak and contributors, GPL-3.0 (vendor/marvisak), the base of every victory fork
+
+## Leaderboard
+
+Ranks come from [vuyp](https://github.com/vuyp)'s [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)), using its own ordering (src/build.py rank_key).

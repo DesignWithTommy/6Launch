@@ -1,0 +1,33 @@
+# i95 launcher spec for Marvisak/VIctory: author build and run from its README.
+name = "marvisak"
+fork = "VIctory"
+rank = 27   # #27 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+about = "VIctory 63bcca4 (GPL-3.0): the original by Marvisak"
+upstream = "https://github.com/Marvisak/VIctory"
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:92
+exe = "target/release/victory.exe"
+run = ["run", "{game_exe}", "--execute"]   # README.md:94
+prewarm = ["translate", "--cache", "--pipelines", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]   # README.md:93
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+[env]
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+lb = "Q"
+rb = "E"
+lt = "Z"
+rt = "C"
+ls = "F"
+rs = "H"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"

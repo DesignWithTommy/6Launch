@@ -516,6 +516,7 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
                     Some(n) => format!("{n} frames presented"),
                 }),
                 ("Frame rate", crate::runtimes::last_run_fps(&row.name).unwrap_or_else(|| "-".into())),
+                ("Leaderboard", crate::runtimes::rank(&row.name).map_or("-".into(), |r| format!("#{r} on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)"))),
             ]
         };
         let mut y = HEADER + 84;
@@ -667,7 +668,7 @@ fn rows() -> Vec<Row> {
     let best = |g: &str| rows.iter().filter(|r| group(&r.name) == g).filter_map(|r| crate::runtimes::rank(&r.name)).min().unwrap_or(u32::MAX);
     let mut keyed: Vec<((u32, String, u32), Row)> = rows.iter().cloned().map(|r| { let g = group(&r.name); ((best(&g), g, crate::runtimes::rank(&r.name).unwrap_or(u32::MAX)), r) }).collect();
     keyed.sort_by(|a, b| a.0.cmp(&b.0));
-    let mut rows: Vec<Row> = keyed.into_iter().map(|((_, g, _), mut r)| { r.title = format!("{g} \u{00B7} {}", r.title); r }).collect();
+    let mut rows: Vec<Row> = keyed.into_iter().map(|((_, g, rk), mut r)| { r.title = if rk == u32::MAX { format!("{g} \u{00B7} {}", r.title) } else { format!("#{rk} {g} \u{00B7} {}", r.title) }; r }).collect();
     rows.push(Row { name: MIX.into(), title: "Mix".into(), version: String::new(), licence: String::new(), upstream: String::new(), frames: None, missing: None });
     for r in &mut old {
         r.title = format!("Archived \u{00B7} {}", r.title);

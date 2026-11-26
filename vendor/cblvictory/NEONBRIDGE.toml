@@ -1,0 +1,33 @@
+# i95 launcher spec for cocainebunnylaboratories/cblvictoryvi: author build and run from its README.
+name = "cblvictory"
+fork = "VIctory"
+rank = 14   # #14 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+about = "cblvictoryvi f1e6604 (GPL-3.0): VIctory plus victory-fork's renderer"
+upstream = "https://github.com/cocainebunnylaboratories/cblvictoryvi"
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:370
+exe = "target/release/victory.exe"
+run = ["run", "{game_exe}", "--execute"]   # README.md:371
+prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]   # README.md:254
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+[env]
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+lb = "Q"
+rb = "E"
+lt = "Z"
+rt = "C"
+ls = "F"
+rs = "H"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"

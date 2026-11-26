@@ -434,7 +434,7 @@ unsafe fn paint(hwnd: HWND) {
             Some(_) => ".".repeat((tick / 12 % 4) as usize),
             None => String::new(),
         };
-        text(dc, &format!("{line}{dots}"), RECT { left: 32, top: 146, right: WIDTH - 32, bottom: 170 }, TEXT, small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+        text(dc, &format!("{line}{dots}"), RECT { left: 32, top: 146, right: WIDTH - 84, bottom: 170 }, TEXT, small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
 
         // Progress: a road. Asphalt the whole way, the lane line painted as far
         // as the load has come, and a car at the front of it.

@@ -2,7 +2,7 @@
 # 30 min 12 s run (README.md:28).
 name = "vicetay"
 fork = "VIctory"
-rank = 7   # launcher list order: 7th on the gta6-pc-race tracker
+rank = 7   # #7 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Vice-Tay 26bfaed (GPL-3.0): 30 min in the world without a crash on its author's RTX 4090; not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:101
