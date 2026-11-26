@@ -1923,7 +1923,9 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     if matches!(task, Task::Run) && choice.mix.is_none() {
         auto_setup(name, &root, &spec, &game);
     }
-    let family = victory_tree(name).is_some();
+    // The shared family cache is only for the runtimes that always used it;
+    // the method-102 patched forks keep their own cache (their warmed files).
+    let family = victory_tree(name).is_some() && matches!(name, "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo");
     // The victory family's cache is the one shared folder; this runtime's
     // own files (press.txt, warm-total.txt, last-run.log) stay in its own.
     let data = if family {
