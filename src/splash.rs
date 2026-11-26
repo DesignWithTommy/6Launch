@@ -391,13 +391,13 @@ unsafe fn paint(hwnd: HWND) {
         let (night, dusk, glow) = ((18.0, 8.0, 38.0), (92.0, 18.0, 96.0), (255.0, 122.0, 60.0));
         let mut y = 0;
         while y < HEIGHT {
-            let t = y as f32 / HEIGHT as f32;
+            let t = (y as f32 / 138.0).min(1.0);
             let c = if t < 0.55 { mix(night, dusk, t / 0.55) } else { mix(dusk, glow, (t - 0.55) / 0.45) };
             fill(dc, RECT { left: 0, top: y, right: WIDTH, bottom: y + 2 }, c);
             y += 2;
         }
         // A striped setting sun behind the wordmark.
-        let (cx, cy, r) = (WIDTH - 120, 118, 74);
+        let (cx, cy, r) = (WIDTH - 120, 100, 62);
         let sun = CreateSolidBrush(rgb(255, 196, 70));
         let no_pen = GetStockObject(NULL_PEN);
         let (ob, op) = (SelectObject(dc, sun), SelectObject(dc, no_pen));
@@ -405,9 +405,9 @@ unsafe fn paint(hwnd: HWND) {
         SelectObject(dc, ob);
         SelectObject(dc, op);
         DeleteObject(sun);
-        for (i, gap) in [4, 6, 8, 10].iter().enumerate() {
-            let top = cy + 8 + i as i32 * 16;
-            let t = top as f32 / HEIGHT as f32;
+        for (i, gap) in [2, 3, 4, 5].iter().enumerate() {
+            let top = cy - 4 + i as i32 * 10;
+            let t = (top as f32 / 138.0).min(1.0);
             fill(dc, RECT { left: cx - r, top, right: cx + r, bottom: top + gap }, mix(dusk, glow, ((t - 0.55) / 0.45).clamp(0.0, 1.0)));
         }
         // Dark ground under the card's text.
