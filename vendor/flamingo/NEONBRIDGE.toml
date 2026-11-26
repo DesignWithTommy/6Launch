@@ -5,7 +5,7 @@
 name = "flamingo"
 fork = "victory-fork"
 rank = 15   # #15 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Flamingo 39bb53a (GPL-3.0): claims 9-14 fps in the first scene; verified here: first mission at 5-7 fps, scene black"
+about = "Flamingo 89e131c (GPL-3.0): claims 9-14 fps in the first scene; verified here: first mission at 5-7 fps, scene black"
 upstream = "https://github.com/realblastex/flamingo"
 build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--locked"]
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]

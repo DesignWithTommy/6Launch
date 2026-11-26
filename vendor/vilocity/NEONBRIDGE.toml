@@ -2,7 +2,7 @@
 name = "vilocity"
 fork = "Vilocity"
 rank = 22   # #22 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vilocity 3cc4b67 (GPL-3.0): its own layer, native engine for GTA VI"
+about = "Vilocity 6804c16 (GPL-3.0): its own layer, native engine for GTA VI"
 upstream = "https://github.com/voidopcode/vilocity"
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"
@@ -20,7 +20,7 @@ VILOCITY_CONSOLE = "series-s"   # scripts/play-gta6.ps1, its measured set
 VILOCITY_ASYNC_SUBMIT = "1"
 VILOCITY_QUEUE2 = "1"
 VILOCITY_INDIRECT_WINDOW = "1"
-VILOCITY_TEXTURE_NO_WAIT = "1"
+VILOCITY_TEXTURE_NO_WAIT = "2"
 VILOCITY_COPY_PLAIN = "1"
 VILOCITY_LEVELS_ON_DEMAND = "1"
 VILOCITY_DISPLAY_MODE = "1920x1080"
