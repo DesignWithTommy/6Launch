@@ -5,7 +5,7 @@
 name = "belobug"
 fork = "VIctory"
 rank = 5   # #5 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-Belobug-AMD cd8dfc0 (GPL-3.0): ~22 fps with ray tracing off on an RX 7900 XTX"
+about = "VIctory-Belobug-AMD 4eb6cfd (GPL-3.0): ~22 fps with ray tracing off on an RX 7900 XTX"
 upstream = "https://github.com/Belobug/VIctory-Belobug-AMD"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:49
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
