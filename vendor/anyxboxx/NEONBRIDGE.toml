@@ -4,7 +4,7 @@
 name = "anyxboxx"
 fork = "Neptune"
 rank = 2   # launcher list order: 2nd on the gta6-pc-race tracker
-about = "AnyXboxX fd9463b (GPL-3.0): ~12 fps in the world (median 12.5, peaks 30) on its author's RTX 4070 SUPER, no crash; not yet run here"
+about = "AnyXboxX c4c93bd (GPL-3.0): ~12 fps in the world (median 12.5, peaks 30) on its author's RTX 4070 SUPER, no crash; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
 build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml", "--locked"]   # lancer_victory.ps1:102,114 (+--locked)
 watch = ["third_party/victory/apps", "third_party/victory/crates", "third_party/victory/Cargo.toml", "third_party/victory/Cargo.lock"]
@@ -26,12 +26,12 @@ options = [
   "VICTORY_D3D12_DRED=1: device-removed data, diagnostics build (-Dred)",
   "VICTORY_CARD_WINDOWS_MB / VICTORY_CARD_BUFFERS_MB: lower these first on a smaller card (lancer_victory.ps1:53-55)",
 ]
+preset_quality = ["VICTORY_CARD_WINDOWS_MB=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_LIST_POOL_MOST=256", "VICTORY_LIST_POOL_MB=256", "VICTORY_TEXTURE_STAGE_MB=192"]   # lancer_victory.ps1 -Quality: picture first, about half the fps
 
 [env]   # lancer_victory.ps1:121-163, Neptune's switch set as it sets it
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
-VICTORY_RAYTRACING = "0"   # Neonbridge rt patch: answers device slot 0x330 (method 102, the game stopped itself without it); the build hook stays off as in victory-fork
 VICTORY_DISCORD = "0"
-VICTORY_CARD_WINDOWS_MB = "4096"
+VICTORY_CARD_WINDOWS_MB = "1536"
 VICTORY_BAKE_TEXTURES_MS = "10000"
 VICTORY_EARLY_TEXTURES_MS = "40"
 VICTORY_WIDE_MERGE = "1"
@@ -54,7 +54,7 @@ VICTORY_ASK_QUIET = "8"
 VICTORY_COPY_CHANGED = "1"
 VICTORY_QUIET_BACK = "1"
 VICTORY_LIST_POOL_MOST = "2048"
-VICTORY_LIST_POOL_MB = "2048"
+VICTORY_LIST_POOL_MB = "512"
 VICTORY_WIDE_THREADS = "12"
 VICTORY_UNDER_WRITES_MASKS_LEAST = "1"
 VICTORY_INDIRECT_RAW = "2"
@@ -65,8 +65,12 @@ VICTORY_CARD_BUFFERS_MB = "1536"
 VICTORY_CARD_WINDOW_UPLOAD = "1"
 VICTORY_DROP_DXIL = "1"
 VICTORY_DESC_DATA = "1"
-VICTORY_VRAM_IDLE_MS = "15000,2500,1000"
+VICTORY_VRAM_IDLE_MS = "8000,2000,1000"
 VICTORY_PIPELINE_WAIT_MS = "2500"
+VICTORY_TEXTURE_ROOM_PERCENT = "93"
+VICTORY_HEAP_PASS_DIRTY = "1"
+VICTORY_COPY_COALESCE = "256"
+VICTORY_OCEAN_READBACK = "1"   # lancer_victory.ps1:143: boats float
 
 [controls]
 left_stick = "W A S D"

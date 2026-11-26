@@ -15,7 +15,7 @@ exe = "target/release/victory.exe"
 # NEONBRIDGE_DIAG (on unless 0): the author's diagnostics build, used in place of build/exe; [] = none.
 diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # README.md:245 (+--locked)
 diag_exe = "target/diag/victory.exe"   # README.md:245
-run = ["run", "{game_exe}", "--execute"]   # README.md:203
+run = ["run", "{game_exe}", "--execute", "--console", "series-x"]   # README.md:138
 prewarm = ["translate", "{game}", "--jobs", "{jobs}"]
 game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
@@ -29,6 +29,8 @@ options = [
   "VICTORY_RAYS=1: ray-tracing builders translate and run (unstable), README.md:125",
 ]
 [env]
+VICTORY_PRESENT_TARGET = "1x1:1"   # README.md:135-136
+VICTORY_HAIR = "1"
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
 VICTORY_PRESS_FILE = "{press}"
 

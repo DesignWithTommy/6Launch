@@ -12,7 +12,7 @@ watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/diag/victory.exe"
 # NEONBRIDGE_DIAG (on unless 0): the author's diagnostics build, used in place of build/exe; [] = none.
 diag_build = []   # its default build is already its diag profile (README.md:98); its README names no other diagnostics build
-run = ["run", "{game_exe}", "--execute", "--console", "series-s"]
+run = ["run", "{game_exe}", "--execute", "--console", "series-x"]   # flamingo-log.cmd:53 (Series S gave black screens)
 prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]
 game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
@@ -32,7 +32,9 @@ options = [
 preset_visible = ["VICTORY_AMBIENT_STUB=1", "VICTORY_SHADOWMASK_STUB=1"]
 
 [env]
-VICTORY_RAYTRACING = "0"   # Neonbridge rt patch: answers device slot 0x330 (method 102; the game stopped itself without it); the build hook stays off
+VICTORY_WIDE_TEXTURES = "1"   # flamingo-log.cmd:49-51
+VICTORY_VIEW_GUARD = "0"
+FLAMINGO_BVH_MISS = "1"
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
 VICTORY_NO_WATCHDOG = "1"   # README.md:104-113, its run settings
 VICTORY_PIPELINE_WAIT_MS = "24"

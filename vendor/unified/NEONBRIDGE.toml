@@ -26,7 +26,6 @@ options = [
 
 [env]   # scripts/play.ps1:19-46, its own settings
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"   # Neonbridge: one save/settings folder for the victory family
-VICTORY_RAYTRACING = "0"   # Neonbridge rt patch: answers device slot 0x330 (method 102, the game stopped itself without it); the build hook stays off as in victory-fork
 VICTORY_ASYNC_SUBMIT = "1"
 VICTORY_QUEUE2 = "1"
 VICTORY_QUEUE2_LANDING_MB = "128"
