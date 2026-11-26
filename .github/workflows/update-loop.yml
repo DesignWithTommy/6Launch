@@ -1,9 +1,9 @@
-# Update loop: every 6 hours each runtime's pin moves to its author's newest
+# Update loop: every hour each runtime's pin moves to its author's newest
 # commit, so launchers pick it up from catalog.txt on their next start.
 name: update loop
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 permissions:
   contents: write
