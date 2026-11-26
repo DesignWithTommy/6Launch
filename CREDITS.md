@@ -22,7 +22,7 @@ i95 is a launcher around other people's work. Each vendored tree under `vendor/`
 | `vendor/marvisak` | [VIctory](https://github.com/Marvisak/VIctory) | Marvisak | GPL-3.0 | 63bcca4 |
 | `vendor/nvidia` | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | trustno1-coder | GPL-3.0 | 6a31e43 |
 | `vendor/rdna` | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | XaviFortes | GPL-3.0 | 2c5a395 |
-| `vendor/rufflab` | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | LoverCatys | GPL-3.0 | 3ea0d32 |
+| `vendor/rufflab` | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | LoverCatys | GPL-3.0 | 5545517 |
 | `vendor/scarlettport` | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | Ziggy (ZigZagBoi1), Vlad Bondarenko (vladbondarenko97), grooving6; its `runtime/victory` is the VIctory authors' and its `runtime/xcl` the xcl authors' | GPL-3.0-or-later; `runtime/xcl` GPL-2.0-only (its `LICENSE.md`) | `925f90a17b5897e34a4d8d3ce5e628d1dca08904` |
 | `vendor/unified` | [victory-unified](https://github.com/Itsbatt/victory-unified) | Itsbatt, with fxceless, Belobug, DexNom, Zettrox and the VIctory contributors | GPL-3.0-or-later | `d5b5fca6cf3c325634f90eb897aa43d0eb665847` |
 | `vendor/united` | [Victory-United](https://github.com/Fayberr/Victory-United) | Fayberr | GPL-3.0 | 1b510ae |
@@ -30,8 +30,8 @@ i95 is a launcher around other people's work. Each vendored tree under `vendor/`
 | `vendor/vibrport` | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | edsuuu; built on VIctory (Marvisak) and victory-fork (fxceless) | GPL-3.0 | `96135bda29dc3048253d4ea66f02da6c60ec21a8` |
 | `vendor/vicetay` | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | TaynanGT | GPL-3.0 | e2d158a |
 | `vendor/victory` | [VIctory-fxceless](https://github.com/fxceless/victory-fork) | fxceless, Marvis (Marvisak), Duff, 9hvn9yt2vk-netizen and the VIctory contributors | GPL-3.0 | `d8274192e67cd6cb3e425078e01a8bdf7653307c` |
-| `vendor/vilocity` | [vilocity](https://github.com/voidopcode/vilocity) | voidopcode | GPL-3.0 | 5468633 |
-| `vendor/vinividivici` | [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) | KomanderDG88 | GPL-3.0 | ff64466 |
+| `vendor/vilocity` | [vilocity](https://github.com/voidopcode/vilocity) | voidopcode | GPL-3.0 | 3cc4b67 |
+| `vendor/vinividivici` | [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) | KomanderDG88 | GPL-3.0 | 0f09e67 |
 | `vendor/vitoriabr` | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | uiliannn, fxceless, Marvis (Marvisak), Duff and the VIctory contributors | GPL-3.0 | `2b33e081ed7831f49610b747a508fb56d3cb3aa9` |
 | `vendor/xtx` | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | avatarmanz | GPL-3.0 | 2de9980 |
 | `vendor/ztrx-victory` (archived, in git history) | [ztrx](https://github.com/Zettrox/ztrx) | Zettrox, Marvis (Marvisak), Duff, fxceless, 9hvn9yt2vk-netizen and the VIctory contributors | GPL-3.0 | `90b529f878a470fec9bf07b7be316bc769a12232` |

@@ -6,7 +6,59 @@ Ce guide explique comment installer et lancer le projet, et tout ce qu'il faut i
 
 Le lancement passe par [VIctory](https://github.com/Marvisak/VIctory) (Marvisak, GPL-3.0 ou ultérieure), copié dans ce dépôt sous `third_party/victory`, où il est notre code : rien n'est synchronisé ni épinglé. La copie part de la branche `anyxboxx/fork-7b0-lot9-murs` du fork du mainteneur [LooperSalty/victory](https://github.com/LooperSalty/victory), puis a reçu 57 commits pour Proton et les cartes AMD (voir plus bas). Cette branche assemble le fork [fxceless/victory-fork](https://github.com/fxceless/victory-fork) (GPL-3.0) au commit `7b0f736`, huit de ses pull requests précédentes, sept nouvelles, le portage de la précompilation hors ligne de #282 et des commits à nous (disposition `xg_xs.dll` servie comme la bibliothèque de Microsoft, voir plus bas), au commit `80d58f8`. Le script `anyxboxx run` le compile et le lance sur votre dossier du jeu.
 
-## Base Neptune (25 novembre, soir)
+## Base combinée (26 novembre)
+
+`third_party/victory` contient désormais la source exacte du build mesuré le 26 novembre : [avatarmanz/VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) à `c9c932c`, fusionné avec [codec-d/cool_fox](https://github.com/codec-d/cool_fox) `f4b48ad`, nos portages de pull requests VIctory et nos correctifs (sources dans [THIRD_PARTY.md](../../THIRD_PARTY.md)). Elle remplace la base Neptune de la section suivante. `anyxboxx run` lui donne le jeu de réglages du lanceur de VIctory lui-même (`third_party/victory/scripts/play.ps1`, sans `-Safe`) : 17 variables, le relais (`VICTORY_RELAY=2`, qui fait aussi de l'étape 3 des attentes tardives la valeur par défaut), les appels de liste notés puis rejoués sur nos threads (`VICTORY_THIN`), les soumissions jointes, les remplissages sur la carte (`VICTORY_CARD_STEPS=2`).
+
+Ce qu'elle a corrigé sous Linux (observé sur la machine de test Linux, RX 9070 XT, 26 novembre) : la géométrie des visages et les bouches, les intérieurs éclairés (les programmes d'ombres en lancer de rayons se construisent), et les vidéos et écrans d'accueil qui montraient des images dans le désordre. Sur cette machine, on est passé d'environ 6 i/s (base précédente) à une médiane de 15,6 i/s dans le monde (p75 18,9, meilleure 20,7, images de plus de 1 500 draws) et environ 16 à 20 i/s dans les cinématiques. Mesuré dans le journal de VIctory sur une session ; pas mesuré sous Windows avec cette base (README d'avatarmanz : environ 19 i/s sur une RX 7900 XTX, profil Series X avec les correctifs 1+2 du moteur de rendu).
+
+Nos correctifs, une ligne chacun (les raisons sont dans les commentaires du code) :
+
+- **Ombres** : dxil-spirv (dans vkd3d-proton) récursait sans fin sur les lectures de lane dans des branches des six programmes d'ombres en lancer de rayons, dont les pipelines n'étaient jamais faits. Le traducteur garde aussi les lanes de chaque registre lu par `v_readlane` en LDS et les y relit.
+- **Visages (géométrie)** : un programme de calcul que le titre ne lance qu'une fois par tête (`CS_ComputeBlendshapeMappings`) était abandonné pendant la compilation de son pipeline, et la table de correspondance restait vide. Ces programmes à exécution unique sont maintenant faits à leur création par le titre, et leurs dispatchs les attendent.
+- **Visages (bouches)** : les sommes en arbre en LDS d'une seule vague ont reçu une barrière d'ordre ; le reste était un bogue de Mesa (plus bas).
+- **Vidéos et écrans d'accueil** : une texture lue par une liste dont la copie GPU est en retard sur sa copie de préparation est envoyée dans le prélude de cette liste, au lieu d'attendre la liste suivante (`VICTORY_LATE_UPLOADS=0` : l'ancien comportement).
+- **Correctif 1 du moteur de rendu sous Wine/RADV** : `VICTORY_PORT_CONSTANTS` vérifie au démarrage que la carte voit la mémoire du titre sur place et se coupe sinon (mesuré : sans la cale ci-dessous, la carte ne lisait aucun des octets du processeur).
+- **Diagnostics** (pilotés par l'environnement, builds de diagnostic) : `VICTORY_DISPATCH_DUMP` (refuse un dossier dans un arbre source), `VICTORY_ORDER_TRACE`, `VICTORY_HOST_WAVE=32`, `VICTORY_REFRESH_ALL`.
+
+Gardé de `main` faute d'équivalent dans la nouvelle base : la disposition du clavier et la fenêtre sans bord (`VICTORY_KEYBOARD`, `VICTORY_WINDOW_MODE`), `EraFields` de xmem et les emplacements XThread de xasync (utilisés par `crates/anyxboxx-xmem` et `crates/anyxboxx-xgameruntime`), et l'état d'un appel asynchrone publié avant sa libération.
+
+Partis avec la base Neptune : l'oracle de la bibliothèque XG (`--xg-dll`, `--xg-mode`), le CSV des temps d'image (`--frametime-dump`), les chiffres F10 (le panneau de VIctory est `VICTORY_PANEL=1`, F3, builds de diagnostic), la présence Discord, l'interrupteur de relecture de l'océan (la relecture des textures est active par défaut ici), le plafond de taille des textures des préréglages 8 et 12 Go, et les interrupteurs de performance portés sur Neptune (`VICTORY_HEAP_SCAN_ALT`, `VICTORY_PARALLEL_REFRESH`, `VICTORY_CARD_SYNC_BATCH`, `VICTORY_STEP_INDEX`, `VICTORY_WINDOW_SKIP_SAME`, `VICTORY_MERGE_SUBMISSIONS`, `VICTORY_HEAP_PASS_DIRTY`, `VICTORY_COPY_COALESCE` et d'autres). `--auto-a` pose maintenant `VICTORY_KEYS` (Entrée, qui appuie aussi sur A de la première manette, toutes les 4 s pendant 150 s) ; `--warm` et `--precompile` lancent `victory shaders` sur les mêmes fichiers (le `victory warm` de cette base refait les pipelines hôtes des sessions précédentes).
+
+### Sous Windows
+
+```powershell
+anyxboxx run --game-dir <dossier du jeu> --warm   # la première fois : tous les shaders traduits dans le cache, puis le jeu
+anyxboxx run --game-dir <dossier du jeu>
+```
+
+Ajouter `--diag` pour le build de diagnostic, celui des mesures d'avatarmanz. Pas mesuré sur NVIDIA avec cette base.
+
+### Sous Linux (Proton, AMD)
+
+Mesuré sous Fedora 44, RX 9070 XT 16 Go, GE-Proton11-12, RADV via vkd3d-proton. Il faut trois choses côté Linux, que `tools/linux/play.sh` pose avant de lancer `anyxboxx run --profile linux-amd` dans Proton :
+
+| Quoi | Pourquoi |
+| --- | --- |
+| Un RADV corrigé, `tools/linux/mesa/build-radv.sh` (Mesa 26.2.7, RADV seul, dans `~/.local/share/anyxboxx/mesa`, sans root), chargé pour le jeu seulement avec `VK_DRIVER_FILES` | Avec les tas de descripteurs de vkd3d-proton, RADV abaissait les accès d'image en intrinsèques `image_heap_*` avant `nir_lower_memory_model`, qui ne les connaissait pas : `MakeTexelVisible` disparaissait sans rendre les lectures cohérentes, et une vague sur une autre unité de calcul lisait des données périmées. Mesuré : un test synthétique est passé de 70 144 lectures périmées à 0 ; en jeu, les bouches ne se déforment plus. Mesa main a le même code : pas encore corrigé en amont. Sous Fedora 44, il a fallu `sudo dnf install python3-mako libxshmfence-devel expat-devel` en plus de meson et glslang. |
+| La cale `anonless`, `tools/linux/anonless/anonless.c`, dans `LD_PRELOAD` (`play.sh` la compile dans `~/.cache/anyxboxx`) | libdrm passe toujours `AMDGPU_GEM_USERPTR_ANONONLY`, donc le noyau refuse d'importer de la mémoire partagée (sections de Wine) pour la carte ; les tas sur place du titre étaient alors une autre mémoire et le correctif 1 se coupe. La cale efface ce bit sur cet appel seulement. Interface non officielle. |
+| Le `d3dcompiler_47.dll` de Microsoft à côté de `victory.exe`, `WINEDLLOVERRIDES=d3d12,d3d12core,dxgi,d3d11,d3d10core,d3dcompiler_47=n,b` (le vkd3d-proton et le DXVK du préfixe, pas ceux de Wine), `VKD3D_CONFIG=descriptor_heap` | Le compilateur de Wine refuse les shaders d'aide de VIctory (monde noir). La DLL est votre propre copie (redistribuables du SDK Windows ou `winetricks d3dcompiler_47`) ; ne jamais la committer. Le titre demande plus de vues que le plafond par défaut de vkd3d-proton. |
+
+Le profil `linux-amd` est le jeu Windows plus `VICTORY_FETCH_CHECK=1` (des lectures déchirées du relais sous Wine cassaient les maillages animés), `VICTORY_PIPELINE_WAIT_MS=0` (les 500 ms par défaut figeaient une image par seconde pendant que RADV compile ; les programmes à exécution unique ci-dessus sont attendus de toute façon), `VICTORY_PORT_CONSTANTS=1` et `VKD3D_CONFIG=descriptor_heap`.
+
+```bash
+tools/linux/mesa/build-radv.sh            # une fois
+# Compilation croisée pour Windows (cible MSVC, par ex. lld-link + un CRT/SDK xwin, CARGO_BUILD_TARGET=x86_64-pc-windows-msvc) :
+(cd third_party/victory && cargo build --locked --release -p victory)   # ou --profile diag --features diagnostics
+cargo build --release -p anyxboxx
+GAME_DIR=<dossier du jeu> VICTORY=third_party/victory/target/x86_64-pc-windows-msvc/release/victory.exe \
+ANYXBOXX=target/x86_64-pc-windows-msvc/release/anyxboxx.exe PROTON=<Proton>/files WINEPREFIX=<préfixe>/pfx \
+  tools/linux/play.sh
+```
+
+`MESA=system` prend le pilote du système et `ANONLESS=0` retire la cale, pour comparer. Proton affiche `anonless.so ... wrong ELF class` pour ses parties 32 bits : sans conséquence. Où s'arrête le support officiel : Proton, le RADV corrigé et la cale sont des contournements communautaires, mesurés sur une machine ; la chaîne d'environnement de `play.sh` a été vérifiée avec un `victory.exe` de remplacement sous Proton, et les sessions de jeu mesurées utilisaient les mêmes variables posées à la main.
+
+## Base Neptune (25 novembre au soir, remplacée le 26 novembre)
 
 `third_party/victory` contient désormais la source correspondante de Neptune (VIctory Edit.) 2026-11-25c (GPL-3.0-or-later ; elle repose sur `fxceless/victory-fork`, `myokex/victory-amd`, `soldsawn/victory-nvidia-8gb`, ShakiraRED-dt, `ZSlayerHQ/victory-world-runtime`, `JoshuuDev/victory-amd` et d'autres, voir [THIRD_PARTY.md](../../THIRD_PARTY.md)), plus nos quatre commits `xg:` (la `xg_xs.dll` de Microsoft comme oracle, `-XgDll`) et la Rich Presence Discord éteinte sauf `VICTORY_DISCORD=1`. Les sections suivantes décrivent la base précédente `80d58f8` et ses 57 commits Proton/AMD, qui ne sont pas repris.
 

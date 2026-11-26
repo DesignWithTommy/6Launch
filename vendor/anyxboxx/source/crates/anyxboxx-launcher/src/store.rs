@@ -1,11 +1,10 @@
 //! The settings file: `%LOCALAPPDATA%\AnyXboxX\launcher\settings.toml`. It keeps the game folder,
-//! the XG library, the thread count and the Play page's options between runs. A missing or broken
+//! the thread count and the Play page's options between runs. A missing or broken
 //! file is not an error: the launcher starts with its defaults.
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use anyxboxx::run::XgMode;
 use serde::{Deserialize, Serialize};
 
 use crate::options::LaunchOptions;
@@ -16,9 +15,6 @@ use crate::session::Settings;
 #[serde(default)]
 pub struct Stored {
     pub game_dir: String,
-    pub xg_dll: String,
-    /// `real` or `compare`.
-    pub xg_mode: String,
     pub jobs: u32,
     pub skip_process_check: bool,
     /// Keep the launcher open after the game started.
@@ -31,8 +27,6 @@ impl Stored {
     pub fn from_settings(settings: &Settings) -> Self {
         Stored {
             game_dir: settings.game_dir.clone(),
-            xg_dll: settings.xg_dll.clone(),
-            xg_mode: settings.xg_mode.as_str().to_string(),
             jobs: settings.jobs,
             skip_process_check: settings.skip_process_check,
             keep_open_after_launch: settings.keep_open_after_launch,
@@ -45,12 +39,6 @@ impl Stored {
     pub fn into_settings(self) -> Settings {
         Settings {
             game_dir: self.game_dir,
-            xg_dll: self.xg_dll,
-            xg_mode: if self.xg_mode == "compare" {
-                XgMode::Compare
-            } else {
-                XgMode::Real
-            },
             jobs: self.jobs,
             skip_process_check: self.skip_process_check,
             keep_open_after_launch: self.keep_open_after_launch,
@@ -98,8 +86,6 @@ mod tests {
     fn sample() -> Settings {
         Settings {
             game_dir: "D:\\Game".to_string(),
-            xg_dll: "D:\\xg_xs.dll".to_string(),
-            xg_mode: XgMode::Compare,
             jobs: 6,
             skip_process_check: true,
             keep_open_after_launch: true,
@@ -126,7 +112,6 @@ mod tests {
         assert_eq!(back, stored);
         let settings = back.into_settings();
         assert_eq!(settings.game_dir, "D:\\Game");
-        assert_eq!(settings.xg_mode, XgMode::Compare);
         assert_eq!(settings.options.keyboard, Keyboard::Azerty);
         assert!(settings.options.warm_first);
     }
@@ -153,7 +138,21 @@ mod tests {
         assert_eq!(settings.game_dir, "E:\\G");
         assert_eq!(settings.options.keyboard, Keyboard::Qwertz);
         assert_eq!(settings.options.preset, Preset::Fast);
-        assert_eq!(settings.xg_mode, XgMode::Real);
+    }
+
+    #[test]
+    fn a_file_from_the_neptune_launcher_still_loads() {
+        // Its XG library fields (gone with the Neptune base) and old options are ignored.
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("old.toml");
+        std::fs::write(
+            &path,
+            "game_dir = \"G\"\nxg_dll = \"D:\\\\xg_xs.dll\"\nxg_mode = \"compare\"\n[options]\noverlay = false\nframetime_dump = true\n",
+        )
+        .expect("write");
+        let settings = load(&path).expect("load").into_settings();
+        assert_eq!(settings.game_dir, "G");
+        assert_eq!(settings.options, LaunchOptions::default());
     }
 
     #[test]

@@ -1,0 +1,41 @@
+diff --git a/src/compiler/nir/nir_lower_memory_model.c b/src/compiler/nir/nir_lower_memory_model.c
+index 4f018f1..670e964 100644
+--- a/src/compiler/nir/nir_lower_memory_model.c
++++ b/src/compiler/nir/nir_lower_memory_model.c
+@@ -51,6 +51,36 @@ get_intrinsic_info(nir_intrinsic_instr *intrin, nir_variable_mode *modes,
+       *reads = true;
+       *writes = true;
+       break;
++   /* Image intrinsics that were already lowered away from derefs (for
++    * example by vk_nir_lower_descriptor_heaps, which runs before drivers
++    * call this pass) still access image memory and must still be made
++    * coherent, otherwise MakeTexelVisible/Available is silently dropped.
++    */
++   case nir_intrinsic_image_load:
++   case nir_intrinsic_image_sparse_load:
++   case nir_intrinsic_bindless_image_load:
++   case nir_intrinsic_bindless_image_sparse_load:
++   case nir_intrinsic_image_heap_load:
++   case nir_intrinsic_image_heap_sparse_load:
++      *modes = nir_var_image;
++      *reads = true;
++      break;
++   case nir_intrinsic_image_store:
++   case nir_intrinsic_bindless_image_store:
++   case nir_intrinsic_image_heap_store:
++      *modes = nir_var_image;
++      *writes = true;
++      break;
++   case nir_intrinsic_image_atomic:
++   case nir_intrinsic_image_atomic_swap:
++   case nir_intrinsic_bindless_image_atomic:
++   case nir_intrinsic_bindless_image_atomic_swap:
++   case nir_intrinsic_image_heap_atomic:
++   case nir_intrinsic_image_heap_atomic_swap:
++      *modes = nir_var_image;
++      *reads = true;
++      *writes = true;
++      break;
+    case nir_intrinsic_load_ssbo:
+       *modes = nir_var_mem_ssbo;
+       *reads = true;

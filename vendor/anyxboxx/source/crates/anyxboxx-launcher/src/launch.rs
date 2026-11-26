@@ -110,7 +110,7 @@ fn build_step(victory: &Victory) -> Option<Step> {
         .map(|command| Step::new("Building VIctory", command))
 }
 
-/// `victory warm` on the game folder's own .rpf archives, with the game's environment. After a
+/// `victory shaders` on the game folder's own .rpf archives, with the game's environment. After a
 /// success the marker gets the fingerprint of that moment (after any build), so the next launch
 /// skips the warm while nothing changed.
 fn warm_step(victory: &Victory, plan: &Plan, marker: Option<PathBuf>) -> Result<Step, RunError> {
@@ -132,7 +132,7 @@ fn warm_step(victory: &Victory, plan: &Plan, marker: Option<PathBuf>) -> Result<
     })
 }
 
-/// `victory warm` on shaders.rpf, the game and its DLLs (the `warm_first` option), as main's
+/// `victory shaders` on shaders.rpf, the game and its DLLs (the `warm_first` option), as main's
 /// `-Precompile`. It does not mark the cache as complete: the archive warm does that.
 fn precompile_step(victory: &Victory, plan: &Plan) -> Result<Step, RunError> {
     let mut command = victory.precompile_command(&plan.game_dir, &plan.env)?;
@@ -256,7 +256,7 @@ mod tests {
         let (_repo, _game, plan) = fixture();
         let steps = precompile_steps(&plan).expect("steps");
         let args = args_of(&steps[1].command);
-        assert_eq!(args.first().map(String::as_str), Some("warm"));
+        assert_eq!(args.first().map(String::as_str), Some("shaders"));
         let at = args
             .iter()
             .position(|a| a == "--jobs")

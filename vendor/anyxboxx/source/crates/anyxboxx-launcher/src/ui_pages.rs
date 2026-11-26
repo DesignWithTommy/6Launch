@@ -7,7 +7,6 @@ use crate::setup::State;
 use crate::verify::{self, Problem};
 use crate::widgets::{self, Status};
 use crate::{bar, launch_progress, session, theme, tokens, ui_options, ui_states};
-use anyxboxx::run::XgMode;
 
 /// A page's title and the sentence under it.
 pub fn header(ui: &mut egui::Ui, title: &str, description: &str) {
@@ -205,7 +204,7 @@ pub fn shaders(app: &mut App, ui: &mut egui::Ui) {
     });
 }
 
-/// Page 4: the launch, the profile, the XG library, the advanced panel and the cache.
+/// Page 4: the launch, the profile, the advanced panel and the cache.
 pub fn play(app: &mut App, ui: &mut egui::Ui) {
     ui_states::banner(app, ui);
     header(
@@ -251,22 +250,6 @@ pub fn confirm_clean(app: &mut App, ctx: &egui::Context) {
     if close {
         app.confirm_clean = false;
     }
-}
-
-/// The XG library row of the launch card.
-pub fn xg_row(app: &mut App, ui: &mut egui::Ui) {
-    ui.label(tokens::body("XG library (your own xg_xs.dll, optional)"));
-    ui.horizontal(|ui| {
-        let room = (ui.available_width() - 120.0).max(160.0);
-        ui.add(egui::TextEdit::singleline(&mut app.settings.xg_dll).desired_width(room));
-        if widgets::secondary_button(ui, true, "Browse...").clicked() {
-            app.pick_xg_library();
-        }
-    });
-    ui.horizontal(|ui| {
-        ui.radio_value(&mut app.settings.xg_mode, XgMode::Real, "real");
-        ui.radio_value(&mut app.settings.xg_mode, XgMode::Compare, "compare");
-    });
 }
 
 /// The plan of the launch: whether it can be made, for the advanced panel.

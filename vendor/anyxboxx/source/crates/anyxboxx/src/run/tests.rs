@@ -26,12 +26,8 @@ fn value(env: &[(String, OsString)], name: &str) -> Option<OsString> {
         .map(|(_, v)| v.clone())
 }
 
-/// Always set, before the tuned set: the script sets these two first.
-const HEAD: [&str; 3] = [
-    "VICTORY_GAME_DIR",
-    "VICTORY_DISCORD",
-    "VICTORY_OCEAN_READBACK",
-];
+/// Always set, before the tuned set.
+const HEAD: [&str; 1] = ["VICTORY_GAME_DIR"];
 
 #[test]
 fn tuned_settings_are_set_by_default_and_can_be_turned_off() {
@@ -46,22 +42,33 @@ fn tuned_settings_are_set_by_default_and_can_be_turned_off() {
             .iter()
             .all(|(k, v)| value(&env, k) == Some(OsString::from(v)))
     );
-    assert_eq!(value(&env, "VICTORY_DISCORD"), Some(OsString::from("0")));
-    assert_eq!(
-        value(&env, "VICTORY_OCEAN_READBACK"),
-        Some(OsString::from("1"))
-    );
     let env = settings::base(&parse(&["--game-dir", "G", "--no-tuned-settings"]));
     assert_eq!(names(&env), HEAD);
 }
 
 #[test]
-fn the_tuned_set_is_neptune_s_measured_set() {
-    // Golden copy: tests/fixtures/lancer_victory_neptune.ps1 (checked in tests/test_anyxboxx_run.py).
-    assert_eq!(TUNED.len(), 46);
-    assert!(TUNED.contains(&("VICTORY_HEAP_PASS_DIRTY", "1")));
-    assert!(TUNED.contains(&("VICTORY_CARD_WINDOWS_MB", "1536")));
+fn the_tuned_set_is_victorys_play_script_set() {
+    // VIctory's scripts/play.ps1 (checked line by line in tests/test_anyxboxx_run.py).
+    assert_eq!(TUNED.len(), 17);
     assert!(TUNED.contains(&("VICTORY_RELAY", "2")));
+    assert!(TUNED.contains(&("VICTORY_CARD_STEPS", "2")));
+    assert!(TUNED.contains(&("VICTORY_THIN", "1")));
+    // Stage 3 of the late waits comes from the relay: the set leaves VICTORY_LATE_WAIT unset.
+    assert!(TUNED.iter().all(|(k, _)| *k != "VICTORY_LATE_WAIT"));
+}
+
+#[test]
+fn linux_amd_is_the_tuned_set_then_the_linux_additions() {
+    let joined: Vec<_> = TUNED.iter().chain(LINUX_AMD_EXTRA).copied().collect();
+    assert_eq!(LINUX_AMD, joined.as_slice());
+    for wanted in [
+        ("VICTORY_FETCH_CHECK", "1"),
+        ("VICTORY_PIPELINE_WAIT_MS", "0"),
+        ("VICTORY_PORT_CONSTANTS", "1"),
+        ("VKD3D_CONFIG", "descriptor_heap"),
+    ] {
+        assert!(LINUX_AMD_EXTRA.contains(&wanted), "{wanted:?}");
+    }
 }
 
 #[test]
@@ -106,11 +113,13 @@ fn overrides_must_be_victory_variables_in_key_value_form() {
 
 #[test]
 fn the_relay_and_dred_are_never_in_the_tuned_table() {
-    // Relay is set by Neptune's tuned set itself (VICTORY_RELAY=2); DRED and XG stay opt-in.
+    // Relay is set by play.ps1's set itself (VICTORY_RELAY=2); DRED stays opt-in (play.ps1's
+    // `VICTORY_D3D12_DRED=light` is left out).
     assert!(
         TUNED
             .iter()
-            .all(|(k, _)| !k.contains("DRED") && !k.contains("XG"))
+            .chain(LINUX_AMD)
+            .all(|(k, _)| !k.contains("DRED"))
     );
 }
 
@@ -125,18 +134,22 @@ fn opt_in_switches_add_their_variable() {
         "--skip-pipelines",
         "3",
         "--auto-a",
-        "--frametime-dump",
     ]));
     let mut expected = HEAD.to_vec();
     expected.extend([
-        "VICTORY_AUTO_A",
-        "VICTORY_FRAMETIME_DUMP",
+        "VICTORY_KEYS",
         "VICTORY_D3D12_DRED",
         "VICTORY_CARD_REHASH_RUNS",
         "VICTORY_SKIP_PIPELINES",
     ]);
     assert_eq!(names(&env), expected);
-    assert_eq!(value(&env, "VICTORY_AUTO_A"), Some(OsString::from("150")));
+    let keys = value(&env, "VICTORY_KEYS").unwrap();
+    let keys = keys.to_str().unwrap();
+    assert!(
+        keys.starts_with("4:Enter,8:Enter,") && keys.ends_with(",148:Enter"),
+        "{keys}"
+    );
+    assert_eq!(keys.split(',').count(), 37);
     assert_eq!(
         value(&env, "VICTORY_SKIP_PIPELINES"),
         Some(OsString::from("3"))
@@ -164,42 +177,24 @@ fn powershell_names_are_accepted() {
     let args = parse(&[
         "--GameDir",
         "G",
-        "--XgDll",
-        "x.dll",
-        "--XgMode",
-        "compare",
         "--Precompile",
         "--Warm",
         "--Quality",
         "--AutoA",
     ]);
     assert_eq!(args.game_dir, PathBuf::from("G"));
-    assert_eq!(args.xg_mode, XgMode::Compare);
     assert!(args.precompile && args.warm && args.quality && args.auto_a);
 }
 
 #[test]
-fn a_missing_xg_library_is_an_error() {
-    let args = parse(&["--game-dir", "G", "--xg-dll", "does-not-exist/xg_xs.dll"]);
-    assert!(matches!(environment(&args), Err(RunError::NoXgDll(_))));
-}
-
-#[test]
-fn the_xg_library_is_passed_with_an_absolute_path_and_its_mode() {
-    let dll = std::env::current_exe().unwrap();
-    let args = parse(&[
-        "--game-dir",
-        "G",
-        "--no-tuned-settings",
-        "--xg-dll",
-        dll.to_str().unwrap(),
-    ]);
-    let env = environment(&args).unwrap();
-    let mut expected = HEAD.to_vec();
-    expected.extend(["VICTORY_XG_DLL", "VICTORY_XG_MODE"]);
-    assert_eq!(names(&env), expected);
-    assert!(PathBuf::from(value(&env, "VICTORY_XG_DLL").unwrap()).is_absolute());
-    assert_eq!(value(&env, "VICTORY_XG_MODE"), Some(OsString::from("real")));
+fn the_neptune_only_options_are_gone() {
+    // xg_xs.dll, the frame-time CSV: nothing in this VIctory base reads them.
+    for gone in ["--xg-dll", "--frametime-dump"] {
+        assert!(
+            Cli::try_parse_from(["anyxboxx", "--game-dir", "G", gone, "x"]).is_err(),
+            "{gone}"
+        );
+    }
 }
 
 #[test]
@@ -310,7 +305,13 @@ fn linux_amd_profile_sets_its_variables_instead_of_windows_tuned() {
         value(&env, "VKD3D_CONFIG"),
         Some(OsString::from("descriptor_heap"))
     );
-    assert_eq!(value(&env, "VICTORY_RELAY"), None);
+    assert_eq!(
+        value(&env, "VICTORY_PIPELINE_WAIT_MS"),
+        Some(OsString::from("0"))
+    );
+    let windows = settings::base(&parse(&["--game-dir", "G"]));
+    assert_eq!(value(&windows, "VICTORY_PIPELINE_WAIT_MS"), None);
+    assert_eq!(value(&windows, "VKD3D_CONFIG"), None);
 }
 
 #[test]
@@ -325,4 +326,27 @@ fn defaults_profile_and_no_tuned_settings_leave_only_base_variables() {
         "--no-tuned-settings",
     ]));
     assert_eq!(names(&disabled), HEAD);
+}
+
+#[test]
+fn the_shader_warm_steps_use_victorys_shaders_command() {
+    // This base's `victory warm` takes no files (it remakes pipelines from earlier runs);
+    // `victory shaders <files>` translates every shader of them into the cache.
+    let victory = Victory {
+        manifest: None,
+        exe: PathBuf::from("victory.exe"),
+        diag: false,
+    };
+    let archives = [PathBuf::from("a.rpf")];
+    let warm = victory.warm_command(&archives, &Vec::new());
+    let args: Vec<_> = warm.get_args().collect();
+    assert_eq!(args, ["shaders", "a.rpf"]);
+    let game = std::env::temp_dir().join(format!("anyxboxx-run-precompile-{}", std::process::id()));
+    std::fs::create_dir_all(&game).unwrap();
+    for name in [SHADERS, GAME_EXE].iter().chain(PRECOMPILED_DLLS.iter()) {
+        std::fs::write(game.join(name), b"").unwrap();
+    }
+    let precompile = victory.precompile_command(&game, &Vec::new()).unwrap();
+    assert_eq!(precompile.get_args().next().unwrap(), "shaders");
+    std::fs::remove_dir_all(&game).unwrap();
 }

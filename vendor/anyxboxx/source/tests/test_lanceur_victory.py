@@ -1,7 +1,8 @@
 """VIctory copied into third_party/victory, and the settings `anyxboxx run` gives it.
 
-`anyxboxx run` (crates/anyxboxx/src/run/settings.rs) replaced tools/lancer_victory.ps1 after a parity test
-against it; its behaviour (calls, environment, exit codes) is checked in tests/test_anyxboxx_run.py.
+`anyxboxx run` (crates/anyxboxx/src/run/settings.rs) replaced tools/lancer_victory.ps1; its tuned set is
+VIctory's own scripts/play.ps1 and its behaviour (calls, environment, exit codes) is checked in
+tests/test_anyxboxx_run.py.
 """
 import configparser
 import re
@@ -11,14 +12,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 VICTORY = ROOT / "third_party" / "victory"
 SETTINGS = ROOT / "crates" / "anyxboxx" / "src" / "run" / "settings.rs"
-GOLDEN = ROOT / "tests" / "fixtures" / "lancer_victory_neptune.ps1"
-# The tuned set of main's script (Neptune base), read from its golden copy.
-TUNED = tuple(re.findall(r"(VICTORY_[A-Z0-9_]+)\s*=\s*'",
-                         GOLDEN.read_text(encoding="utf-8").split("$tuned = [ordered]@{")[1].split("\n    }")[0]))
-# Absent from VIctory's code at the pinned commit: setting them changes nothing.
+PLAY = VICTORY / "scripts" / "play.ps1"
+# The settings of VIctory's own launcher (its `$settings` table and its non -Safe branch).
+TUNED = tuple(k for k in re.findall(r"(VICTORY_[A-Z0-9_]+)\s*=\s*'", PLAY.read_text(encoding="utf-8"))
+              if k not in ("VICTORY_D3D12_DRED", "VICTORY_UNDER_WIDE", "VICTORY_LAND_ECHO", "VICTORY_BVH_BUILDER",
+                           "VICTORY_PANEL"))  # (-More's example in a comment, -Safe, -RayTracing)
+# Neptune-base switches this VIctory base does not have: setting them would change nothing.
 ABSENT = (
-    "VICTORY_RT_MISS", "VICTORY_WAVE32_READFIRSTLANE", "VICTORY_WAVE32_CROSSLANE", "VICTORY_SKIP_BVH_BUILDER",
-    "VICTORY_CAPPED_DYNAMIC",
+    "VICTORY_DISCORD", "VICTORY_OCEAN_READBACK", "VICTORY_AUTO_A", "VICTORY_FRAMETIME_DUMP", "VICTORY_XG_DLL",
+    "VICTORY_XG_MODE", "VICTORY_OVERLAY", "VICTORY_TEXTURE_MAX_SIZE", "VICTORY_LIST_POOL_MB",
 )
 
 
@@ -54,11 +56,10 @@ def test_the_tuned_settings_are_the_measured_ones():
     assert set(re.findall(r'"(VICTORY_[A-Z0-9_]+)"', table)) == set(TUNED)
 
 
-def test_dred_and_xg_are_never_tuned():
-    # DRED and the XG library are opt-in (--dred, --xg-dll). The relay is part of main's golden set
-    # (VICTORY_RELAY=2), not a switch of ours.
+def test_dred_is_never_tuned():
+    # DRED is opt-in (--dred). The relay is part of play.ps1's set (VICTORY_RELAY=2), not a switch of ours.
     table = _tuned_table()
-    assert "DRED" not in table and "XG" not in table
+    assert "DRED" not in table
     assert ("VICTORY_RELAY", "2") in re.findall(r'\("(VICTORY_[A-Z0-9_]+)", "([^"]*)"\)', table)
 
 

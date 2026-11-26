@@ -1,11 +1,11 @@
-//! The environment VIctory runs with: the base of `anyxboxx::run::environment` (game folder, XG
-//! library), then the profile, then the user's overrides, which win over everything. Shader and
+//! The environment VIctory runs with: the base of `anyxboxx::run::environment` (the game folder),
+//! then the profile, then the user's overrides, which win over everything. Shader and
 //! game launches use the same function, because the shader cache key depends on the environment.
 
 use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use anyxboxx::run::{Env, RunArgs, XgMode, environment};
+use anyxboxx::run::{Env, RunArgs, environment};
 
 use crate::profile::Profile;
 
@@ -55,21 +55,9 @@ pub fn parse_overrides(text: &str) -> Result<Vec<Pair>, EnvError> {
     Ok(pairs)
 }
 
-/// Where the launch's XG library comes from, when the user gave one.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Xg {
-    pub dll: PathBuf,
-    pub mode: XgMode,
-}
-
 /// The full environment of a launch. Later entries replace earlier ones with the same key; the
 /// key keeps the position of its first appearance.
-pub fn build_env(
-    game_dir: &Path,
-    profile: &Profile,
-    overrides: &[Pair],
-    xg: Option<&Xg>,
-) -> Result<Env, EnvError> {
+pub fn build_env(game_dir: &Path, profile: &Profile, overrides: &[Pair]) -> Result<Env, EnvError> {
     let base = environment(&RunArgs {
         game_dir: game_dir.to_path_buf(),
         skip_pipelines: None,
@@ -79,13 +67,10 @@ pub fn build_env(
         quality: false,
         overrides: Vec::new(),
         auto_a: false,
-        frametime_dump: false,
         diag: false,
         dred: false,
         warm: false,
         precompile: false,
-        xg_dll: xg.map(|x| x.dll.clone()),
-        xg_mode: xg.map_or(XgMode::Real, |x| x.mode),
         batch_card_rehash: false,
         victory_exe: None,
         repo: None,
@@ -207,7 +192,7 @@ mod tests {
     #[test]
     fn windows_nvidia_env_sets_the_tuned_settings_exactly() {
         let dir = game_folder();
-        let env = build_env(dir.path(), &profile("windows-nvidia"), &[], None).expect("env");
+        let env = build_env(dir.path(), &profile("windows-nvidia"), &[]).expect("env");
         for (key, expected) in TUNED {
             assert_eq!(value(&env, key).as_deref(), Some(*expected), "{key}");
         }
@@ -224,8 +209,13 @@ mod tests {
     #[test]
     fn linux_amd_env_is_the_measured_proton_set() {
         let dir = game_folder();
-        let env = build_env(dir.path(), &profile("linux-amd"), &[], None).expect("env");
-        assert_eq!(value(&env, "VICTORY_LATE_WAIT").as_deref(), Some("0"));
+        let env = build_env(dir.path(), &profile("linux-amd"), &[]).expect("env");
+        assert_eq!(
+            value(&env, "VICTORY_PIPELINE_WAIT_MS").as_deref(),
+            Some("0")
+        );
+        assert_eq!(value(&env, "VICTORY_FETCH_CHECK").as_deref(), Some("1"));
+        assert_eq!(value(&env, "VICTORY_PORT_CONSTANTS").as_deref(), Some("1"));
         assert_eq!(
             value(&env, "VKD3D_CONFIG").as_deref(),
             Some("descriptor_heap")
@@ -237,7 +227,7 @@ mod tests {
     fn overrides_win_over_the_profile() {
         let dir = game_folder();
         let overrides = parse_overrides("VICTORY_LATE_WAIT=0").expect("valid");
-        let env = build_env(dir.path(), &profile("windows-nvidia"), &overrides, None).expect("env");
+        let env = build_env(dir.path(), &profile("windows-nvidia"), &overrides).expect("env");
         assert_eq!(value(&env, "VICTORY_LATE_WAIT").as_deref(), Some("0"));
         assert_eq!(
             env.iter().filter(|(k, _)| k == "VICTORY_LATE_WAIT").count(),
@@ -249,38 +239,10 @@ mod tests {
     fn overridden_keys_lists_only_changed_profile_values() {
         let windows = profile("windows-nvidia");
         let overrides = parse_overrides(
-            "VICTORY_RELAY_OWN_QUEUE=0\nVICTORY_RELAY_OWN_QUEUE=1\nVICTORY_WINDOW_TAILS=1\nVKD3D_CONFIG=x",
+            "VICTORY_RELAY=0\nVICTORY_THIN=1\nVICTORY_FETCH_CHECK=1\nVKD3D_CONFIG=x",
         )
         .expect("valid");
-        assert_eq!(
-            overridden_keys(&windows, &overrides),
-            vec!["VICTORY_RELAY_OWN_QUEUE"]
-        );
-    }
-
-    #[test]
-    fn xg_library_adds_its_two_variables() {
-        let dir = game_folder();
-        let xg_dir = tempfile::tempdir().expect("tempdir");
-        let dll = xg_dir.path().join("xg_xs.dll");
-        std::fs::write(&dll, b"not a real library").expect("write");
-        let xg = Xg {
-            dll: dll.clone(),
-            mode: XgMode::Compare,
-        };
-        let env = build_env(dir.path(), &profile("other"), &[], Some(&xg)).expect("env");
-        assert_eq!(value(&env, "VICTORY_XG_MODE").as_deref(), Some("compare"));
-        assert!(value(&env, "VICTORY_XG_DLL").is_some_and(|p| p.ends_with("xg_xs.dll")));
-    }
-
-    #[test]
-    fn a_missing_xg_library_is_an_error() {
-        let dir = game_folder();
-        let xg = Xg {
-            dll: PathBuf::from("Z:/nope/xg_xs.dll"),
-            mode: XgMode::Real,
-        };
-        assert!(build_env(dir.path(), &profile("other"), &[], Some(&xg)).is_err());
+        assert_eq!(overridden_keys(&windows, &overrides), vec!["VICTORY_RELAY"]);
     }
 
     #[test]

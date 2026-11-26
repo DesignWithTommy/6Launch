@@ -1,95 +1,67 @@
 # Neonbridge launcher spec for vendor/anyxboxx: LooperSalty's AnyXboxX. Its game runtime is the VIctory
-# copy in third_party/victory (Neptune / VIctory Edit. 2026-11-25c base); build, run and environment are its
-# tools/lancer_victory.ps1 (README "~12 fps in the world", RTX 4070 SUPER, 4K, Series X).
+# copy in third_party/victory (combined base: avatarmanz/VIctory-7900XTX c9c932c + codec-d/cool_fox f4b48ad,
+# docs/running-gta6.md:11). The author's default is `anyxboxx run --game-dir <game>` (README.md:43), a Rust
+# wrapper (crates/anyxboxx/src/run) that builds victory, sets its TUNED env and spawns victory.exe. Replicated
+# here, not wrapped: the wrapper builds victory itself and can't take i95's warm placeholders.
 name = "anyxboxx"
 fork = "Neptune"
 rank = 8   # #8 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "AnyXboxX 50936c0 (GPL-3.0): ~12 fps in the world (median 12.5, peaks 30) on its author's RTX 4070 SUPER, no crash; not yet run here"
+about = "AnyXboxX 37d4686 (GPL-3.0): combined base, median 15.6 fps in the world on its author's RX 9070 XT (Linux), ~19 fps on avatarmanz's RX 7900 XTX; not measured on NVIDIA; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
-build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml", "--locked"]   # lancer_victory.ps1:102,114 (+--locked)
+build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml"]   # crates/anyxboxx/src/run/steps.rs:71-73
 watch = ["third_party/victory/apps", "third_party/victory/crates", "third_party/victory/Cargo.toml", "third_party/victory/Cargo.lock"]
-exe = "third_party/victory/target/release/victory.exe"   # lancer_victory.ps1:103
-# Its default build is release (lancer_victory.ps1 without -Diag). Its diagnostics build exports
-# D3D12SDKVersion 620 and needs the Agility SDK 1.620.2 in D3D12\ beside the exe (apps/victory/src/main.rs:193);
-# without it there is no D3D12 device (0x887E0003) and the game crashes at start. So no diag build here.
-diag_build = []
-run = ["run", "{game_exe}", "--execute"]   # lancer_victory.ps1:233 (Series X)
-# lancer_victory.ps1 -Precompile (:211-229): shaders.rpf, the game and its two DLLs
-prewarm = ["warm", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]
-game_env = "VICTORY_GAME_DIR"
+exe = "third_party/victory/target/release/victory.exe"   # steps.rs:41-44
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--manifest-path", "third_party/victory/Cargo.toml"]   # steps.rs:67-69 (--diag; exe target/diag/victory.exe)
+run = ["run", "{game_exe}", "--execute"]   # steps.rs:107-113 (console defaults to series-x, apps/victory/src/main.rs:155)
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]   # steps.rs:87-102 (--precompile); main.rs:110-114
+game_env = "VICTORY_GAME_DIR"   # settings.rs:84,116
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
 options = [
-  "VICTORY_AUTO_A=150: taps A through the start screens (lancer_victory.ps1 -AutoA)",
-  "VICTORY_FRAMETIME_DUMP=1: frametime.csv in the cache (-FrameTime)",
-  "VICTORY_D3D12_DRED=1: device-removed data, diagnostics build (-Dred)",
-  "VICTORY_CARD_WINDOWS_MB / VICTORY_CARD_BUFFERS_MB: lower these first on a smaller card (lancer_victory.ps1:53-55)",
+  "VICTORY_KEYS=4:Enter,8:Enter,...: scripted keys; anyxboxx --auto-a taps Enter (A) every 4 s for 150 s (settings.rs:87-103)",
+  "VICTORY_D3D12_DRED=1: device-removed data, diagnostics build (settings.rs:86, --dred)",
+  "VICTORY_PANEL=1: F3 panel, diagnostics build (docs/running-gta6.md:26)",
 ]
-preset_quality = ["VICTORY_CARD_WINDOWS_MB=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_LIST_POOL_MOST=256", "VICTORY_LIST_POOL_MB=256", "VICTORY_TEXTURE_STAGE_MB=192"]   # lancer_victory.ps1 -Quality: picture first, about half the fps
+preset_quality = ["VICTORY_CARD_WINDOWS_MB=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_STAGE_MB=192"]   # settings.rs:78-82 (--quality): picture first
+preset_linux_amd = ["VICTORY_FETCH_CHECK=1", "VICTORY_PIPELINE_WAIT_MS=0", "VICTORY_PORT_CONSTANTS=1", "VKD3D_CONFIG=descriptor_heap"]   # settings.rs:36-47 (--profile linux-amd, Proton only)
+preset_defaults = ["VICTORY_TEXTURE_NO_WAIT=", "VICTORY_RELAY=", "VICTORY_WIDE_BACK=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_JOIN_COPIES=", "VICTORY_INDIRECT_WINDOW=", "VICTORY_RELAY_COPY=", "VICTORY_CARD_STEPS=", "VICTORY_INDIRECT_BATCH=", "VICTORY_MAP_THREADS=", "VICTORY_TITLE_PRIORITIES=", "VICTORY_CARD_AWAKE=", "VICTORY_SHOW_AFTER=", "VICTORY_AMBIENT=", "VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD="]   # settings.rs:121 (--profile defaults / --no-tuned-settings): VIctory's own defaults
+preset_series_s = ["--console=series-s"]   # apps/victory/src/main.rs:155,179: Series S profile (less GPU memory)
+preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305); every var still read by this tree
 
-preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
-
-
-preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads
-
-[env]   # lancer_victory.ps1:121-163, Neptune's switch set as it sets it
+[env]   # settings.rs:14-32 TUNED (= third_party/victory/scripts/play.ps1 without -Safe), in its order
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
-VICTORY_DISCORD = "0"
-VICTORY_CARD_WINDOWS_MB = "1536"
-VICTORY_BAKE_TEXTURES_MS = "10000"
-VICTORY_EARLY_TEXTURES_MS = "40"
-VICTORY_WIDE_MERGE = "1"
-VICTORY_RELAY_OWN_QUEUE = "1"
-VICTORY_UNDER_WRITES_WORDS = "1"
-VICTORY_UNDER_WRITES_RUNS = "100000"
-VICTORY_UNDER_WRITES_MASKS = "1"
-VICTORY_RELAY = "2"
-VICTORY_WIDE_REFRESH = "1"
-VICTORY_ASK_ONCE = "1"
 VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
 VICTORY_CARD_REHASH_RUNS = "1"
 VICTORY_JOIN_COPIES = "1"
-VICTORY_D3D12_BACKGROUND = "0"
-VICTORY_LATE_WAIT_LISTS = "1024"
-VICTORY_WINDOW_TAILS = "1"
-VICTORY_TEXTURE_STAGE_MB = "512"
-VICTORY_CARD_BUFFERS_MIN_KB = "64"
-VICTORY_ASK_QUIET = "8"
-VICTORY_COPY_CHANGED = "1"
-VICTORY_QUIET_BACK = "1"
-VICTORY_LIST_POOL_MOST = "2048"
-VICTORY_LIST_POOL_MB = "512"
-VICTORY_WIDE_THREADS = "12"
-VICTORY_UNDER_WRITES_MASKS_LEAST = "1"
-VICTORY_INDIRECT_RAW = "2"
-VICTORY_TEXTURE_HASH_EVERY = "32"
-VICTORY_LEVELS_ON_DEMAND = "1"
-VICTORY_WINDOW_KB = "1024"
-VICTORY_CARD_BUFFERS_MB = "1536"
-VICTORY_CARD_WINDOW_UPLOAD = "1"
-VICTORY_DROP_DXIL = "1"
-VICTORY_DESC_DATA = "1"
-VICTORY_VRAM_IDLE_MS = "8000,2000,1000"
-VICTORY_PIPELINE_WAIT_MS = "2500"
-VICTORY_TEXTURE_ROOM_PERCENT = "93"
-VICTORY_HEAP_PASS_DIRTY = "1"
-VICTORY_COPY_COALESCE = "256"
-VICTORY_OCEAN_READBACK = "1"   # lancer_victory.ps1:143: boats float
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
 
-[controls]
+[controls]   # third_party/victory/crates/victory-hle/src/modules/gameinput.rs:64-80,133-138 (mouse and Shift/Ctrl gone)
 left_stick = "W A S D"
-right_stick = "I J K L / Mouse"
+right_stick = "I J K L"
 a = "Enter"
 b = "Backspace"
 x = "X"
 y = "Y"
 lb = "Q"
 rb = "E"
-lt = "Z / Right mouse"
-rt = "C / Left mouse"
-ls = "F / Shift"
-rs = "H / Ctrl"
+lt = "Z"
+rt = "C"
+ls = "F"
+rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"

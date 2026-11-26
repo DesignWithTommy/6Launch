@@ -1,4 +1,4 @@
-//! The launch card of the Play page: the profile, the XG library, the launch button, the advanced
+//! The launch card of the Play page: the profile, the launch button, the advanced
 //! panel and the folders the game uses.
 
 use eframe::egui::{self, vec2};
@@ -24,8 +24,6 @@ pub fn controls(app: &mut App, ui: &mut egui::Ui) {
             .color(theme::WARN),
         );
     }
-    ui.add_space(tokens::M);
-    ui_pages::xg_row(app, ui);
     ui.add_space(tokens::M);
     let ready = matches!(&app.verify, Verify::Done(report) if report.is_ok());
     if !ready {

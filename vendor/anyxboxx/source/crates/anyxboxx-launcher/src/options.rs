@@ -3,8 +3,9 @@
 //! names it may use: a test checks each of them against VIctory's own sources in this tree, so an
 //! option never names a variable nothing reads.
 //!
-//! Not offered, because the Neptune tree of VIctory has nothing behind them: the Series S console
-//! profile. Discord presence stays off (VICTORY_DISCORD=0, set by `anyxboxx run`).
+//! Not offered: the Series S console profile (`victory run --console series-s`, an argument, not a
+//! variable). Gone with the Neptune base, which had them: the F10 stats overlay (VIctory's panel,
+//! `VICTORY_PANEL=1`, is in diagnostics builds only), the frame-time CSV and the texture size cap.
 
 use serde::{Deserialize, Serialize};
 
@@ -14,60 +15,39 @@ pub const DISPLAY_MODE: &str = "VICTORY_DISPLAY_MODE";
 pub const WINDOW_MODE: &str = "VICTORY_WINDOW_MODE";
 pub const KEYBOARD: &str = "VICTORY_KEYBOARD";
 pub const LOG: &str = "VICTORY_LOG";
-/// `VICTORY_OVERLAY=0` turns the stats overlay off; F10 shows and hides it otherwise.
-pub const OVERLAY: &str = "VICTORY_OVERLAY";
-/// Taps A on the start screens for 150 seconds (the same value as `--auto-a`).
-pub const AUTO_A: &str = "VICTORY_AUTO_A";
-/// One row a second into the cache folder's frametime.csv.
-pub const FRAMETIME_DUMP: &str = "VICTORY_FRAMETIME_DUMP";
+/// Taps Enter (also the first pad's A) on the start screens for 150 seconds: the same script as
+/// `--auto-a` (`anyxboxx::run::auto_a_keys`).
+pub const KEYS: &str = "VICTORY_KEYS";
 /// Every variable an option may set (the preset's own are in `Preset::overrides`); the tests
 /// check them against VIctory's sources.
 #[cfg(test)]
-pub const ENV_NAMES: [&str; 7] = [
-    DISPLAY_MODE,
-    WINDOW_MODE,
-    KEYBOARD,
-    LOG,
-    OVERLAY,
-    AUTO_A,
-    FRAMETIME_DUMP,
-];
+pub const ENV_NAMES: [&str; 5] = [DISPLAY_MODE, WINDOW_MODE, KEYBOARD, LOG, KEYS];
 
 /// VIctory accepts a display size inside these bounds and falls back to 4K outside them.
 const WIDTH_RANGE: (u32, u32) = (640, 7680);
 const HEIGHT_RANGE: (u32, u32) = (360, 4320);
 
-/// The "8 GB card" preset: VIctory's own reserves on the card cut down so that the card stays
-/// under the budget Windows gives the game. With the Windows + NVIDIA profile (1536 MB of draw-data
-/// windows, 1536 MB of buffer copies, sized for 12 to 16 GB cards) an RTX 5060 8 GB stood at
-/// 8,010 MB in use against a 6,823 MB budget: Windows moved the rest into the PC's memory (6,096 MB
-/// of shared memory in use, 1,970 MB of RAM left free) and the texture queue was refused for good.
-/// The windows and buffer values are the ones measured on that card at a 5.8 fps median in the
-/// world (2026-11-26, Series X, 1080p display mode); the list pool is the Quality set's.
-/// `VICTORY_TEXTURE_MAX_SIZE=1024` keeps the levels of the title's textures over 1024 texels off the
-/// card (`victory-gpu` `tiles::max_size`; three quarters of a texture for each level cut), so the
-/// texture queue has room for every texture instead of being refused. It works through the
-/// profile's `VICTORY_LEVELS_ON_DEMAND=1`. The texture staging pool stays at the profile's 512 MB, so
-/// textures arrive as fast as with Fast.
+/// VIctory's own room left for textures when nothing says otherwise (`VICTORY_TEXTURE_ROOM_PERCENT`,
+/// `victory-gpu` `resource.rs`).
+#[cfg(test)]
+pub const DEFAULT_TEXTURE_ROOM_PERCENT: u32 = 90;
+
+/// The "8 GB card" preset: VIctory's buffer copies on the card capped at 512 MB (by default they
+/// scale with the card: 512 MB up to a 12 GB budget, 2048 MB on 16 GB cards) and textures given 85 %
+/// of the card's budget instead of 90 %, so that the card stays under the budget Windows gives the
+/// game. Draw-data windows stay in the PC's memory on this base by default
+/// (`VICTORY_CARD_WINDOWS_MB` unset). The Neptune base's texture size cap
+/// (`VICTORY_TEXTURE_MAX_SIZE`) is not in this base. Not measured on this base.
 pub const LOW_VRAM: &[(&str, &str)] = &[
-    ("VICTORY_CARD_WINDOWS_MB", "512"),
     ("VICTORY_CARD_BUFFERS_MB", "512"),
     ("VICTORY_TEXTURE_ROOM_PERCENT", "85"),
-    ("VICTORY_LIST_POOL_MOST", "256"),
-    ("VICTORY_LIST_POOL_MB", "256"),
-    ("VICTORY_TEXTURE_MAX_SIZE", "1024"),
 ];
 
-/// The "12 GB card" preset: Fast's speed with headroom. The profile's reserves (1536 MB of windows
-/// and of buffer copies) were sized on 12 to 16 GB cards and measured on a 16 GB one; here they
-/// are 1024 MB each, and the title's textures are capped at 2048 texels (`VICTORY_TEXTURE_MAX_SIZE`,
-/// one level cut on the 4096 ones only), so the texture queue keeps room on a 12 GB card. Not
-/// measured on a 12 GB card yet.
+/// The "12 GB card" preset: buffer copies on the card capped at 1024 MB, textures at VIctory's
+/// default room. Not measured on a 12 GB card yet.
 pub const MID_VRAM: &[(&str, &str)] = &[
-    ("VICTORY_CARD_WINDOWS_MB", "1024"),
     ("VICTORY_CARD_BUFFERS_MB", "1024"),
     ("VICTORY_TEXTURE_ROOM_PERCENT", "90"),
-    ("VICTORY_TEXTURE_MAX_SIZE", "2048"),
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -103,13 +83,13 @@ impl Preset {
         match self {
             Preset::Fast => "The profile as measured: the best speed known so far.",
             Preset::Quality => {
-                "Picture first: windows and buffers read fresh each frame. About half the frame rate (measured 7 to 9 fps against 14 to 17)."
+                "Picture first: windows and buffers read fresh each frame, fewer copies on the card. Slower; not measured on this VIctory base yet."
             }
             Preset::LowVram => {
-                "For 8 GB cards: textures capped at 1024 pixels and smaller reserves on the card, so every texture fits and the card stays within its budget instead of spilling into the PC's memory. Pair it with the 1920x1080 display size."
+                "For 8 GB cards: smaller buffer reserves on the card and less room for textures, so the card stays within its budget instead of spilling into the PC's memory. Pair it with the 1920x1080 display size. Not measured on this VIctory base yet."
             }
             Preset::MidVram => {
-                "For 12 GB cards: Fast with headroom. Textures capped at 2048 pixels (only the largest lose a level) and 1024 MB reserves on the card, so every texture fits. Not measured on a 12 GB card yet."
+                "For 12 GB cards: buffer reserves on the card capped at 1024 MB. Not measured on a 12 GB card yet."
             }
         }
     }
@@ -291,12 +271,8 @@ pub struct LaunchOptions {
     pub log: LogLevel,
     /// Translate the shaders into the cache before starting the game.
     pub warm_first: bool,
-    /// The stats overlay (F10 shows and hides it). Off sets VICTORY_OVERLAY=0.
-    pub overlay: bool,
-    /// Taps A through the start screens for 150 seconds.
+    /// Taps Enter (and A) through the start screens for 150 seconds.
     pub auto_a: bool,
-    /// Writes a frame-time CSV into the cache folder.
-    pub frametime_dump: bool,
     /// NVIDIA Smooth Motion (driver frame generation) for victory.exe: written into the driver's
     /// profile before each launch (`smooth_motion`), not into VIctory's environment.
     pub smooth_motion: bool,
@@ -313,9 +289,7 @@ impl Default for LaunchOptions {
             keyboard: Keyboard::Auto,
             log: LogLevel::Default,
             warm_first: false,
-            overlay: true,
             auto_a: false,
-            frametime_dump: false,
             smooth_motion: false,
         }
     }
@@ -366,14 +340,8 @@ impl LaunchOptions {
         if let Some(value) = log {
             pairs.push((LOG.to_string(), value.to_string()));
         }
-        if !self.overlay {
-            pairs.push((OVERLAY.to_string(), "0".to_string()));
-        }
         if self.auto_a {
-            pairs.push((AUTO_A.to_string(), "150".to_string()));
-        }
-        if self.frametime_dump {
-            pairs.push((FRAMETIME_DUMP.to_string(), "1".to_string()));
+            pairs.push((KEYS.to_string(), anyxboxx::run::auto_a_keys()));
         }
         pairs
     }
@@ -415,25 +383,17 @@ mod tests {
     }
 
     #[test]
-    fn overlay_auto_a_and_frametime_are_switches_of_their_own() {
+    fn auto_a_is_the_cli_s_key_script() {
         let options = LaunchOptions {
-            overlay: false,
             auto_a: true,
-            frametime_dump: true,
             ..LaunchOptions::default()
         };
         let pairs = options.env_pairs();
-        let get = |name: &str| {
-            pairs
-                .iter()
-                .find(|(k, _)| k == name)
-                .map(|(_, v)| v.as_str())
-        };
-        assert_eq!(get(OVERLAY), Some("0"));
-        assert_eq!(get(AUTO_A), Some("150"));
-        assert_eq!(get(FRAMETIME_DUMP), Some("1"));
-        // The defaults keep the overlay on and set nothing else.
-        assert!(LaunchOptions::default().overlay);
+        assert_eq!(
+            pairs,
+            vec![(KEYS.to_string(), anyxboxx::run::auto_a_keys())]
+        );
+        assert!(!LaunchOptions::default().auto_a);
     }
 
     #[test]
@@ -444,45 +404,11 @@ mod tests {
             .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
             .collect();
         assert_eq!(quality, expected);
-        assert_eq!(quality.len(), 5);
+        assert_eq!(quality.len(), 3);
     }
 
     #[test]
-    fn the_8_gb_preset_cuts_the_card_reserves_below_the_profiles() {
-        let pairs = Preset::LowVram.overrides();
-        let get = |name: &str| {
-            pairs
-                .iter()
-                .find(|(k, _)| k == name)
-                .map(|(_, v)| v.parse::<u32>().expect("a number"))
-        };
-        let profile = |name: &str| {
-            anyxboxx::run::TUNED
-                .iter()
-                .find(|(k, _)| *k == name)
-                .map(|(_, v)| v.parse::<u32>().expect("a number"))
-                .expect("in the tuned set")
-        };
-        for name in [
-            "VICTORY_CARD_WINDOWS_MB",
-            "VICTORY_CARD_BUFFERS_MB",
-            "VICTORY_TEXTURE_ROOM_PERCENT",
-            "VICTORY_LIST_POOL_MB",
-        ] {
-            let low = get(name).expect("set by the preset");
-            assert!(
-                low < profile(name),
-                "{name}: {low} is not below the profile"
-            );
-        }
-        // The size cap, and the switch it needs in the profile.
-        assert_eq!(get("VICTORY_TEXTURE_MAX_SIZE"), Some(1024));
-        assert_eq!(profile("VICTORY_LEVELS_ON_DEMAND"), 1);
-        assert!(Preset::ALL.contains(&Preset::LowVram));
-    }
-
-    #[test]
-    fn the_12_gb_preset_sits_between_fast_and_the_8_gb_one() {
+    fn the_card_presets_shrink_what_the_card_holds_8_gb_below_12_gb() {
         let value = |preset: Preset, name: &str| {
             preset
                 .overrides()
@@ -491,27 +417,33 @@ mod tests {
                 .map(|(_, v)| v.parse::<u32>().expect("a number"))
                 .expect("set by the preset")
         };
-        let fast = |name: &str| {
-            anyxboxx::run::TUNED
-                .iter()
-                .find(|(k, _)| *k == name)
-                .map(|(_, v)| v.parse::<u32>().expect("a number"))
-                .expect("in the tuned set")
-        };
-        for name in [
-            "VICTORY_CARD_WINDOWS_MB",
-            "VICTORY_CARD_BUFFERS_MB",
-            "VICTORY_TEXTURE_ROOM_PERCENT",
-        ] {
-            let mid = value(Preset::MidVram, name);
-            assert!(mid < fast(name), "{name}: {mid} is not below Fast");
+        assert!(
+            value(Preset::LowVram, "VICTORY_CARD_BUFFERS_MB")
+                < value(Preset::MidVram, "VICTORY_CARD_BUFFERS_MB")
+        );
+        assert!(
+            value(Preset::LowVram, "VICTORY_TEXTURE_ROOM_PERCENT") < DEFAULT_TEXTURE_ROOM_PERCENT
+        );
+        assert!(
+            value(Preset::MidVram, "VICTORY_TEXTURE_ROOM_PERCENT") <= DEFAULT_TEXTURE_ROOM_PERCENT
+        );
+        // Neither preset reserves draw-data windows on the card: this base keeps none by default.
+        for preset in [Preset::LowVram, Preset::MidVram] {
             assert!(
-                mid > value(Preset::LowVram, name),
-                "{name}: {mid} is not above 8 GB"
+                preset
+                    .overrides()
+                    .iter()
+                    .all(|(k, _)| k != "VICTORY_CARD_WINDOWS_MB")
             );
         }
-        assert_eq!(value(Preset::MidVram, "VICTORY_TEXTURE_MAX_SIZE"), 2048);
-        assert!(Preset::ALL.contains(&Preset::MidVram));
+        // The profiles leave both reserves to VIctory.
+        assert!(
+            anyxboxx::run::TUNED
+                .iter()
+                .all(|(k, _)| !k.starts_with("VICTORY_CARD_BUFFERS_MB")
+                    && *k != "VICTORY_TEXTURE_ROOM_PERCENT")
+        );
+        assert!(Preset::ALL.contains(&Preset::LowVram) && Preset::ALL.contains(&Preset::MidVram));
     }
 
     #[test]

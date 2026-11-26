@@ -27,7 +27,7 @@ struct Fields {
 }
 
 impl Fields {
-    fn host(&self) -> D3D12_SAMPLER_DESC {
+    fn host(&self, aniso_point_mip: bool) -> D3D12_SAMPLER_DESC {
         let linear = |f: u32| u32::from(f == 1 || f == 3);
         let aniso = self.mag >= 2 || self.min >= 2;
         // The console compares when the instruction says so, with the
@@ -43,39 +43,89 @@ impl Fields {
             _ => u32::from(compares),
         };
         let filter = if aniso {
-            0x55
+            // Bit 0 selects linear mips, which are also the fallback on
+            // devices without the optional anisotropic point-mip filter.
+            D3D12_FILTER_MIN_MAG_ANISOTROPIC_MIP_POINT.0 as u32
+                | u32::from(self.mip == 2 || !aniso_point_mip)
         } else {
             linear(self.min) << 4 | linear(self.mag) << 2 | u32::from(self.mip == 2)
         };
+        let min_lod = finite_lod(self.min_lod, 0.0);
+        // Without a mip filter the console clamps sampling to `min_lod`.
+        let max_lod = if self.mip == 0 {
+            min_lod
+        } else {
+            finite_lod(self.max_lod, min_lod).max(min_lod)
+        };
         D3D12_SAMPLER_DESC {
             Filter: D3D12_FILTER((reduction << 7 | filter) as i32),
-            AddressU: D3D12_TEXTURE_ADDRESS_MODE(self.address[0] as i32),
-            AddressV: D3D12_TEXTURE_ADDRESS_MODE(self.address[1] as i32),
-            AddressW: D3D12_TEXTURE_ADDRESS_MODE(self.address[2] as i32),
-            MipLODBias: self.bias,
+            AddressU: address_mode(self.address[0]),
+            AddressV: address_mode(self.address[1]),
+            AddressW: address_mode(self.address[2]),
+            MipLODBias: if self.bias.is_nan() {
+                0.0
+            } else {
+                self.bias
+                    .clamp(D3D12_MIP_LOD_BIAS_MIN, D3D12_MIP_LOD_BIAS_MAX)
+            },
             MaxAnisotropy: if aniso {
                 self.anisotropy.clamp(1, 16)
             } else {
                 1
             },
-            ComparisonFunc: D3D12_COMPARISON_FUNC(self.compare.max(1) as i32),
-            BorderColor: self.border,
-            MinLOD: self.min_lod,
-            // Without a mip filter the console samples mip 0 only.
-            MaxLOD: if self.mip == 0 {
-                self.min_lod
+            ComparisonFunc: if reduction == 1 {
+                D3D12_COMPARISON_FUNC(self.compare as i32)
             } else {
-                self.max_lod
+                D3D12_COMPARISON_FUNC_NEVER
             },
+            BorderColor: self.border,
+            MinLOD: min_lod,
+            MaxLOD: max_lod,
         }
     }
+}
+
+/// Maps a console address mode (`1..=5`) to host D3D12, falling back to `CLAMP`.
+fn address_mode(mode: u32) -> D3D12_TEXTURE_ADDRESS_MODE {
+    match mode {
+        1..=5 => D3D12_TEXTURE_ADDRESS_MODE(mode as i32),
+        _ => D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+    }
+}
+
+/// Sanitizes an LOD bound for D3D12, substituting `fallback` for `NaN` and clamping infinities.
+fn finite_lod(value: f32, fallback: f32) -> f32 {
+    if value.is_nan() {
+        fallback
+    } else {
+        value.clamp(-D3D12_FLOAT32_MAX, D3D12_FLOAT32_MAX)
+    }
+}
+
+/// Query the optional filter once for the runtime's single D3D12 device.
+pub(crate) fn aniso_point_mip(device: &ID3D12Device) -> bool {
+    static SUPPORTED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *SUPPORTED.get_or_init(|| {
+        let mut options = D3D12_FEATURE_DATA_D3D12_OPTIONS19::default();
+        // SAFETY: storage of the correct size for OPTIONS19. Older
+        // runtimes may reject the query and use the linear fallback.
+        unsafe {
+            device.CheckFeatureSupport(
+                D3D12_FEATURE_D3D12_OPTIONS19,
+                (&raw mut options).cast(),
+                size_of_val(&options) as u32,
+            )
+        }
+        .is_ok()
+            && options.AnisoFilterWithPointMipSupported.as_bool()
+    })
 }
 
 /// The console's sampler description (27 words): flags, magnification,
 /// minification, mip and depth filters, filter mode, three address modes,
 /// minimum and maximum LOD, LOD bias, secondary bias, anisotropy, its bias
 /// and threshold, comparison, border color, then tuning words.
-pub(crate) fn console(words: &[u32; 27]) -> D3D12_SAMPLER_DESC {
+pub(crate) fn console(words: &[u32; 27], aniso_point_mip: bool) -> D3D12_SAMPLER_DESC {
     let f = |i: usize| f32::from_bits(words[i]);
     Fields {
         mag: words[1],
@@ -90,7 +140,7 @@ pub(crate) fn console(words: &[u32; 27]) -> D3D12_SAMPLER_DESC {
         compare: words[16],
         border: [f(17), f(18), f(19), f(20)],
     }
-    .host()
+    .host(aniso_point_mip)
 }
 
 #[cfg(test)]
@@ -105,15 +155,127 @@ mod tests {
         w[3] = 2; // linear mips
         w[6..9].copy_from_slice(&[3, 3, 3]);
         w[10] = 1000.0f32.to_bits();
-        let d = console(&w);
+        let d = console(&w, false);
         assert_eq!(d.Filter.0, 0x5, "min point, mag and mip linear");
         assert_eq!(d.AddressW, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
         assert_eq!(d.MaxLOD, 1000.0);
         // A less-or-equal test makes a comparison sampler; never does not.
         w[16] = 4;
-        assert_eq!(console(&w).Filter.0, 0x85);
-        assert_eq!(console(&w).ComparisonFunc, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+        assert_eq!(console(&w, false).Filter.0, 0x85);
+        assert_eq!(console(&w, false).ComparisonFunc, D3D12_COMPARISON_FUNC_LESS_EQUAL);
         w[16] = 1;
-        assert_eq!(console(&w).Filter.0, 0x5);
+        assert_eq!(console(&w, false).Filter.0, 0x5);
+    }
+
+    #[test]
+    fn mip_none_clamps_to_min_lod_and_inverted_lod_range_clamps() {
+        let mut w = [0u32; 27];
+        w[3] = 0; // mip none
+        w[9] = 3.0f32.to_bits();
+        w[10] = 8.0f32.to_bits();
+        let d = console(&w, false);
+        assert_eq!((d.MinLOD, d.MaxLOD), (3.0, 3.0));
+
+        w[9] = f32::NAN.to_bits();
+        w[10] = 8.0f32.to_bits();
+        let d = console(&w, false);
+        assert_eq!((d.MinLOD, d.MaxLOD), (0.0, 0.0));
+
+        w[9] = f32::INFINITY.to_bits();
+        w[10] = 8.0f32.to_bits();
+        let d = console(&w, false);
+        assert_eq!((d.MinLOD, d.MaxLOD), (D3D12_FLOAT32_MAX, D3D12_FLOAT32_MAX));
+
+        w[3] = 2; // linear mips
+        w[9] = 4.0f32.to_bits();
+        w[10] = 1.0f32.to_bits();
+        let d = console(&w, false);
+        assert_eq!((d.MinLOD, d.MaxLOD), (4.0, 4.0));
+
+        w[9] = f32::NAN.to_bits();
+        w[10] = f32::INFINITY.to_bits();
+        let d = console(&w, false);
+        assert_eq!((d.MinLOD, d.MaxLOD), (0.0, D3D12_FLOAT32_MAX));
+
+        w[9] = 2.5f32.to_bits();
+        w[10] = f32::NAN.to_bits();
+        let d = console(&w, false);
+        assert_eq!((d.MinLOD, d.MaxLOD), (2.5, 2.5));
+
+        w[9] = f32::NEG_INFINITY.to_bits();
+        w[10] = f32::NEG_INFINITY.to_bits();
+        let d = console(&w, false);
+        assert_eq!(
+            (d.MinLOD, d.MaxLOD),
+            (-D3D12_FLOAT32_MAX, -D3D12_FLOAT32_MAX)
+        );
+    }
+
+    #[test]
+    fn bias_address_and_comparison_stay_in_host_bounds() {
+        let mut w = [0u32; 27];
+        w[6..9].copy_from_slice(&[0, 6, 3]);
+        w[11] = 24.0f32.to_bits();
+        w[16] = 99;
+        let d = console(&w, false);
+        assert_eq!(d.MipLODBias, D3D12_MIP_LOD_BIAS_MAX);
+        assert_eq!(
+            [d.AddressU, d.AddressV, d.AddressW],
+            [D3D12_TEXTURE_ADDRESS_MODE_CLAMP; 3]
+        );
+        assert_eq!(d.ComparisonFunc, D3D12_COMPARISON_FUNC_NEVER);
+
+        w[11] = (-24.0f32).to_bits();
+        w[5] = 1; // minimum reduction
+        w[16] = 4; // less-or-equal, ignored when reduction != 1
+        let d = console(&w, false);
+        assert_eq!(d.MipLODBias, D3D12_MIP_LOD_BIAS_MIN);
+        assert_eq!(d.ComparisonFunc, D3D12_COMPARISON_FUNC_NEVER);
+
+        w[11] = f32::NAN.to_bits();
+        w[5] = 0; // plain mode, reduction == 1 from compare == 4
+        w[6..9].copy_from_slice(&[1, 4, 5]);
+        w[16] = 4;
+        let d = console(&w, false);
+        assert_eq!(d.MipLODBias, 0.0);
+        assert_eq!(
+            [d.AddressU, d.AddressV, d.AddressW],
+            [
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+                D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+                D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE,
+            ]
+        );
+        assert_eq!(d.ComparisonFunc, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+    }
+
+    /// Anisotropic samplers with point or no mips use the device's
+    /// anisotropic point-mip filter when it has one (PR #326).
+    #[test]
+    fn anisotropic_mip_filter_respects_device_support() {
+        let mut w = [0u32; 27];
+        w[1] = 3;
+        w[2] = 3;
+        w[9] = 1.5f32.to_bits();
+        w[10] = 3.0f32.to_bits();
+        w[13] = 4;
+        for (mode, compare, point, linear) in [
+            (0, 0, 0x54, 0x55),
+            (0, 4, 0xd4, 0xd5),
+            (1, 0, 0x154, 0x155),
+            (2, 0, 0x1d4, 0x1d5),
+        ] {
+            w[5] = mode;
+            w[16] = compare;
+            for mip in 0..=2 {
+                w[3] = mip;
+                assert_eq!(console(&w, false).Filter.0, linear);
+                let supported = console(&w, true);
+                assert_eq!(supported.Filter.0, if mip == 2 { linear } else { point });
+                if mip == 0 {
+                    assert_eq!((supported.MinLOD, supported.MaxLOD), (1.5, 1.5));
+                }
+            }
+        }
     }
 }

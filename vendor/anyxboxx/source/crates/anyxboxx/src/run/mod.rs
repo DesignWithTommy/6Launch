@@ -1,7 +1,6 @@
 //! `anyxboxx run`: builds VIctory (cargo does nothing when it is current) and launches it on the
-//! user's own game folder. Rust replacement of main's `tools/lancer_victory.ps1`: same checks,
-//! same build, same environment (`tests/fixtures/lancer_victory_neptune.ps1` is the golden copy),
-//! same warm and precompile steps, same exit code.
+//! user's own game folder. It replaced main's `tools/lancer_victory.ps1` (same checks, build, warm
+//! and precompile steps, exit code); its tuned set is VIctory's own `scripts/play.ps1`.
 
 mod settings;
 mod steps;
@@ -11,37 +10,21 @@ use std::process::Command;
 
 use clap::{Args, ValueEnum};
 
-pub use settings::{ALWAYS, LINUX_AMD, QUALITY, TUNED};
+pub use settings::{LINUX_AMD, LINUX_AMD_EXTRA, QUALITY, TUNED, auto_a_keys};
 pub use steps::{
     Env, GAME_EXE, PRECOMPILED_DLLS, SHADERS, Victory, environment, game_exe, status, warm_archives,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
 pub enum Profile {
-    /// Windows + NVIDIA measured tuned set (`TUNED`).
+    /// Windows: VIctory's play.ps1 set (`TUNED`; measured on an RX 7900 XTX, not on NVIDIA).
     #[default]
     WindowsNvidia,
-    /// Linux (Proton) + AMD measured set (`LINUX_AMD`, including `VKD3D_CONFIG=descriptor_heap`).
+    /// Linux (Proton) + AMD measured set (`LINUX_AMD`: `TUNED` plus the Linux additions, including
+    /// `VKD3D_CONFIG=descriptor_heap`).
     LinuxAmd,
     /// VIctory's own defaults (no profile variables).
     Defaults,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum XgMode {
-    /// Serve the title from xg_xs.dll.
-    Real,
-    /// Keep VIctory's layouts and log every difference with the library.
-    Compare,
-}
-
-impl XgMode {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            XgMode::Real => "real",
-            XgMode::Compare => "compare",
-        }
-    }
 }
 
 /// A `KEY=VALUE` pair of `--override`; the key must be a VICTORY_* name.
@@ -64,42 +47,33 @@ pub struct RunArgs {
     /// Passed unchanged to VICTORY_SKIP_PIPELINES.
     #[arg(long, alias = "SkipPipelines")]
     pub skip_pipelines: Option<String>,
-    /// Do not set the tuned variables (VICTORY_GAME_DIR, VICTORY_DISCORD and VICTORY_OCEAN_READBACK stay set).
+    /// Do not set the tuned variables (VICTORY_GAME_DIR stays set).
     #[arg(long, alias = "NoTunedSettings")]
     pub no_tuned_settings: bool,
     /// Launch profile whose variables are applied unless `--no-tuned-settings` is set.
     #[arg(long, alias = "Profile", value_enum, default_value_t = Profile::WindowsNvidia)]
     pub profile: Profile,
-    /// Picture first: windows and buffers read fresh each frame (about half the frame rate).
+    /// Picture first: windows and buffers read fresh each frame (not measured on this VIctory base).
     #[arg(long, alias = "Quality")]
     pub quality: bool,
     /// KEY=VALUE VICTORY_* variables set after the tuned set and --quality, for A/B runs. Repeatable.
     #[arg(long = "override", alias = "Override", value_parser = parse_override)]
     pub overrides: Vec<(String, String)>,
-    /// Taps A through the start screens for 150 s (VICTORY_AUTO_A=150).
+    /// Taps Enter (also the first pad's A) every 4 s through the start screens for 150 s (VICTORY_KEYS).
     #[arg(long, alias = "AutoA")]
     pub auto_a: bool,
-    /// Writes frametime.csv into the cache folder, one row a second (VICTORY_FRAMETIME_DUMP=1).
-    #[arg(long, alias = "FrametimeDump")]
-    pub frametime_dump: bool,
     /// Build and run the diag profile with the diagnostics feature instead of the release build.
     #[arg(long, alias = "Diag")]
     pub diag: bool,
     /// Turn on device-removed data (VICTORY_D3D12_DRED); needs the diagnostics build, so implies --diag.
     #[arg(long, alias = "Dred")]
     pub dred: bool,
-    /// Run `victory warm` on the game folder's own .rpf archives before the game (about 7 min the first time).
+    /// Run `victory shaders` on the game folder's own .rpf archives before the game (minutes, once per translator version).
     #[arg(long, alias = "Warm")]
     pub warm: bool,
     /// Warm shaders.rpf, the game executable and its two DLLs before the game.
     #[arg(long, alias = "Precompile")]
     pub precompile: bool,
-    /// Your own copy of the GDK's offline PC xg_xs.dll (never in this repository).
-    #[arg(long, alias = "XgDll")]
-    pub xg_dll: Option<PathBuf>,
-    /// With --xg-dll: `real` serves the title from the library, `compare` logs differences.
-    #[arg(long, alias = "XgMode", value_enum, default_value = "real")]
-    pub xg_mode: XgMode,
     /// Set VICTORY_CARD_REHASH_RUNS=1 (hash adjacent GPU memory ranges in batches).
     #[arg(long, alias = "BatchCardRehash")]
     pub batch_card_rehash: bool,
@@ -133,13 +107,11 @@ pub enum RunError {
     NoGame(String),
     #[error("cargo build failed (exit code {0}).")]
     BuildFailed(i32),
-    #[error("xg_xs.dll not found: {0:?}.")]
-    NoXgDll(String),
     #[error("--precompile needs {0:?}.")]
     PrecompileInput(String),
     #[error("--warm found no .rpf archive in {0:?}.")]
     NoArchive(String),
-    #[error("victory warm failed (exit code {0}).")]
+    #[error("victory shaders failed (exit code {0}).")]
     WarmFailed(i32),
     #[error("cannot start {0}: {1}")]
     Spawn(String, std::io::Error),

@@ -204,20 +204,12 @@ impl App {
         self.open_dialog(Pick::GameFolder);
     }
 
-    /// Opens the file dialog for the xg_xs.dll.
-    pub fn pick_xg_library(&mut self) {
-        self.open_dialog(Pick::XgLibrary);
-    }
-
     fn open_dialog(&mut self, kind: Pick) {
         if self.pick_rx.is_some() {
             return;
         }
         let start = match kind {
             Pick::GameFolder => self.settings.game_path(),
-            Pick::XgLibrary => PathBuf::from(self.settings.xg_dll.trim())
-                .parent()
-                .map(PathBuf::from),
         };
         self.pick_rx = Some(picker::open(kind, start));
     }
@@ -249,7 +241,6 @@ impl App {
         };
         match kind {
             Pick::GameFolder => self.set_game_folder(&path),
-            Pick::XgLibrary => self.settings.xg_dll = path.display().to_string(),
         }
     }
 

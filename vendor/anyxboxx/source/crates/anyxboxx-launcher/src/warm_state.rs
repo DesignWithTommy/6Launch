@@ -1,6 +1,6 @@
 //! Is the shader cache ready for this VIctory build and this environment ("smart warm")?
 //!
-//! After a successful `victory warm` the launcher writes a marker holding a fingerprint: the
+//! After a successful `victory shaders` the launcher writes a marker holding a fingerprint: the
 //! build of victory.exe, the VICTORY_* variables (the cache key depends on them) and the game's
 //! archives. The next launch compares the fingerprint of the moment with the marker: a missing,
 //! unreadable or different marker means the warm runs again before the game starts.

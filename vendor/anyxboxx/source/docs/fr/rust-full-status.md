@@ -2,7 +2,9 @@
 
 Version anglaise : [../rust-full-status.md](../rust-full-status.md). Plan : [architecture-rust.md](architecture-rust.md).
 
-## Base : main (VIctory Neptune)
+## Base : main (VIctory Neptune), puis la base combinée
+
+Depuis le 26 novembre, `third_party/victory` est la base combinée (avatarmanz/VIctory-7900XTX + codec-d/cool_fox + nos correctifs, voir [lancer-gta6.md](lancer-gta6.md)) ; le jeu de réglages d'`anyxboxx run` est celui de `scripts/play.ps1` de VIctory (17 variables), `--auto-a` pose `VICTORY_KEYS`, et `--xg-dll`/`--xg-mode`/`--frametime-dump` sont partis avec le code Neptune qui les servait. Le paragraphe ci-dessous décrit l'état Neptune.
 
 Cette branche contient désormais `origin/main` (fusion de la PR #277 et de tout ce qui la précède) : `third_party/victory` est l'arbre Neptune de main, avec deux de nos correctifs réappliqués par-dessus (VICTORY_KEYBOARD et VICTORY_WINDOW_MODE=borderless, commit b27dbae4), puis les changements de rust/full sur xmem (EraFields) et xasync. `anyxboxx run` donne à VIctory le jeu de réglages du lanceur de main : build release, jeu Neptune (46 variables : 39 mesurées le 25 novembre 2026, plus les trois options de la PR #358, les trois de la PR #383 et `VICTORY_HEAP_SCAN_ALT`, mesurées le 26 novembre), `-Quality` (`--quality`), `--override`, `--auto-a`, `--frametime-dump`, `--warm`, `--precompile`, `--diag`/`--dred`. La copie de référence du script de main est `tests/fixtures/lancer_victory_neptune.ps1` ; `tests/test_anyxboxx_run.py` et `tests/test_lanceur_victory.py` comparent les réglages Rust à elle. Le lanceur graphique démarre le jeu détaché (journal sous `%LOCALAPPDATA%\AnyXboxX\logs`), se ferme dès que le jeu tourne sauf si « Garder le lanceur ouvert » est coché, et réchauffe le cache des shaders automatiquement quand le marqueur de ce build et de cet environnement manque ou est périmé (`warm-state.txt`).
 
@@ -17,14 +19,14 @@ git submodule update --init
 cargo build --release --workspace
 
 # Ligne de commande (a remplacé tools\lancer_victory.ps1 : mêmes options, même environnement) :
-.\target\release\anyxboxx.exe run --game-dir "C:\Users\ANAKIN\Downloads\GTA6.Xbox.v1.0.2.1-CYBERLEEK" --xg-dll "C:\Users\ANAKIN\Downloads\GTA6.Xbox.v1.0.2.1-CYBERLEEK\dll\xg_xs.dll" --precompile
+.\target\release\anyxboxx.exe run --game-dir "C:\Users\ANAKIN\Downloads\GTA6.Xbox.v1.0.2.1-CYBERLEEK" --precompile
 
 # Lanceur graphique (double-clic sur target\release\anyxboxx-launcher.exe, ou) :
 .\target\release\anyxboxx-launcher.exe
 ```
 
 - `anyxboxx run` compile d'abord VIctory (`cargo build --profile diag -p victory --features diagnostics`), comme le script : le premier lancement prend plusieurs minutes. `--precompile` remplit le cache de shaders avant le jeu (environ 4,5 minutes la première fois, mesuré le 25/11/2026). Le premier lancement à froid peut planter pendant la compilation des pipelines ; relancer une fois le cache rempli.
-- Les noms d'options PowerShell sont acceptés aussi (`--GameDir`, `--XgDll`, `--XgMode`, `--Precompile`, `--Dred`, `--NoTunedSettings`, `--SkipPipelines`, `--BatchCardRehash`). `anyxboxx run --help` les liste.
+- Les noms d'options PowerShell sont acceptés aussi (`--GameDir`, `--Precompile`, `--Dred`, `--NoTunedSettings`, `--SkipPipelines`, `--BatchCardRehash`). `anyxboxx run --help` les liste.
 - Un seul jeu à la fois : fermer d'abord un jeu déjà lancé. Le lanceur graphique le vérifie lui-même.
 
 ### Linux (Proton)
@@ -46,7 +48,7 @@ VKD3D_CONFIG=descriptor_heap "$PROTON/files/bin/wine" target/x86_64-pc-windows-m
     --game-dir 'Z:\…\votre dossier du jeu'
 ```
 
-- `anyxboxx run` applique le jeu de réglages Windows (`TUNED`), pas le profil `linux-amd`, que seul le lanceur graphique lit. Wine transmet l'environnement Linux : exporter `VKD3D_CONFIG=descriptor_heap` (le tas de vues du titre dépasse le plafond par défaut de vkd3d-proton) et, pour les valeurs de `linux-amd`, ajouter `--no-tuned-settings` et les exporter soi-même.
+- Sous Proton, ajouter `--profile linux-amd` (le jeu `TUNED` plus `FETCH_CHECK=1`, `PIPELINE_WAIT_MS=0`, `PORT_CONSTANTS=1`, `VKD3D_CONFIG=descriptor_heap`) ; `tools/linux/play.sh` le fait, avec le RADV corrigé et la cale `anonless` posés côté Linux.
 - Le lanceur graphique accepte aussi `--victory-exe <chemin>` (ou `--victory-exe=<chemin>`) pour lancer un `victory.exe` précompilé depuis ses pages Jouer et Shaders sans compilation cargo ni dépôt local.
 
 ### Lanceur graphique (`crates/anyxboxx-launcher`)
@@ -62,17 +64,13 @@ Style : un dégradé de crépuscule et des cartes translucides (`theme.rs`, calc
 | Installation | Vérifie la chaîne Rust, `d3d12.dll`, le runtime VC++ (présent, version non vérifiée), `dxc` du SDK Windows et le GPU via DXGI. Liens vers les pages officielles seulement ; rien n'est téléchargé. | La version du pilote affiche « inconnue » : le dépôt ne fixe encore aucun minimum. |
 | Fichiers | Dossier du jeu (chemin saisi) : présence, fichiers vides, bornes des sections PE (exe ou DLL tronqué), bornes de la table d'en-tête RPF7, et un manifeste SHA-256 des fichiers requis et des `.rpf` de premier niveau, calculé en local. Rien n'est copié ni envoyé. | Il n'y a pas de hachés de référence : le manifeste est un relevé, pas une preuve. Une archive coupée après des tables intactes n'est pas détectée. La disposition RPF7 n'a pas été vérifiée sur un vrai fichier. |
 | Shaders | `victory translate --cache --pipelines --used-pipelines … --jobs N` sur `shaders.rpf`, l'exe et ses deux DLL seulement, avec l'environnement du jeu (la clé du cache en dépend). La progression est lue dans les lignes « N of M containers (x%) » de VIctory. Refusé pendant que `victory.exe` ou le jeu tourne. | |
-| Jouer | Profil choisi selon le système et le GPU (`profiles.toml`), surcharges dans le panneau avancé, `xg_xs.dll` facultative (real ou compare), compilation puis lancement par les mêmes étapes qu'`anyxboxx run`, emplacement des sauvegardes, nettoyage du cache de shaders (demande confirmation ; seul un dossier nommé `cache` peut être supprimé). | VIctory n'écrit les i/s que dans le titre de sa fenêtre : pas de ligne d'i/s à afficher. Le chemin des sauvegardes affiché est le dossier de données de VIctory, pas le sous-dossier du titre. |
+| Jouer | Profil choisi selon le système et le GPU (`profiles.toml`), surcharges dans le panneau avancé, compilation puis lancement par les mêmes étapes qu'`anyxboxx run`, emplacement des sauvegardes, nettoyage du cache de shaders (demande confirmation ; seul un dossier nommé `cache` peut être supprimé). | VIctory n'écrit les i/s que dans le titre de sa fenêtre : pas de ligne d'i/s à afficher. Le chemin des sauvegardes affiché est le dossier de données de VIctory, pas le sous-dossier du titre. |
 
 Profils (`crates/anyxboxx-launcher/profiles.toml`, un test chacun) :
 
-- **Windows + NVIDIA :** ton jeu de réglages (les six valeurs `TUNED` d'`anyxboxx run`, sans DRED, sans relais). Mesuré : 2-3 i/s sur `main` après la PR #199, 5-7 i/s sur le fork à `80d58f8`. Mettre les interrupteurs de la PR #199 à `0` n'a pas changé le chiffre de `main` : le profil les laisse aux valeurs par défaut de VIctory.
-- **Linux (Proton) + AMD :** les valeurs de l'essai de la PR #199 (RX 9070 XT, RADV, GE-Proton11-12) :
-  - `SHADER_LOOP_LIMIT=256`, `LATE_WAIT=0`, `WIDE_BACK=0`, `PIPELINE_WAIT_MS=50`
-  - `TEXTURE_BUDGET_MB=8192` (pour une carte de 16 Go), `TEXTURE_NO_WAIT=1`
-  - `CARD_BUFFERS_MIN_MB=1`, `CARD_BUFFERS_MB=1024`
-  - `VKD3D_CONFIG=descriptor_heap`
-- **Windows + AMD, Intel, autres :** valeurs par défaut de VIctory, marquées « non mesuré ».
+- **Windows + NVIDIA, Windows + AMD :** le jeu de `scripts/play.ps1` de VIctory (`TUNED`, 17 valeurs, sans DRED). Mesuré par avatarmanz sur une RX 7900 XTX (Windows + AMD marqué mesuré) ; pas mesuré sur NVIDIA avec cette base (marqué non mesuré).
+- **Linux (Proton) + AMD :** `TUNED` plus `FETCH_CHECK=1`, `PIPELINE_WAIT_MS=0`, `PORT_CONSTANTS=1`, `VKD3D_CONFIG=descriptor_heap` (`LINUX_AMD`), mesuré sur une RX 9070 XT avec `tools/linux`.
+- **Intel, autres :** valeurs par défaut de VIctory, marquées « non mesuré ».
 
 ## Composant par composant
 

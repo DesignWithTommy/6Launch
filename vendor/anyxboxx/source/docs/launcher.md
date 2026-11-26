@@ -45,12 +45,12 @@ The first run after a new build or a new setting recompiles hundreds of pipeline
 
 - Resolution and window mode (windowed or borderless).
 - Keyboard layout: automatic, QWERTY, AZERTY or QWERTZ (`VICTORY_KEYBOARD`).
-- Fast (default, measured set), Quality (better lighting and textures, lower frame rate), 12 GB card or 8 GB card. The Fast profile's reserves on the card (1536 MB of draw-data windows and of buffer copies) were sized on 12 to 16 GB cards; on an RTX 5060 8 GB it stood at 8,010 MB in use against a 6,823 MB budget, Windows moved the rest into the PC's memory and the texture queue was refused. The two card presets cut those reserves (1024 MB, or 512 MB with a 256 MB list pool) and cap the title's textures with `VICTORY_TEXTURE_MAX_SIZE` (2048, or 1024 texels): the levels of a texture over the cap get no memory on the card and its views start at the first level within it, so every texture fits, slightly less sharp up close. The 12 GB preset is not measured on a 12 GB card yet.
-- Frame rate counter, automatic A press through the start screens, frame time CSV in the cache folder.
+- Fast (default: the profile itself), Quality (draw-data windows read fresh each frame, fewer copies on the card), 12 GB card or 8 GB card (buffer copies on the card capped at 1024 or 512 MB, and 85 % of the card's budget for textures on the 8 GB one). On the combined VIctory base (26 November) the Quality and card presets are not measured yet; the Neptune base's texture size cap (`VICTORY_TEXTURE_MAX_SIZE`) is not in this base.
+- Automatic Enter/A press through the start screens (`VICTORY_KEYS`). The Neptune base's F10 figures and frame time CSV are gone; VIctory's own panel (`VICTORY_PANEL=1`, F3) needs the diagnostics build.
 - Advanced panel: overrides of single `VICTORY_*` variables; they always win over the profile.
 - NVIDIA Smooth Motion (RTX 40 and 50 series): the driver's own frame generation, which inserts a generated picture between two of the game's. Twice the pictures shown; responsiveness stays that of the game's own frames. It is not a VIctory variable: at each PLAY the launcher writes it into the NVIDIA driver profile that holds `victory.exe` (made if none does), through NVAPI with the setting ids NVIDIA Profile Inspector uses (`0xB0D384C0` enable, `0xB0CC0875` allowed APIs: Direct3D 12). No other driver setting is touched, and no administrator rights are needed.
 
-Settings are profiles per host and GPU vendor (`crates/anyxboxx-launcher/profiles.toml`). Only the Windows + NVIDIA set is measured; the others are VIctory's defaults.
+Settings are profiles per host and GPU vendor (`crates/anyxboxx-launcher/profiles.toml`). Windows uses VIctory's own `scripts/play.ps1` set, measured on an RX 7900 XTX (marked unmeasured on NVIDIA); Linux (Proton) + AMD adds four measured values (RX 9070 XT) and needs `tools/linux` ([running-gta6.md](running-gta6.md)); Intel and other GPUs get VIctory's defaults.
 
 ## Files it writes
 

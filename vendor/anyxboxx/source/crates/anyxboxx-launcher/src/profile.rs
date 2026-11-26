@@ -245,11 +245,11 @@ mod tests {
     }
 
     #[test]
-    fn windows_amd_selects_its_unmeasured_profile() {
+    fn windows_amd_selects_its_measured_profile() {
         assert_eq!(ids_selected(Host::Windows, GpuVendor::Amd), "windows-amd");
         assert_eq!(
             embedded().by_id("windows-amd").map(|p| p.status),
-            Some(Status::Unmeasured)
+            Some(Status::Measured)
         );
     }
 
@@ -272,7 +272,7 @@ mod tests {
     #[test]
     fn fallback_profiles_set_nothing() {
         let profiles = embedded();
-        for id in ["windows-amd", "intel", "other"] {
+        for id in ["intel", "other"] {
             let profile = profiles.by_id(id).expect("profile exists");
             assert!(profile.env.is_empty(), "{id} must be VIctory's defaults");
             assert_eq!(profile.status, Status::Unmeasured);
@@ -280,24 +280,27 @@ mod tests {
     }
 
     #[test]
-    fn windows_nvidia_is_exactly_the_tuned_set() {
+    fn both_windows_profiles_are_exactly_the_tuned_set() {
         use anyxboxx::run::TUNED;
-        let profile = embedded().by_id("windows-nvidia").expect("profile").clone();
         let mut expected: Vec<(String, String)> = TUNED
             .iter()
             .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
             .collect();
-        let mut actual: Vec<(String, String)> = profile
-            .env
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
         expected.sort();
-        actual.sort();
-        // PR #199's switches at "0" made no difference on the maintainer's test: not set here.
-        assert_eq!(actual, expected);
-        assert!(profile.pending.is_empty());
-        assert_eq!(profile.status, Status::Measured);
+        for id in ["windows-nvidia", "windows-amd"] {
+            let profile = embedded().by_id(id).expect("profile").clone();
+            let mut actual: Vec<(String, String)> = profile
+                .env
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+            actual.sort();
+            assert_eq!(actual, expected, "{id}");
+            assert!(profile.pending.is_empty());
+        }
+        // Measured on an RX 7900 XTX only: the NVIDIA profile says so.
+        let nvidia = embedded().by_id("windows-nvidia").expect("profile").clone();
+        assert_eq!(nvidia.status, Status::Unmeasured);
     }
 
     #[test]
@@ -322,13 +325,11 @@ mod tests {
     fn linux_amd_has_no_pending_switch_and_no_tuned_only_key() {
         let profile = embedded().by_id("linux-amd").expect("profile").clone();
         assert!(profile.pending.is_empty());
-        assert!(!profile.env.contains_key("VICTORY_DSTORAGE_NOTIFY"));
-        // The PR #199 switches keep VIctory's defaults (on): none of them is set to 0 here.
-        assert!(
-            !profile
-                .env
-                .keys()
-                .any(|k| k.starts_with("VICTORY_L6_") || k == "VICTORY_SHADER_OPT")
+        // The relay's own late-wait stage (3) is kept: the old Linux set's VICTORY_LATE_WAIT=0 is gone.
+        assert!(!profile.env.contains_key("VICTORY_LATE_WAIT"));
+        assert_eq!(
+            profile.env.get("VICTORY_RELAY").map(String::as_str),
+            Some("2")
         );
     }
 

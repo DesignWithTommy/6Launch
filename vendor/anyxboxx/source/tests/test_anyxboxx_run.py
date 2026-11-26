@@ -1,9 +1,9 @@
 """`anyxboxx run` (crates/anyxboxx): builds VIctory, then launches it on the user's own game folder.
 
-It replaced main's tools/lancer_victory.ps1. The golden copy of that script is kept in
-tests/fixtures/lancer_victory_neptune.ps1: the tests below check that the Rust settings and the
-environment `anyxboxx run` gives VIctory are the same as the script's default, -Quality and
--Override behaviour. The launcher runs against a fake repository and game, with a fake cargo on
+It replaced main's tools/lancer_victory.ps1. Its tuned set is the one VIctory's own launcher,
+third_party/victory/scripts/play.ps1, plays with (without -Safe, and without its DRED setting, which
+stays opt-in): the tests below check that the Rust settings and the environment `anyxboxx run` gives
+VIctory are that script's, then the --quality and --override behaviour. The launcher runs against a fake repository and game, with a fake cargo on
 the PATH and a fake victory.exe already built; the fake tool logs every call and the VICTORY_*
 variables it sees.
 """
@@ -18,7 +18,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 BINARY = REPO / "target" / "release" / "anyxboxx.exe"
-GOLDEN = REPO / "tests" / "fixtures" / "lancer_victory_neptune.ps1"
+PLAY = REPO / "third_party" / "victory" / "scripts" / "play.ps1"
 SETTINGS = REPO / "crates" / "anyxboxx" / "src" / "run" / "settings.rs"
 CARGO_FAILURE, VICTORY_EXIT = 101, 7
 GAME_DIR = "VICTORY_GAME_DIR=<root>\\game"
@@ -28,61 +28,57 @@ BUILD_DIAG = (r"cargo build --profile diag -p victory --features diagnostics "
 GAME = r"victory run <root>\game\game_scarlett_master.exe --execute | "
 GAME_DIAG = r"victory run <root>\game\game_scarlett_master.exe --execute | "
 GAME_ARCHIVES = r"<root>\game\A.rpf <root>\game\b.rpf"
-WARM_ARCHIVES = (r"victory warm <root>\game\A.rpf <root>\game\b.rpf | ")
-WARM_PRECOMPILE = (r"victory warm <root>\game\shaders.rpf <root>\game\game_scarlett_master.exe "
+WARM_ARCHIVES = (r"victory shaders <root>\game\A.rpf <root>\game\b.rpf | ")
+WARM_PRECOMPILE = (r"victory shaders <root>\game\shaders.rpf <root>\game\game_scarlett_master.exe "
                    r"<root>\game\XboxBvhBuilder.dll <root>\game\amd_fidelityfx_upscaler_xbox.dll | ")
 
 
-# ---- the golden script and the Rust settings ------------------------------------------------
+# ---- VIctory's play.ps1 and the Rust settings ----------------------------------------------
 
-def _golden_pairs(block_start, block_end, pattern):
-    text = GOLDEN.read_text(encoding="utf-8")
-    body = text[text.index(block_start):]
-    body = body[:body.index(block_end)]
-    return re.findall(pattern, body)
+# play.ps1's own setting that `anyxboxx run` leaves to --dred (DRED is opt-in).
+OPT_IN = ("VICTORY_D3D12_DRED",)
 
 
-def golden_tuned():
-    """The `$tuned = [ordered]@{ ... }` table of the script, in order."""
-    return _golden_pairs("$tuned = [ordered]@{", "\n    }", r"(VICTORY_[A-Z0-9_]+)\s*=\s*'([^']*)'")
-
-
-def golden_quality():
-    return _golden_pairs("if ($Quality) {", "\n}", r"\$env:(VICTORY_[A-Z0-9_]+) = '([^']*)'")
-
-
-def golden_always():
-    return _golden_pairs("$env:VICTORY_GAME_DIR = $GameDir", "if (-not $NoTunedSettings)",
-                         r"\$env:(VICTORY_[A-Z0-9_]+) = '([^']*)'")
+def play_settings():
+    """play.ps1's settings without -Safe, in its order: the `$settings = @{...}` table, then the
+    `else` branch of `if ($Safe)`."""
+    text = PLAY.read_text(encoding="utf-8")
+    table = text[text.index("$settings = @{"):]
+    table = table[:table.index("\n}")]
+    fast = text[text.index("} else {"):]
+    fast = fast[:fast.index("\n}")]
+    pairs = re.findall(r"(VICTORY_[A-Z0-9_]+)\s*=\s*'([^']*)'", table)
+    pairs += re.findall(r"\$settings\.(VICTORY_[A-Z0-9_]+)\s*=\s*'([^']*)'", fast)
+    return [(k, v) for k, v in pairs if k not in OPT_IN]
 
 
 def rust_table(name):
     text = SETTINGS.read_text(encoding="utf-8")
-    start = text.index(f"pub const {name}")
+    start = text.index(f"pub const {name}:")
     body = text[start:text.index("];", start)]
-    return re.findall(r'\("(VICTORY_[A-Z0-9_]+)", "([^"]*)"\)', body)
+    return re.findall(r'\("((?:VICTORY|VKD3D)_[A-Z0-9_]+)", "([^"]*)"\)', body)
 
 
-def test_the_rust_tuned_table_is_the_golden_scripts_table():
-    assert rust_table("TUNED") == golden_tuned()
-    assert len(golden_tuned()) == 46
+def test_the_rust_tuned_table_is_play_ps1s_set():
+    assert rust_table("TUNED") == play_settings()
+    assert len(play_settings()) == 17
 
 
-def test_the_rust_quality_set_is_the_golden_scripts_quality_set():
-    assert rust_table("QUALITY") == golden_quality()
-    assert [k for k, _ in golden_quality()] == ["VICTORY_CARD_WINDOWS_MB", "VICTORY_CARD_BUFFERS_MB",
-                                                "VICTORY_LIST_POOL_MOST", "VICTORY_LIST_POOL_MB",
-                                                "VICTORY_TEXTURE_STAGE_MB"]
+def test_the_linux_table_is_the_tuned_set_then_the_linux_additions():
+    extra = rust_table("LINUX_AMD_EXTRA")
+    assert rust_table("LINUX_AMD") == play_settings() + extra
+    assert dict(extra) == {"VICTORY_FETCH_CHECK": "1", "VICTORY_PIPELINE_WAIT_MS": "0",
+                           "VICTORY_PORT_CONSTANTS": "1", "VKD3D_CONFIG": "descriptor_heap"}
 
 
-def test_the_always_set_is_the_golden_scripts_discord_and_ocean_switches():
-    assert rust_table("ALWAYS") == golden_always() == [("VICTORY_DISCORD", "0"),
-                                                       ("VICTORY_OCEAN_READBACK", "1")]
+def test_the_quality_set_names_only_switches_of_this_base():
+    assert [k for k, _ in rust_table("QUALITY")] == ["VICTORY_CARD_WINDOWS_MB", "VICTORY_CARD_BUFFERS_MB",
+                                                      "VICTORY_TEXTURE_STAGE_MB"]
 
 
 def default_env(extra=()):
     """The environment `anyxboxx run` gives VIctory by default, as the fake tool logs it (sorted)."""
-    pairs = [GAME_DIR] + [f"{k}={v}" for k, v in golden_always() + golden_tuned()] + list(extra)
+    pairs = [GAME_DIR] + [f"{k}={v}" for k, v in play_settings()] + list(extra)
     return ";".join(sorted(pairs))
 
 
@@ -177,17 +173,17 @@ def test_default_launch_is_the_release_build_then_the_game_with_the_golden_envir
 
 
 def test_the_default_environment_equals_the_scripts_default(tmp_path, fake_tool, binary):
-    # The same set as main's script with no switch: the script's always-set pair, then its tuned set.
+    # The game folder, then play.ps1's set.
     done, calls = launch(tmp_path, fake_tool, binary)
     logged = calls[1].split(" | ", 1)[1].split(";")
-    expected = ["VICTORY_GAME_DIR=<root>\\game"] + [f"{k}={v}" for k, v in golden_always() + golden_tuned()]
+    expected = ["VICTORY_GAME_DIR=<root>\\game"] + [f"{k}={v}" for k, v in play_settings()]
     assert sorted(logged) == sorted(expected), done.stderr
 
 
-def test_quality_applies_the_golden_quality_set_after_the_tuned_set(tmp_path, fake_tool, binary):
+def test_quality_applies_the_quality_set_after_the_tuned_set(tmp_path, fake_tool, binary):
     done, calls = launch(tmp_path, fake_tool, binary, ["--quality"])
     logged = calls[1].split(" | ", 1)[1].split(";")
-    for k, v in golden_quality():
+    for k, v in rust_table("QUALITY"):
         assert f"{k}={v}" in logged, (k, done.stderr)
     # The tuned value of a key Quality does not replace is still there.
     assert "VICTORY_RELAY=2" in logged, done.stderr
@@ -199,17 +195,16 @@ def test_override_wins_over_quality_and_the_tuned_set(tmp_path, fake_tool, binar
     assert "VICTORY_RELAY=0" in logged and "VICTORY_RELAY=2" not in logged, done.stderr
 
 
-def test_auto_a_and_frametime_dump_are_set_when_asked(tmp_path, fake_tool, binary):
-    done, calls = launch(tmp_path, fake_tool, binary, ["--auto-a", "--frametime-dump"])
-    logged = calls[1].split(" | ", 1)[1].split(";")
-    assert "VICTORY_AUTO_A=150" in logged and "VICTORY_FRAMETIME_DUMP=1" in logged, done.stderr
+def test_auto_a_is_a_key_script_when_asked(tmp_path, fake_tool, binary):
+    done, calls = launch(tmp_path, fake_tool, binary, ["--auto-a"])
+    keys = next(v for v in calls[1].split(" | ", 1)[1].split(";") if v.startswith("VICTORY_KEYS="))
+    assert keys.startswith("VICTORY_KEYS=4:Enter,8:Enter,") and keys.endswith(",148:Enter"), done.stderr
 
 
 def test_opt_in_switches_and_no_tuned_settings(tmp_path, fake_tool, binary):
     done, calls = launch(tmp_path, fake_tool, binary,
                          ["--no-tuned-settings", "--dred", "--batch-card-rehash", "--skip-pipelines", "5"])
-    expected = (GAME_DIR, "VICTORY_DISCORD=0", "VICTORY_OCEAN_READBACK=1", "VICTORY_CARD_REHASH_RUNS=1",
-                "VICTORY_D3D12_DRED=1", "VICTORY_SKIP_PIPELINES=5")
+    expected = (GAME_DIR, "VICTORY_CARD_REHASH_RUNS=1", "VICTORY_D3D12_DRED=1", "VICTORY_SKIP_PIPELINES=5")
     assert calls == [BUILD_DIAG, GAME + ";".join(sorted(expected))], done.stderr
 
 
@@ -218,17 +213,10 @@ def test_diag_builds_the_diagnostics_profile(tmp_path, fake_tool, binary):
     assert calls[0] == BUILD_DIAG, done.stderr
 
 
-def test_the_users_xg_library_is_passed_with_its_mode(tmp_path, fake_tool, binary):
-    done, calls = launch(tmp_path, fake_tool, binary, ["--no-tuned-settings", "--xg-dll", "{xg}", "--xg-mode", "compare"])
-    expected = (GAME_DIR, "VICTORY_DISCORD=0", "VICTORY_OCEAN_READBACK=1",
-                r"VICTORY_XG_DLL=<root>\xg_xs.dll", "VICTORY_XG_MODE=compare")
-    assert calls == [BUILD, GAME + ";".join(sorted(expected))], done.stderr
-
-
-def test_a_missing_xg_library_stops_after_the_build(tmp_path, fake_tool, binary):
-    done, calls = launch(tmp_path, fake_tool, binary, ["--xg-dll", "missing.dll"])
-    assert calls == [BUILD] and done.returncode == 1
-    assert "xg_xs.dll not found" in done.stderr
+def test_the_xg_library_option_is_gone(tmp_path, fake_tool, binary):
+    # Nothing in this VIctory base reads VICTORY_XG_DLL: the option is refused, nothing runs.
+    done, calls = launch(tmp_path, fake_tool, binary, ["--xg-dll", "{xg}"])
+    assert calls == [] and done.returncode != 0
 
 
 def test_warm_runs_the_game_archives_only_before_the_game(tmp_path, fake_tool, binary):
@@ -245,7 +233,7 @@ def test_warm_needs_an_archive(tmp_path, fake_tool, binary):
 def test_precompile_warms_the_shader_archive_and_binaries_with_the_game_environment(tmp_path, fake_tool, binary):
     done, calls = launch(tmp_path, fake_tool, binary, ["--no-tuned-settings", "--precompile"],
                          precompile_inputs=True)
-    env = ";".join(sorted((GAME_DIR, "VICTORY_DISCORD=0", "VICTORY_OCEAN_READBACK=1")))
+    env = GAME_DIR
     assert calls == [BUILD, WARM_PRECOMPILE + env, GAME + env], done.stderr
     assert done.returncode == VICTORY_EXIT
 
@@ -270,7 +258,7 @@ def test_a_missing_game_stops_before_building(tmp_path, fake_tool, binary):
 
 def test_powershell_option_names_still_work(tmp_path, fake_tool, binary):
     done, calls = launch(tmp_path, fake_tool, binary, ["--NoTunedSettings", "--Dred"])
-    expected = (GAME_DIR, "VICTORY_DISCORD=0", "VICTORY_OCEAN_READBACK=1", "VICTORY_D3D12_DRED=1")
+    expected = (GAME_DIR, "VICTORY_D3D12_DRED=1")
     assert calls == [BUILD_DIAG, GAME + ";".join(sorted(expected))], done.stderr
 
 
