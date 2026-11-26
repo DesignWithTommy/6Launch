@@ -582,11 +582,11 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
                 y += 40;
             }
         }
-        y += 16;
+        y += 8;
         fill_rect(dc, rect(x, y, w - 32, y + 1), BORDER);
-        y += 24;
+        y += 14;
         text(dc, "Preset", rect(x, y, x + 200, y + 20), SUB, f.small, DT_LEFT | DT_VCENTER);
-        y += 28;
+        y += 24;
         // A segmented control: one segment per preset.
         let mut sx = x;
         let seg_h = 32;
@@ -598,11 +598,11 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
             DeleteObject(brush);
         };
         for (i, label) in labels.iter().enumerate() {
-            let sw = width_of(dc, label, f.body) + 32;
+            let sw = width_of(dc, label, f.body) + 24;
             if sx > x && sx + sw > w - 32 {
                 frame(dc, x, y, sx);
                 sx = x;
-                y += seg_h + 8;
+                y += seg_h + 4;
             }
             let r = rect(sx, y, sx + sw, y + seg_h);
             let on = i == s.preset;
