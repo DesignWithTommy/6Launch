@@ -29,7 +29,7 @@ use windows_sys::Win32::{
     },
     UI::{
         Controls::{DRAWITEMSTRUCT, MEASUREITEMSTRUCT, ODS_COMBOBOXEDIT, ODS_DISABLED, ODS_SELECTED, ODT_BUTTON, ODT_COMBOBOX},
-        Input::KeyboardAndMouse::{EnableWindow, GetFocus, IsWindowEnabled, SetFocus, TRACKMOUSEEVENT, TME_LEAVE, TrackMouseEvent, VK_DOWN, VK_RETURN, VK_UP},
+        Input::KeyboardAndMouse::{EnableWindow, GetFocus, IsWindowEnabled, SetFocus, TRACKMOUSEEVENT, TME_LEAVE, TrackMouseEvent, VK_DOWN, SetCapture, ReleaseCapture, GetCapture, VK_RETURN, VK_UP},
         Shell::SHCreateItemFromParsingName,
         WindowsAndMessaging::*,
     },
@@ -290,6 +290,12 @@ struct State {
     game: Option<PathBuf>,
     /// Where paint() drew each clickable thing, for the mouse.
     targets: Vec<(RECT, Hit)>,
+    /// The runtime list's scroll offset (px), its row height and view height
+    /// as last drawn, and the thumb grab offset while dragging the bar.
+    scroll: i32,
+    row_h: i32,
+    view_h: i32,
+    thumb_grab: Option<i32>,
 }
 
 thread_local! {
@@ -467,11 +473,18 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
     // Rows shrink to fit above the footer (nine runtimes overran it at 56 px):
     // two lines down to 40 px, then the name alone; a row that still doesn't
     // fit is not drawn over the footer.
-    let row_h = ((foot - ROWS_TOP) / s.rows.len().max(1) as i32).clamp(30, ROW);
+    // Rows shrink to 40 px at least, then the list scrolls (wheel, thumb).
+    let row_h = ((foot - ROWS_TOP) / s.rows.len().max(1) as i32).clamp(40, ROW);
+    s.row_h = row_h;
+    s.view_h = foot - ROWS_TOP;
+    s.scroll = s.scroll.clamp(0, (row_h * s.rows.len() as i32 - s.view_h).max(0));
+    let saved_dc = unsafe { SaveDC(dc) };
+    unsafe { IntersectClipRect(dc, 0, ROWS_TOP, LEFT, foot) };
     for (i, row) in s.rows.iter().enumerate() {
-        let r = rect(0, ROWS_TOP + i as i32 * row_h, LEFT, ROWS_TOP + (i as i32 + 1) * row_h);
-        if r.bottom > foot {
-            break;
+        let top = ROWS_TOP + i as i32 * row_h - s.scroll;
+        let r = rect(0, top, LEFT, top + row_h);
+        if r.bottom <= ROWS_TOP || r.top >= foot {
+            continue;
         }
         if i == s.sel {
             fill_rect(dc, r, ROW_ON);
@@ -491,8 +504,15 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
         if row.name != MIX {
             dot(dc, LEFT - 24, r.top + row_h / 2, if row.frames.is_some_and(|n| n > 0) { GREEN } else { FAINT });
         }
-        s.targets.push((r, Hit::Row(i)));
+        let vis = rect(r.left, r.top.max(ROWS_TOP), r.right, r.bottom.min(foot));
+        s.targets.push((vis, Hit::Row(i)));
     }
+    if let Some((track, thumb)) = list_bar(s) {
+        fill_rect(dc, track, PANEL);
+        let hot = s.thumb_grab.is_some();
+        rounded(dc, thumb, if hot { SUB } else { FAINT }, if hot { SUB } else { FAINT }, 4, PANEL);
+    }
+    unsafe { RestoreDC(dc, saved_dc) };
 
     // Right: the selected runtime.
     if let Some(row) = s.rows.get(s.sel) {
@@ -612,6 +632,33 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
     s.targets.push((ar, Hit::Advanced));
 }
 
+/// The list's scroll bar (track, thumb) when the rows overflow.
+fn list_bar(s: &State) -> Option<(RECT, RECT)> {
+    let content = s.row_h * s.rows.len() as i32;
+    if s.view_h <= 0 || content <= s.view_h {
+        return None;
+    }
+    let track = rect(LEFT - 8, ROWS_TOP + 2, LEFT - 3, ROWS_TOP + s.view_h - 2);
+    let th = track.bottom - track.top;
+    let len = (th * s.view_h / content).max(24);
+    let top = track.top + (th - len) * s.scroll / (content - s.view_h);
+    Some((track, rect(track.left, top, track.right, top + len)))
+}
+
+fn list_scroll_to(s: &mut State, y: i32) {
+    s.scroll = y.clamp(0, (s.row_h * s.rows.len() as i32 - s.view_h).max(0));
+}
+
+/// Scrolls just enough to show the selected row.
+fn keep_sel_visible(s: &mut State) {
+    let top = s.sel as i32 * s.row_h;
+    if top < s.scroll {
+        list_scroll_to(s, top);
+    } else if top + s.row_h > s.scroll + s.view_h {
+        list_scroll_to(s, top + s.row_h - s.view_h);
+    }
+}
+
 fn hit(x: i32, y: i32) -> Hit {
     with_state(|s| s.targets.iter().find(|(r, _)| x >= r.left && x < r.right && y >= r.top && y < r.bottom).map(|(_, h)| *h).unwrap_or(Hit::None)).unwrap_or(Hit::None)
 }
@@ -720,6 +767,7 @@ fn select(hwnd: HWND, i: usize) {
         let ok = i < s.rows.len() && i != s.sel;
         if ok {
             s.sel = i;
+            keep_sel_visible(s);
         }
         ok
     });
@@ -848,6 +896,19 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
             0
         }
         WM_ERASEBKGND => 1,
+        WM_MOUSEMOVE if unsafe { GetCapture() } == hwnd => {
+            let y = ((lparam >> 16) & 0xffff) as i16 as i32;
+            with_state(|s| {
+                if let (Some(g), Some((track, thumb))) = (s.thumb_grab, list_bar(s)) {
+                    let (th, len) = (track.bottom - track.top, thumb.bottom - thumb.top);
+                    let content = s.row_h * s.rows.len() as i32;
+                    let to = (y - g - track.top) * (content - s.view_h) / (th - len).max(1);
+                    list_scroll_to(s, to);
+                }
+            });
+            unsafe { InvalidateRect(hwnd, null(), 0) };
+            0
+        }
         WM_MOUSEMOVE => {
             let (x, y) = ((lparam & 0xffff) as i16 as i32, ((lparam >> 16) & 0xffff) as i16 as i32);
             let h = hit(x, y);
@@ -867,8 +928,56 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
             unsafe { SetCursor(LoadCursorW(null_mut(), IDC_HAND)) };
             1
         }
+        WM_MOUSEWHEEL => {
+            let delta = ((wparam >> 16) & 0xffff) as i16 as i32;
+            let mut p = POINT { x: (lparam & 0xffff) as i16 as i32, y: ((lparam >> 16) & 0xffff) as i16 as i32 };
+            unsafe { ScreenToClient(hwnd, &mut p) };
+            if p.x < LEFT {
+                with_state(|s| {
+                    let step = s.row_h.max(1) * 3 * delta / 120;
+                    let y = s.scroll - step;
+                    list_scroll_to(s, y);
+                });
+                unsafe { InvalidateRect(hwnd, null(), 0) };
+            }
+            0
+        }
+        WM_LBUTTONDOWN => {
+            let (x, y) = ((lparam & 0xffff) as i16 as i32, ((lparam >> 16) & 0xffff) as i16 as i32);
+            let grabbed = with_state(|s| {
+                let (track, thumb) = list_bar(s)?;
+                if x < track.left - 4 || x >= track.right + 2 || y < track.top || y >= track.bottom {
+                    return None;
+                }
+                if y < thumb.top || y >= thumb.bottom {
+                    // Track click: centre the thumb there.
+                    let (th, len) = (track.bottom - track.top, thumb.bottom - thumb.top);
+                    let content = s.row_h * s.rows.len() as i32;
+                    let to = (y - track.top - len / 2) * (content - s.view_h) / (th - len).max(1);
+                    list_scroll_to(s, to);
+                    s.thumb_grab = Some(len / 2);
+                } else {
+                    s.thumb_grab = Some(y - thumb.top);
+                }
+                Some(())
+            }).flatten();
+            if grabbed.is_some() {
+                unsafe {
+                    SetCapture(hwnd);
+                    InvalidateRect(hwnd, null(), 0);
+                }
+            }
+            0
+        }
         WM_LBUTTONUP => {
             let (x, y) = ((lparam & 0xffff) as i16 as i32, ((lparam >> 16) & 0xffff) as i16 as i32);
+            if with_state(|s| s.thumb_grab.take()).flatten().is_some() {
+                unsafe {
+                    ReleaseCapture();
+                    InvalidateRect(hwnd, null(), 0);
+                }
+                return 0;
+            }
             click(hwnd, hit(x, y));
             0
         }
@@ -903,7 +1012,29 @@ const ID_DIAG: usize = 118;
 const ID_STATUS: usize = 901;
 const ID_PART: usize = 200;
 const CBN_SELCHANGE: usize = 1;
-const ADV_WIDTH: i32 = 640;
+const ADV_WIDTH: i32 = 760;
+/// The node editor: source nodes (one per tree) on the left, crate nodes on
+/// the right, wires from each crate's picked tree.
+const NODES_TOP: i32 = 120;
+const SRC_X: (i32, i32) = (24, 224);
+const SRC_STEP: i32 = 26;
+const SRC_H: i32 = 22;
+const PART_X: (i32, i32) = (ADV_WIDTH - 24 - 240, ADV_WIDTH - 24);
+const PART_STEP: i32 = 46;
+const PART_H: i32 = 38;
+/// Wire colours, one per source tree (cycled).
+const WIRES: [COLORREF; 8] = [PINK, CYAN, GREEN, rgb(255, 176, 46), rgb(170, 120, 255), rgb(255, 99, 99), rgb(90, 160, 255), rgb(230, 230, 110)];
+
+#[derive(Clone, Copy, PartialEq)]
+enum Node {
+    Src(usize),
+    Part(usize),
+}
+
+thread_local! {
+    /// The node being dragged from, where the press was, and the cursor now.
+    static NODE_DRAG: Cell<Option<(Node, (i32, i32), (i32, i32))>> = const { Cell::new(None) };
+}
 
 struct Ui {
     saved: HWND,
@@ -915,6 +1046,184 @@ struct Ui {
     parts: Vec<(String, HWND, Vec<String>)>,
     options: HWND,
     status: HWND,
+    /// Every tree a mix can take parts from: the source nodes, in order.
+    trees: Vec<String>,
+}
+
+fn canvas_h(trees: usize, parts: usize) -> i32 {
+    (trees as i32 * SRC_STEP).max(parts as i32 * PART_STEP) + 8
+}
+
+fn src_rect(i: usize) -> RECT {
+    let t = NODES_TOP + i as i32 * SRC_STEP;
+    rect(SRC_X.0, t, SRC_X.1, t + SRC_H)
+}
+
+fn part_rect(i: usize) -> RECT {
+    let t = NODES_TOP + i as i32 * PART_STEP;
+    rect(PART_X.0, t, PART_X.1, t + PART_H)
+}
+
+fn src_port(i: usize) -> (i32, i32) {
+    let r = src_rect(i);
+    (r.right, (r.top + r.bottom) / 2)
+}
+
+fn part_port(i: usize) -> (i32, i32) {
+    let r = part_rect(i);
+    (r.left, (r.top + r.bottom) / 2)
+}
+
+fn inside(r: RECT, (x, y): (i32, i32)) -> bool {
+    x >= r.left - 6 && x < r.right + 6 && y >= r.top && y < r.bottom
+}
+
+fn node_at(ui: &Ui, p: (i32, i32)) -> Option<Node> {
+    (0..ui.trees.len()).find(|&i| inside(src_rect(i), p)).map(Node::Src).or_else(|| (0..ui.parts.len()).find(|&i| inside(part_rect(i), p)).map(Node::Part))
+}
+
+fn wire_color(ui: &Ui, tree: &str) -> COLORREF {
+    ui.trees.iter().position(|t| t == tree).map_or(SUB, |i| WIRES[i % WIRES.len()])
+}
+
+/// The tree part `i` takes now.
+fn part_tree(ui: &Ui, i: usize) -> Option<&String> {
+    let (_, h, have) = &ui.parts[i];
+    have.get(selected(*h))
+}
+
+fn wire(dc: HDC, a: (i32, i32), b: (i32, i32), color: COLORREF, width: i32) {
+    let dx = ((b.0 - a.0).abs() / 2).max(40);
+    let pts = [POINT { x: a.0, y: a.1 }, POINT { x: a.0 + dx, y: a.1 }, POINT { x: b.0 - dx, y: b.1 }, POINT { x: b.0, y: b.1 }];
+    unsafe {
+        let pen = CreatePen(PS_SOLID, width, color);
+        let op = SelectObject(dc, pen);
+        PolyBezier(dc, pts.as_ptr(), 4);
+        SelectObject(dc, op);
+        DeleteObject(pen);
+    }
+}
+
+fn draw_nodes(dc: HDC, ui: &Ui, f: &Fonts) {
+    let on = is_mix();
+    let drag = NODE_DRAG.get();
+    // Wires under the nodes.
+    for i in 0..ui.parts.len() {
+        if let Some(t) = part_tree(ui, i) {
+            if let Some(s) = ui.trees.iter().position(|x| x == t) {
+                wire(dc, src_port(s), part_port(i), if on { wire_color(ui, t) } else { FAINT }, 2);
+            }
+        }
+    }
+    if let Some((from, _, cur)) = drag {
+        let (a, b) = match from {
+            Node::Src(s) => (src_port(s), cur),
+            Node::Part(p) => (cur, part_port(p)),
+        };
+        wire(dc, a, b, TEXT, 1);
+    }
+    let mix = current_mix(ui);
+    let hover = drag.and_then(|(_, _, c)| node_at(ui, c));
+    for (i, t) in ui.trees.iter().enumerate() {
+        let r = src_rect(i);
+        let used = (0..ui.parts.len()).any(|p| part_tree(ui, p) == Some(t));
+        let edge = if hover == Some(Node::Src(i)) { CYAN } else { BORDER };
+        rounded(dc, r, if used { ROW_ON } else { PANEL }, edge, 8, BACKGROUND);
+        text(dc, &short_title(t), rect(r.left + 10, r.top, r.right - 12, r.bottom), if on && used { TEXT } else { SUB }, f.small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+        let (px, py) = src_port(i);
+        dot(dc, px, py, if on { wire_color(ui, t) } else { FAINT });
+    }
+    for (i, (p, _, _)) in ui.parts.iter().enumerate() {
+        let r = part_rect(i);
+        let tree = part_tree(ui, i);
+        let bad = tree.is_some_and(|t| crate::mix::clash(&mix, p, t).is_some());
+        let edge = if hover == Some(Node::Part(i)) { CYAN } else if bad { PINK } else { BORDER };
+        rounded(dc, r, PANEL, edge, 8, BACKGROUND);
+        let shown = if p == crate::mix::APP { "app" } else { p.trim_start_matches("victory-") };
+        text(dc, shown, rect(r.left + 14, r.top + 2, r.right - 8, r.top + 20), if on { TEXT } else { SUB }, f.strong, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+        let from = tree.map_or("-".to_owned(), |t| short_title(t));
+        let from = if bad { format!("\u{2717} {from} (incompatible)") } else { from };
+        text(dc, &from, rect(r.left + 14, r.top + 19, r.right - 8, r.bottom - 2), if bad { PINK } else { SUB }, f.small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+        let (px, py) = part_port(i);
+        dot(dc, px, py, if !on { FAINT } else { tree.map_or(FAINT, |t| wire_color(ui, t)) });
+    }
+}
+
+/// Points part `i` at `tree` through its (hidden) list, then runs the same
+/// path a pick in that list runs (unify, clashes, presets, main window).
+fn pick_part(hwnd: HWND, i: usize, tree: &str) {
+    let ok = UI.with(|u| {
+        u.borrow().as_ref().and_then(|ui| {
+            let (_, h, have) = ui.parts.get(i)?;
+            let at = have.iter().position(|t| t == tree)?;
+            unsafe { SendMessageW(*h, CB_SETCURSEL, at, 0) };
+            Some(())
+        })
+    });
+    if ok.is_some() {
+        advanced_command(hwnd, ID_PART + i, CBN_SELCHANGE);
+    }
+    unsafe { InvalidateRect(hwnd, null(), 0) };
+}
+
+/// The fallback picker: a menu of the trees part `i` can come from.
+fn part_menu(hwnd: HWND, i: usize) {
+    let Some((have, cur)) = UI.with(|u| u.borrow().as_ref().map(|ui| (ui.parts[i].2.clone(), part_tree(ui, i).cloned()))) else { return };
+    unsafe {
+        let menu = CreatePopupMenu();
+        for (k, t) in have.iter().enumerate() {
+            let w = wide(&short_title(t));
+            AppendMenuW(menu, MF_STRING | if cur.as_ref() == Some(t) { MF_CHECKED } else { 0 }, k + 1, w.as_ptr());
+        }
+        let r = part_rect(i);
+        let mut p = POINT { x: r.left, y: r.bottom };
+        ClientToScreen(hwnd, &mut p);
+        let k = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, p.x, p.y, 0, hwnd, null());
+        DestroyMenu(menu);
+        if k > 0 {
+            if let Some(t) = have.get(k as usize - 1) {
+                pick_part(hwnd, i, t);
+            }
+        }
+    }
+}
+
+fn node_mouse(hwnd: HWND, msg: u32, lparam: LPARAM) {
+    let p = ((lparam & 0xffff) as i16 as i32, ((lparam >> 16) & 0xffff) as i16 as i32);
+    match msg {
+        WM_LBUTTONDOWN => {
+            if !is_mix() {
+                return;
+            }
+            if let Some(n) = UI.with(|u| u.borrow().as_ref().and_then(|ui| node_at(ui, p))) {
+                NODE_DRAG.set(Some((n, p, p)));
+                unsafe { SetCapture(hwnd) };
+            }
+        }
+        WM_MOUSEMOVE => {
+            if let Some((n, start, _)) = NODE_DRAG.get() {
+                NODE_DRAG.set(Some((n, start, p)));
+                unsafe { InvalidateRect(hwnd, null(), 0) };
+            }
+        }
+        WM_LBUTTONUP => {
+            let Some((from, start, _)) = NODE_DRAG.take() else { return };
+            unsafe { ReleaseCapture() };
+            let moved = (p.0 - start.0).abs() > 4 || (p.1 - start.1).abs() > 4;
+            let to = UI.with(|u| u.borrow().as_ref().and_then(|ui| node_at(ui, p)));
+            let pair = match (from, to) {
+                (Node::Src(s), Some(Node::Part(i))) | (Node::Part(i), Some(Node::Src(s))) => UI.with(|u| u.borrow().as_ref().and_then(|ui| ui.trees.get(s).cloned())).map(|t| (i, t)),
+                _ => None,
+            };
+            unsafe { InvalidateRect(hwnd, null(), 0) };
+            match (pair, from) {
+                (Some((i, t)), _) => pick_part(hwnd, i, &t),
+                (None, Node::Part(i)) if !moved => part_menu(hwnd, i),
+                _ => {}
+            }
+        }
+        _ => {}
+    }
 }
 
 fn child(parent: HWND, class: &str, text: &str, style: u32, (x, y, w, h): (i32, i32, i32, i32), id: usize) -> HWND {
@@ -1270,13 +1579,16 @@ unsafe extern "system" fn advanced_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
     match msg {
         WM_PAINT => unsafe {
             let mut ps: PAINTSTRUCT = std::mem::zeroed();
-            let dc = BeginPaint(hwnd, &mut ps);
+            let screen = BeginPaint(hwnd, &mut ps);
             let mut c: RECT = std::mem::zeroed();
             GetClientRect(hwnd, &mut c);
+            let dc = CreateCompatibleDC(screen);
+            let bitmap = CreateCompatibleBitmap(screen, c.right, c.bottom);
+            let old_bitmap = SelectObject(dc, bitmap);
             fill_rect(dc, c, BACKGROUND);
             fonts(|f| {
                 text(dc, "Mix", rect(24, 16, 300, 40), TEXT, f.strong, DT_LEFT | DT_VCENTER);
-                text(dc, "Each victory crate from the tree you pick. Pick Mix in the runtime list to use it.", rect(24, 40, ADV_WIDTH - 24, 60), SUB, f.small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+                text(dc, "Drag a tree onto a crate (or click a crate) to pick where it comes from. Pick Mix in the runtime list to use it.", rect(24, 40, ADV_WIDTH - 24, 60), SUB, f.small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
             });
             // 1 px frames round the borderless edits.
             UI.with(|u| {
@@ -1289,8 +1601,13 @@ unsafe extern "system" fn advanced_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                         let frame = rect(pts[0].x - 8, pts[0].y - 6, pts[1].x + 8, pts[1].y + 6);
                         rounded(dc, frame, PANEL, if GetFocus() == e { CYAN } else { BORDER }, 6, BACKGROUND);
                     }
+                    fonts(|f| draw_nodes(dc, ui, f));
                 }
             });
+            BitBlt(screen, 0, 0, c.right, c.bottom, dc, 0, 0, SRCCOPY);
+            SelectObject(dc, old_bitmap);
+            DeleteObject(bitmap);
+            DeleteDC(dc);
             EndPaint(hwnd, &ps);
             0
         },
@@ -1328,6 +1645,10 @@ unsafe extern "system" fn advanced_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             }
             1
         }
+        WM_LBUTTONDOWN | WM_MOUSEMOVE | WM_LBUTTONUP => {
+            node_mouse(hwnd, msg, lparam);
+            0
+        }
         WM_CLOSE => {
             unsafe { ShowWindow(hwnd, SW_HIDE) };
             0
@@ -1349,12 +1670,11 @@ fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     wc.hCursor = unsafe { LoadCursorW(null_mut(), IDC_ARROW) };
     unsafe { RegisterClassW(&wc) };
     let parts_n = 1 + crate::mix::crates().len();
-    let grid = 120;
-    let rows = parts_n.div_ceil(2) as i32;
-    let status_y = grid + rows * 40;
+    let trees = crate::mix::trees();
+    let status_y = NODES_TOP + canvas_h(trees.len(), parts_n);
     let options_y = status_y + 40;
     let height = options_y + 24 + 96 + 24 + 36 + 24;
-    let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
+    let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN;
     let mut r = rect(0, 0, ADV_WIDTH, height);
     unsafe { AdjustWindowRect(&mut r, style, 0) };
     let mut o: RECT = unsafe { std::mem::zeroed() };
@@ -1375,16 +1695,14 @@ fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     let save = button(hwnd, "Save mix", (416, 72, 96, 32), ID_SAVE);
     button(hwnd, "Options list", (520, 72, 96, 32), ID_OPTS_HELP);
 
-    let trees = crate::mix::trees();
     let mut part_names = vec![crate::mix::APP.to_owned()];
     part_names.extend(crate::mix::crates());
-    let col = (ADV_WIDTH - 48 - 16) / 2;
+    // The lists hold each part's pick (current_mix/set_mix read them); the
+    // node editor stands in for them on screen.
     let mut parts = Vec::new();
     for (i, p) in part_names.iter().enumerate() {
-        let (x, y) = (24 + (i as i32 % 2) * (col + 16), grid + (i as i32 / 2) * 40);
-        let shown = if p == crate::mix::APP { "app" } else { p.trim_start_matches("victory-") };
-        label(hwnd, shown, (x, y, 80, 20));
-        let list = combo(hwnd, (x + 80, y, col - 80, 0), ID_PART + i);
+        let list = combo(hwnd, (0, 0, 200, 0), ID_PART + i);
+        unsafe { ShowWindow(list, SW_HIDE) };
         let have: Vec<String> = trees.iter().filter(|t| crate::mix::has(t, p)).cloned().collect();
         fill(list, &have.iter().map(|t| short_title(t)).collect::<Vec<_>>(), 0);
         parts.push((p.clone(), list, have));
@@ -1399,7 +1717,7 @@ fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     DIAG.set(crate::runtimes::diag() && !memory.iter().any(|(k, v)| k == "diag" && v == "0"));
     button(hwnd, "Diagnostics", (24, options_y + 24 + 96 + 24, 420, 36), ID_DIAG);
 
-    let ui = Ui { saved, saved_names, name, save, parts, options, status };
+    let ui = Ui { saved, saved_names, name, save, parts, options, status, trees };
     let mix = crate::mix::Mix { parts: memory.iter().filter_map(|(k, v)| k.strip_prefix("part.").map(|p| (p.to_owned(), v.clone()))).collect() };
     let mix = if mix.parts.is_empty() { crate::mix::load("last-good").unwrap_or_default() } else { mix };
     set_mix(&ui, &mix);
@@ -1426,7 +1744,7 @@ pub fn pick() -> Option<Pick> {
     // The last pick, else NEONBRIDGE_RUNTIME, else the top-ranked runtime.
     let want = get("runtime").map(|r| crate::runtimes::alias(&r)).or_else(|| std::env::var("NEONBRIDGE_RUNTIME").ok().filter(|v| !v.trim().is_empty()).map(|v| crate::runtimes::name(Some(&v)))).unwrap_or_else(|| rows[0].name.clone());
     let sel = rows.iter().position(|r| r.name == want).unwrap_or(0);
-    STATE.with(|s| *s.borrow_mut() = Some(State { rows, sel, hover: Hit::None, presets: Vec::new(), preset: 0, game: detect_game(), targets: Vec::new() }));
+    STATE.with(|s| *s.borrow_mut() = Some(State { rows, sel, hover: Hit::None, presets: Vec::new(), preset: 0, game: detect_game(), targets: Vec::new(), scroll: 0, row_h: ROW, view_h: 0, thumb_grab: None }));
 
     let class = wide("NeonbridgePicker");
     let title = wide("i95");
