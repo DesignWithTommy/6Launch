@@ -4,7 +4,7 @@
 
 Try them all from one window.
 
-i95 is a Windows app that runs the projects trying to bring the Xbox Series version of GTA VI to PC. You pick one, press Play, and i95 builds it, prepares the shaders and starts the game. It uses a copy of the game you dumped from your own console. No game files are included.
+i95 is a Windows app that runs the projects trying to bring the Xbox Series version of GTA VI to PC. You pick one and press Play; i95 does the rest: it builds the runtime, prepares the shaders and starts it. It doesn't include or download the game, and there are no game files, keys or protection bypasses in it.
 
 **None of these runtimes is playable yet.** The tracker's bar for playable is 20 fps and 30 minutes without a crash, and nobody has cleared it.
 
@@ -24,6 +24,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 6 | [victory-fork](https://github.com/fxceless/victory-fork) | VIctory | Half-hour sessions at about 7 to 12 fps; shadowed areas still black | ✅ Intro at 30 fps, 3D scene ~1 fps |
 | 7 | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | VIctory | 30 min in the world without a crash, 7.0 fps median, RTX 4090 | Testing |
 | 8 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | victory-fork | "A versão para placas de 8 GB": 4 to 7 fps at 1080p, hour-long sessions, RTX 4060 Ti | ❌ The game stops about 20 s in |
+| 9 | CGBJ ([cool_fox](https://github.com/DoubleGhosty/cool_fox), a continuation) | VIctory | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; the original repo is no longer on GitHub | Not run yet |
 | 10 | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | VIctory | The world at 5 to 8 fps on an RX 9070 XT, a 15 min drive | ❌ |
 | 11 | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | VIctory-7900XTX | 20 to 22 fps indoors on an RTX 5070, at half render scale on the Series S profile; no session length given | Not run yet |
 | 12 | [Vertex](https://github.com/proneonn/Vertex) | VIctory | "Not playable yet." About 7 to 10 fps, no crash in 16 of 18 sessions, RTX 5070 | Not run yet |
@@ -44,34 +45,6 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 
 **Not in i95:** ztrx (#15) and victory-perf (#20) are gone from GitHub. omonkey (#21), Doomsday (#23) and suri (#24) are private builds with no public code, so there's nothing to run.
 
-## Get started
-
-1. Download the **v0.3.0-alpha** zip from [Releases](../../releases).
-2. Unzip it anywhere, for example `C:\Games\i95`.
-3. Run `i95.exe`.
-4. If it doesn't find your game folder, click **Change** and pick it. Then choose a runtime and press **Play**.
-
-The first start of a runtime takes a while. It builds the runtime and prepares the game's shaders. The loading screen shows the real counts as it goes, like "translating shaders 1,000 / 26,503". Later starts are quicker, because a runtime that hasn't changed isn't built again.
-
-## What you need
-
-- **Your own copy of the game.** The Xbox Series X|S version of GTA VI, dumped from a console you own. It's the folder with `game_scarlett_master.exe` in it, about 210 GB.
-- **Windows 10 or 11**, 64-bit, on a processor with AVX2.
-- **A graphics card** with DirectX 12 mesh shaders (Shader Model 6.6) and a recent driver.
-- **32 GB of RAM** is best.
-- **Disk space** for the game, plus up to about 20 GB per runtime.
-
-## Presets
-
-The default launch is each runtime's own, the way its author starts it. Each runtime also has presets you can pick before pressing Play:
-
-- **series_s**: runs as a Series S, which uses less GPU memory. Try it on 8 GB cards.
-- **dred**: writes D3D12 crash details to the log. Turn it on when the game crashes and you want to report it.
-- **8gb**: VItoriaBr's settings for 8 GB cards, on every runtime that reads them.
-- **warp**: draws on the CPU instead of the GPU. It's very slow, but it shows whether a crash comes from your graphics driver.
-
-dred and warp make the launcher use the runtime's diagnostics build, because those switches only exist there. Runtimes whose author ships no diagnostics build (AnyXboxx, Flamingo, KLBF, Unified) don't get them. Some runtimes add their own, like KLBF's `fsr`, Ka1qux's `fsr` and `frame_gen`, or Vertex's `tuned`. **Advanced** takes any other `KEY=VALUE` setting, and **Options list** there shows what that runtime reads.
-
 ## Screenshots
 
 **The launcher.** Pick a runtime and a preset, then press Play. **Advanced** sets extra options for a run.
@@ -88,59 +61,11 @@ dred and warp make the launcher use the runtime's diagnostics build, because tho
 
 How each runtime is built, prepared and started is in [DEVELOPERS.md](DEVELOPERS.md#how-each-runtime-is-wired).
 
-## Watch on your phone (Tailscale)
-
-Run this in a terminal in the i95 folder, or hand it to your AI agent:
-
-```powershell
-.\i95.exe --feed-only
-```
-
-1. It prints a Tailscale sign-in link. Open it, sign in to your own free Tailscale account and approve the PC. You only do this once.
-2. It prints the address of your stream, ending in `ts.net`. First open `http://127.0.0.1:8788` on this PC and set a stream password.
-3. Install the Tailscale app on your phone, sign in to the same account, and open that address.
-4. Leave the window open and start games with `NEONBRIDGE_FEED=1` set. You can also skip `--feed-only` and just launch with it set, and the stream starts with the game. `NEONBRIDGE_FEED_SCREEN=1` streams your whole left monitor instead of the game window.
-
-## Keys
-
-| Key | Does |
-|---|---|
-| **F1** | Shows or hides the controls |
-| **F2** | Hides the controls |
-| **F3** | Shows or hides the frame rate |
-
-Each runtime has its own keyboard and mouse layout. Press F1 in game to see it.
-
-## Where things are
-
-Everything i95 keeps is in `%LOCALAPPDATA%\6ixpack`. Paste that into the Explorer address bar to open it.
-
-| What | Folder |
-|---|---|
-| Saves | `6ixpack\save` |
-| Shaders and other caches | `6ixpack\cache` and `6ixpack\<runtime>\cache` |
-| Logs | `6ixpack\logs` |
-
-## Troubleshooting
-
-- **The game crashed or closed.** Every run is logged and i95 tells you where. Send the newest file from `%LOCALAPPDATA%\6ixpack\logs` with your report.
-- **A runtime is greyed out.** It needs something that isn't installed. Select it to see what, then click **Install...**.
-- **The first start is slow.** That's the shaders being prepared. It only happens the first time.
-- **It says no game was found.** Click **Change** and pick the folder with `game_scarlett_master.exe` in it.
-
 ## FAQ
 
 - **Can I play GTA 6 on PC with this?** Not yet. Every runtime here is still being worked on.
-- **Is this a download or a crack?** No. There are no game files, keys or protection bypasses. You need your own dump.
+- **Is this a download or a crack?** No. There are no game files, keys or protection bypasses.
 - **Whose work is this?** Mostly the people who make the runtimes. i95 is the launcher around them. See [CREDITS.md](CREDITS.md).
-- **Does it go online?** Only when you say yes, for example to an **Install...** download.
-
-<details>
-<summary><b>For developers</b></summary>
-
-Building from source, the command line, runtime settings, patches and environment variables are in [DEVELOPERS.md](DEVELOPERS.md).
-
-</details>
 
 ## Credits
 
