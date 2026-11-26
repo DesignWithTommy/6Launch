@@ -148,3 +148,76 @@ mod tests {
         assert_eq!(super::repo("https://example.com/a/b"), None);
     }
 }
+
+/// The runtime list on GitHub: every runtime's NEONBRIDGE.toml and pin in
+/// one file, so a release picks up new runtimes and settings without a rebuild.
+pub const CATALOG_URL: &str = "https://raw.githubusercontent.com/DesignWithTommy/i95-GTA6-PC-Launcher/main/catalog.txt";
+const CATALOG_MARK: &str = "=== ";
+
+/// `--catalog`: catalog.txt at the repo root from vendor/*/NEONBRIDGE.toml + UPSTREAM.
+pub fn write_catalog(vendor: &Path, out: &Path) -> Result<usize, String> {
+    let mut text = String::from("# i95 runtime catalog: `=== <name> <upstream commit>` then that runtime's NEONBRIDGE.toml. Made by i95 --catalog.\n");
+    let mut names: Vec<_> = fs::read_dir(vendor).map_err(|e| e.to_string())?.flatten().map(|e| e.path()).collect();
+    names.sort();
+    let mut n = 0;
+    for dir in names {
+        let (Ok(toml), Some(commit)) = (fs::read_to_string(dir.join("NEONBRIDGE.toml")), pin(&dir)) else { continue };
+        let name = dir.file_name().unwrap_or_default().to_string_lossy().into_owned();
+        text.push_str(&format!("{CATALOG_MARK}{name} {commit}\n{}\n", toml.replace("\r\n", "\n").trim_end()));
+        n += 1;
+    }
+    fs::write(out, text).map_err(|e| e.to_string())?;
+    Ok(n)
+}
+
+/// The catalog's entries: (name, commit, toml).
+fn read_catalog(text: &str) -> Vec<(String, String, String)> {
+    let mut out: Vec<(String, String, String)> = Vec::new();
+    for line in text.lines() {
+        if let Some(head) = line.strip_prefix(CATALOG_MARK) {
+            let mut w = head.split_whitespace();
+            if let (Some(n), Some(c)) = (w.next(), w.next()) {
+                out.push((n.to_owned(), c.to_owned(), String::new()));
+                continue;
+            }
+        }
+        if let Some(last) = out.last_mut() {
+            last.2.push_str(line);
+            last.2.push('\n');
+        }
+    }
+    out
+}
+
+/// Startup: fetch the catalog (5 s at most) and update vendor/<name>'s
+/// NEONBRIDGE.toml and UPSTREAM from it; new runtimes get a folder. Offline,
+/// or a checkout (vendor/ beside a .git), or NEONBRIDGE_CATALOG=0: nothing changes.
+pub fn sync_catalog(vendor: &Path) {
+    if std::env::var("NEONBRIDGE_CATALOG").is_ok_and(|v| v.trim() == "0") || vendor.parent().is_some_and(|p| p.join(".git").exists()) {
+        return;
+    }
+    let tmp = std::env::temp_dir().join("i95-catalog.txt");
+    let ok = super::runtimes::command("curl").args(["-L", "--fail", "-sS", "--max-time", "5", "-o"]).arg(&tmp).arg(CATALOG_URL)
+        .status().is_ok_and(|s| s.success());
+    let Some(text) = ok.then(|| fs::read_to_string(&tmp).ok()).flatten() else {
+        println!("[catalog] offline: using the runtimes shipped with this build");
+        return;
+    };
+    let _ = fs::remove_file(&tmp);
+    let mut changed = 0;
+    for (name, commit, toml) in read_catalog(&text) {
+        let safe = !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+        if !safe || commit.len() != 40 || !commit.chars().all(|c| c.is_ascii_hexdigit()) || super::runtimes::check_spec(&toml).is_err() {
+            println!("[catalog] {name}: skipped (bad entry)");
+            continue;
+        }
+        let dir = vendor.join(&name);
+        if fs::read_to_string(dir.join("NEONBRIDGE.toml")).is_ok_and(|t| t.replace("\r\n", "\n") == toml) && pin(&dir).as_deref() == Some(commit.as_str()) {
+            continue;
+        }
+        if fs::create_dir_all(&dir).is_ok() && fs::write(dir.join("NEONBRIDGE.toml"), &toml).is_ok() && fs::write(dir.join("UPSTREAM"), format!("{commit}\n")).is_ok() {
+            changed += 1;
+        }
+    }
+    println!("[catalog] {changed} runtime(s) updated from GitHub");
+}

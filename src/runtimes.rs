@@ -436,6 +436,11 @@ fn value(s: &str) -> Option<Value> {
     }
 }
 
+/// The text parses as a runtime spec (the catalog's check).
+pub fn check_spec(text: &str) -> Result<(), String> {
+    parse(text).map(|_| ())
+}
+
 fn parse(text: &str) -> Result<Spec, String> {
     let mut spec = Spec::default();
     // The table the lines belong to: None at the top, "env" for [env]; any
