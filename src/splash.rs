@@ -397,7 +397,9 @@ unsafe fn paint(hwnd: HWND) {
             y += 2;
         }
         // A striped setting sun behind the wordmark.
-        let (cx, cy, r) = (WIDTH - 120, 100, 62);
+        // It sets as the load goes: high at the start, on the horizon at the end.
+        let (cx, r) = (WIDTH - 120, 62);
+        let cy = 78 + (52.0 * shown.clamp(0.0, 1.0)) as i32;
         let sun = CreateSolidBrush(rgb(255, 196, 70));
         let no_pen = GetStockObject(NULL_PEN);
         let (ob, op) = (SelectObject(dc, sun), SelectObject(dc, no_pen));
@@ -405,8 +407,14 @@ unsafe fn paint(hwnd: HWND) {
         SelectObject(dc, ob);
         SelectObject(dc, op);
         DeleteObject(sun);
-        for (i, gap) in [2, 3, 4, 5].iter().enumerate() {
-            let top = cy - 4 + i as i32 * 10;
+        // The stripes slide down through the sun, thickening as they go.
+        let slide = (tick as i32 / 2) % 10;
+        for i in 0..6 {
+            let top = cy - 10 + i * 10 + slide;
+            let gap = 1 + (top - (cy - 10)) / 12;
+            if top + gap > cy + r {
+                break;
+            }
             let t = (top as f32 / 138.0).min(1.0);
             fill(dc, RECT { left: cx - r, top, right: cx + r, bottom: top + gap }, mix(dusk, glow, ((t - 0.55) / 0.45).clamp(0.0, 1.0)));
         }
