@@ -676,7 +676,14 @@ fn auto_setup(name: &str, root: &Path, spec: &Spec, game: &Path) {
     crate::splash::status(0.46, &format!("Setting up {name}"));
     println!("[setup] {name}: first launch or changed setup: running its setup steps");
     let _ = std::io::stdout().flush();
+    // One answer per kind of step: a runtime with two setup scripts that both
+    // download asked twice.
+    let answers = std::cell::RefCell::new(std::collections::HashMap::<String, bool>::new());
     let ask = |mark: &str| {
+        if let Some(&y) = answers.borrow().get(mark) {
+            println!("[setup] {name}: a step that {mark}: {}", if y { "yes, as answered" } else { "no, as answered" });
+            return y;
+        }
         use windows_sys::Win32::UI::WindowsAndMessaging::{IDYES, MB_DEFBUTTON2, MB_ICONQUESTION, MB_SETFOREGROUND, MB_TOPMOST, MB_YESNO, MessageBoxW};
         println!("[setup] {name}: asking whether to run a step that {mark}");
         let _ = std::io::stdout().flush();
@@ -688,6 +695,7 @@ fn auto_setup(name: &str, root: &Path, spec: &Spec, game: &Path) {
         // No is the default.
         let yes = unsafe { MessageBoxW(std::ptr::null_mut(), text.as_ptr(), title.as_ptr(), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | MB_TOPMOST | MB_SETFOREGROUND) == IDYES };
         println!("[setup] {name}: {}", if yes { "yes" } else { "no, skipped" });
+        answers.borrow_mut().insert(mark.to_owned(), yes);
         yes
     };
     match run_steps(name, root, spec, Some(game), &ask) {
