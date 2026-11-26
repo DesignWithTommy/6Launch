@@ -4,8 +4,9 @@ fork = "VIctory"
 rank = 25   # #25 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "DexNom RayTime 64bd58f (GPL-3.0): VIctory for AMD Radeon, ray tracing optional"
 upstream = "https://github.com/DexNom/VIctory"
+# README.md:36: the BCPack format tables first.
 setup = [
-  "format-tables: powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1 [asks first: download]",   # README.md:36
+  "format-tables: powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1 [asks first: download]",
 ]
 build = ["cargo", "build", "--locked", "--release", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:36
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
