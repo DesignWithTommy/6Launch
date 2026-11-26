@@ -33,7 +33,6 @@ mod shaders;
 mod splash;
 mod controls;
 mod fps;
-mod mix;
 
 use std::{
     collections::HashMap,
@@ -152,10 +151,8 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
     // Started from the picker: no console, so the run's log is the only record.
     let mut gui = false;
     let (mut sets, mut preset, mut list_of): (Vec<String>, Option<String>, Option<Option<String>>) = (Vec::new(), None, None);
-    // --mix <saved name | last-good | file>, --mix-part <part>=<runtime>.
-    let mut mix: Option<mix::Mix> = None;
     // Started by a double-click (the console is ours alone): it goes away; the
-    // picker window (game, runtime, mix, options) and the loader follow.
+    // picker window (game, runtime, options) and the loader follow.
     // NEONBRIDGE_KEEP_CONSOLE=1 keeps it.
     if args.is_empty() && std::env::var("NEONBRIDGE_KEEP_CONSOLE").map_or(true, |v| v.trim() != "1") {
         #[link(name = "kernel32")]
@@ -197,16 +194,6 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
             }
             Some("--set") => sets.push(val("--set")?.to_string_lossy().into_owned()),
             Some("--preset") => preset = Some(val("--preset")?.to_string_lossy().into_owned()),
-            Some("--mix") => {
-                let v = val("--mix")?.to_string_lossy().into_owned();
-                let m = mix::load(&v).or_else(|| fs::read_to_string(&v).ok().map(|t| mix::Mix::parse(&t))).ok_or_else(|| format!("--mix {v}: no saved mix or file of that name"))?;
-                mix.get_or_insert_with(mix::Mix::default).parts.extend(m.parts);
-            }
-            Some("--mix-part") => {
-                let v = val("--mix-part")?.to_string_lossy().into_owned();
-                let (k, t) = v.split_once('=').ok_or_else(|| format!("--mix-part {v}: <part>=<runtime>"))?;
-                mix.get_or_insert_with(mix::Mix::default).parts.insert(k.trim().to_owned(), t.trim().to_owned());
-            }
             Some("--setup") => return runtimes::setup(&val("--setup")?.to_string_lossy()),
             Some("--report") => want_report = true,
             Some("--check") => {
@@ -293,7 +280,6 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
         // The picker's runtime, preset and options, under what the command line named.
         runtime_arg = runtime_arg.or(p.runtime);
         preset = preset.or(p.preset);
-        mix = mix.or(p.mix);
         sets.splice(0..0, p.sets);
     }
     if mode == Mode::Restore {
@@ -307,22 +293,6 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
         // Bug report: machine, runtime, its last run, as a prefilled GitHub issue.
         report::open(&runtime, game.as_deref());
         return Ok(());
-    }
-    // A mix: every part not named comes from the runtime picked (or the
-    // default); its app tree's toml runs it.
-    if let Some(m) = mix.take() {
-        let base = m.app().map(str::to_owned).unwrap_or_else(|| runtime.clone());
-        let m = m.filled(if crate::mix::root(&base).is_some() { &base } else { "scarlettport" });
-        runtime = m.app().unwrap_or("scarlettport").to_owned();
-        // Every part from one tree is that runtime itself, not a mix: run its
-        // own build, toml and cache (an all-scarlettport mix built a second
-        // victory.exe under 6ixpack\mix for nothing).
-        if m.parts.values().all(|t| *t == runtime) {
-            println!("[launch] mix: every part is {runtime}; running {runtime} itself");
-        } else {
-            println!("[launch] mix (app from {runtime}):\n{}", m.text());
-            mix = Some(m);
-        }
     }
     // A picker launch has no console: everything the launcher and the
     // runtime print goes to 6ixpack\logs\<runtime>_<time>.log (copied to the
@@ -339,7 +309,7 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
             println!("[launch] {runtime}: --debug, --sandbox, --rev and --tuxbox apply to --runtime tuxbox only");
         }
         let task = match mode { Mode::BuildOnly => runtimes::Task::Build, Mode::Prewarm => runtimes::Task::Prewarm, _ => runtimes::Task::Run };
-        return runtimes::run(&runtime, task, game.as_deref(), exe.as_deref(), log, timeout, &game_args, runtimes::Choice { preset: preset.as_deref(), sets: &sets, mix: mix.as_ref() });
+        return runtimes::run(&runtime, task, game.as_deref(), exe.as_deref(), log, timeout, &game_args, runtimes::Choice { preset: preset.as_deref(), sets: &sets });
     }
     // --pipelines: nothing waits on it, so every program is translated before
     // the build (no NEONBRIDGE_PREWARM_MAX_S cap unless one is set), and the

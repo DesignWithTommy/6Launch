@@ -18,7 +18,7 @@ You need Visual Studio Build Tools with the x64 C++ tools, the Windows SDK and R
 
 Each runtime's source is bundled under `vendor/<name>/source`, unchanged from its upstream at the hash in its `UPSTREAM` file. Its `NEONBRIDGE.toml` tells the launcher how to build it, which exe and arguments to run, its environment, options, presets and setup steps. i95 never patches a runtime: each builds as its author publishes it.
 
-In picker order: each toml's `rank = N` (best first, by the leader's own published results; unranked trees last, Mix always last).
+In picker order: each toml's `rank = N` (best first, by the leader's own published results; unranked trees last).
 
 | Rank | `--runtime` | What it is | Upstream |
 |---|---|---|---|
@@ -49,7 +49,6 @@ A build is skipped when its build stamp (`<exe>.nbstamp`: the tree's git hash, i
 | `--list <name>` | That runtime's options, their defaults and the values a run would use, plus its presets and setup steps. |
 | `--set NAME=VALUE` | One option for this run: an environment variable, or `--set --flag=VALUE` for the runtime's own arguments. Repeatable. |
 | `--preset <name>` | A preset from the runtime's `NEONBRIDGE.toml`, applied before `--set`. |
-| `--mix <name>`, `--mix-part <part>=<runtime>` | Build one victory exe from crates of several trees. |
 | `--setup <name>` | The runtime's setup steps. A step that downloads something or needs a file of yours asks first and runs only on a typed `yes`. |
 | `--game <dir>`, `--exe <file>` | The dump folder, and another title exe in it. |
 | `--log <file>`, `--timeout <s>` | Where the run's log goes (default `%LOCALAPPDATA%\6ixpack\logs\<runtime>_<time>.log`), and a time limit. |
@@ -91,7 +90,6 @@ The `neonbridge-own` runtime keeps its own options (`--debug`, `--rev`, `--tuxbo
 | Saves | `%LOCALAPPDATA%\6ixpack\save` (the victory family shares it) |
 | Caches | `%LOCALAPPDATA%\6ixpack\cache` (shared by the victory family), `%LOCALAPPDATA%\6ixpack\<runtime>\cache` (others) |
 | Picker memory | `%LOCALAPPDATA%\6ixpack\last_game.txt`, `last_pick.txt` |
-| Mixes | `%LOCALAPPDATA%\6ixpack\mix\<hash>` |
 
 ## Adding a runtime to i95
 
@@ -219,10 +217,6 @@ The same for every runtime, and none of it changes how a runtime draws:
 - **Display settings, only when you set them:**
   - `NEONBRIDGE_RESOLUTION` sets `VICTORY_DISPLAY_MODE`.
   - `NEONBRIDGE_FPS_CAP` sets `VICTORY_PACE_FPS`.
-
-### Mixing
-
-The family shares one binding ABI, so a crate from one tree can usually replace the same crate in another. Mixing a VSH2 runtime (Flamingo, Belobug) with a VSH1 one rebuilds the shader cache. See "Mix and match" in the README: no mix has been tested yet.
 
 ### Known gaps seen here
 

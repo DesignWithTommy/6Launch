@@ -1115,7 +1115,7 @@ pub fn patch_file(name: &str) -> PathBuf {
     vendor().join("patches").join(format!("rt-{name}.patch"))
 }
 
-/// The runtime's victory tree, if it has one (the mix's parts come from it).
+/// The runtime's victory tree, if it has one.
 pub fn victory_tree(name: &str) -> Option<PathBuf> {
     patch_root(name, &root_of(name)?)
 }
@@ -1127,16 +1127,10 @@ pub fn names() -> Vec<String> {
 
 /// Where a runtime sits in the picker, best first: its toml's `rank = N`.
 /// i95's own build has no toml and is 10. None: unranked, listed last.
-/// An older leader kept for comparison: listed under "Archived", after the Mix.
+/// An older leader kept for comparison: listed under "Archived".
 /// The project a runtime forks (its toml's fork, e.g. "victory-fork"): the picker groups by it.
 pub fn fork(name: &str) -> Option<String> {
     load(name).ok().and_then(|(_, s)| s.str("fork").map(|f| f.trim().trim_matches('"').to_owned()))
-}
-
-/// A mix source only (mix_only = true): its crates show in the Mix page,
-/// but it is not in the runtime list.
-pub fn mix_only(name: &str) -> bool {
-    load(name).ok().and_then(|(_, s)| s.str("mix_only").map(|a| a.trim() == "true")).unwrap_or(false)
 }
 
 pub fn archived(name: &str) -> bool {
@@ -1187,7 +1181,7 @@ pub fn options_of(name: &str) -> Vec<String> {
 
 /// Runs a cargo line in `cwd` with `target` as its target folder, hidden,
 /// echoed, with its Compiling lines on the loader bar. Err: the compile
-/// errors (the `error` blocks), for the mix's incompatible.txt.
+/// errors (the `error` blocks).
 pub fn cargo(cmd: &[String], cwd: &Path, target: &Path, label: &str) -> Result<(), String> {
     crate::splash::status(0.1, label);
     let mut c = crate::runtimes::command(&cmd[0]);
@@ -1904,8 +1898,6 @@ fn fps(line: &str) -> Option<f64> {
 pub struct Choice<'a> {
     pub preset: Option<&'a str>,
     pub sets: &'a [String],
-    /// Mix mode: the build is this mix's (mix.rs); `name` is its app tree.
-    pub mix: Option<&'a crate::mix::Mix>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1927,24 +1919,18 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         })
     });
     let echo = echo && log.is_some();
-    // The loader names the tree that actually runs: a mix, or the runtime's
+    // The loader names the tree that actually runs: the runtime's
     // own (its about line up to the licence).
     if matches!(task, Task::Run) {
-        let what = match choice.mix {
-            Some(m) => format!("a mix (app from {})", m.app().unwrap_or(name)),
-            None => {
-                let about = about(name);
-                let tree = about.split(" (").next().unwrap_or("").split(',').next().unwrap_or("").trim().to_owned();
-                if tree.is_empty() { name.to_owned() } else { format!("{name}: {tree}") }
-            }
+        let what = {
+            let about = about(name);
+            let tree = about.split(" (").next().unwrap_or("").split(',').next().unwrap_or("").trim().to_owned();
+            if tree.is_empty() { name.to_owned() } else { format!("{name}: {tree}") }
         };
         println!("[launch] runs {what}");
         crate::splash::show(&format!("Preparing {what}"));
     }
-    let built = match choice.mix {
-        Some(m) => crate::mix::build(m),
-        None => build(name, &root, &spec),
-    };
+    let built = build(name, &root, &spec);
     let program = built.inspect_err(|e| {
         crate::splash::close();
         if matches!(task, Task::Run) {
@@ -1977,7 +1963,7 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
             crate::splash::status(0.02, "Game files look incomplete (see the log); starting anyway");
         }
     }
-    if matches!(task, Task::Run) && choice.mix.is_none() {
+    if matches!(task, Task::Run) {
         auto_setup(name, &root, &spec, &game);
     }
     // The shared family cache is only for the runtimes that always used it;
@@ -2037,7 +2023,7 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         if logging() {
             env.push(("VICTORY_LOG".to_owned(), "info".to_owned()));
         }
-        // One save folder for the family (mix runs too); a toml or preset may still name another.
+        // One save folder for the family a toml or preset may still name another.
         env.push(("VICTORY_DATA_DIR".to_owned(), family_saves().display().to_string()));
     }
     env.extend(spec.env.iter().map(|(k, v)| (k.clone(), fill(v, &places))));
@@ -2158,10 +2144,6 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         crate::controls::show(name, &program, crate::controls::rows(|k| spec.str(&format!("controls.{k}")).map(str::to_owned)));
     }
     println!("[launch] {name} > {} {}", program.display(), args.join(" "));
-    // The mix built and the game starts: the last good mix.
-    if matches!(task, Task::Run) && let Some(m) = choice.mix {
-        crate::mix::remember_good(m);
-    }
     let result = supervised(name, cmd, log.as_deref(), timeout, echo, matches!(task, Task::Run));
     let mut why = None;
     if matches!(task, Task::Run) && let Some(l) = &log {

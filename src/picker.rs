@@ -4,14 +4,12 @@
 //! usage instead).
 //!
 //! Left, the runtimes as rows (name, version, a dot: green once a run of it
-//! presented frames, grey untested) and Mix. Right, the selected runtime's
+//! presented frames, grey untested). Right, the selected runtime's
 //! details and its preset. At the bottom, the game, found by itself (the last
 //! folder, then Downloads, Desktop and each drive's top-level folders that
 //! hold MicrosoftGame.Config, one level deep), with Change (the Explorer
 //! folder dialog), Advanced... and Play. Advanced is a window of its own:
-//! mix mode (one list per victory crate: which tree supplies it, with
-//! vendor/mix-compat.toml's clashes marked; saved mixes and the last good
-//! one) and the run's options. The game row resolves a folder, an exe or
+//! the run's options. The game row resolves a folder, an exe or
 //! MicrosoftGame.Config, as OpenScarlett's launcher target row (MIT) does.
 
 use std::{
@@ -29,7 +27,7 @@ use windows_sys::Win32::{
     },
     UI::{
         Controls::{DRAWITEMSTRUCT, MEASUREITEMSTRUCT, ODS_COMBOBOXEDIT, ODS_DISABLED, ODS_SELECTED, ODT_BUTTON, ODT_COMBOBOX},
-        Input::KeyboardAndMouse::{EnableWindow, GetFocus, IsWindowEnabled, SetFocus, TRACKMOUSEEVENT, TME_LEAVE, TrackMouseEvent, VK_DOWN, SetCapture, ReleaseCapture, GetCapture, VK_RETURN, VK_UP},
+        Input::KeyboardAndMouse::{GetFocus, IsWindowEnabled, SetFocus, TRACKMOUSEEVENT, TME_LEAVE, TrackMouseEvent, VK_DOWN, SetCapture, ReleaseCapture, GetCapture, VK_RETURN, VK_UP},
         Shell::SHCreateItemFromParsingName,
         WindowsAndMessaging::*,
     },
@@ -78,8 +76,6 @@ const ROW: i32 = 56;
 const ROWS_TOP: i32 = HEADER + 40;
 const DETAILS: i32 = LEFT + 32;
 
-/// The runtime list's last entry: mix mode.
-const MIX: &str = "mix";
 
 fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(Some(0)).collect()
@@ -254,7 +250,6 @@ pub struct Pick {
     pub exe: Option<String>,
     pub runtime: Option<String>,
     pub preset: Option<String>,
-    pub mix: Option<crate::mix::Mix>,
     pub sets: Vec<String>,
 }
 
@@ -514,7 +509,7 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
             fill_rect(dc, r, ROW_HOT);
         }
         let grey = row.missing.is_some();
-        let sub = if row.name == MIX { "Each crate from a tree".to_owned() } else if grey { format!("{} \u{00B7} not installed", row.version) } else { row.version.clone() };
+        let sub = if grey { format!("{} \u{00B7} not installed", row.version) } else { row.version.clone() };
         if row_h >= 40 {
             let top = r.top + (row_h - 40) / 2;
             text(dc, &row.title, rect(24, top + 2, LEFT - 40, top + 22), if grey { FAINT } else { TEXT }, f.strong, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
@@ -522,9 +517,7 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
         } else {
             text(dc, &row.title, rect(24, r.top, LEFT - 40, r.bottom), if grey { FAINT } else { TEXT }, f.strong, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
         }
-        if row.name != MIX {
-            dot(dc, LEFT - 24, r.top + row_h / 2, if row.frames.is_some_and(|n| n > 0) { GREEN } else { FAINT });
-        }
+        dot(dc, LEFT - 24, r.top + row_h / 2, if row.frames.is_some_and(|n| n > 0) { GREEN } else { FAINT });
         let vis = rect(r.left, r.top.max(ROWS_TOP), r.right, r.bottom.min(foot));
         s.targets.push((vis, Hit::Row(i)));
     }
@@ -539,14 +532,7 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
     if let Some(row) = s.rows.get(s.sel) {
         let x = DETAILS;
         text(dc, &row.title, rect(x, HEADER + 24, w - 32, HEADER + 64), TEXT, f.title, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
-        let lines: Vec<(&str, String)> = if row.name == MIX {
-            let app = UI.with(|u| u.borrow().as_ref().and_then(|ui| current_mix(ui).app().map(str::to_owned))).unwrap_or_default();
-            vec![
-                ("Build", "One victory build from crates of several trees".into()),
-                ("App from", if app.is_empty() { "-".into() } else { crate::runtimes::title(&app) }),
-                ("Crates", "Picked in Advanced".into()),
-            ]
-        } else {
+        let lines: Vec<(&str, String)> = {
             vec![
                 ("Version", row.version.clone()),
                 ("Licence", row.licence.clone()),
@@ -686,17 +672,9 @@ fn hit(x: i32, y: i32) -> Hit {
 
 // --------------------------------------------------------- runtime state
 
-fn is_mix() -> bool {
-    with_state(|s| s.rows.get(s.sel).is_some_and(|r| r.name == MIX)).unwrap_or(false)
-}
 
-/// The runtime whose toml runs: the picked one, or the mix's app tree.
 fn running() -> String {
-    if is_mix() {
-        UI.with(|u| u.borrow().as_ref().and_then(|ui| current_mix(ui).app().map(str::to_owned))).unwrap_or_else(|| "scarlettport".into())
-    } else {
-        with_state(|s| s.rows.get(s.sel).map(|r| r.name.clone())).flatten().unwrap_or_default()
-    }
+    with_state(|s| s.rows.get(s.sel).map(|r| r.name.clone())).flatten().unwrap_or_default()
 }
 
 fn refill_presets(want: Option<&str>) {
@@ -729,8 +707,8 @@ fn rows() -> Vec<Row> {
     // Best first by each toml's rank (as runs come in, the ranks change);
     // unranked last, in name order.
     rows.sort_by_key(|r| (crate::runtimes::rank(&r.name).unwrap_or(u32::MAX), r.name.clone()));
-    // Archived leaders (archived = true) go below the Mix, marked as such.
-    let (mut old, mut rows): (Vec<Row>, Vec<Row>) = rows.into_iter().partition(|r| crate::runtimes::archived(&r.name));
+    // Archived leaders (archived = true) go last, marked as such.
+    let (mut old, rows): (Vec<Row>, Vec<Row>) = rows.into_iter().partition(|r| crate::runtimes::archived(&r.name));
     // Grouped by the project each forks, groups ordered by their best rank.
     let group = |n: &str| crate::runtimes::fork(n).unwrap_or_else(|| "Own engine".into());
     let best = |g: &str| rows.iter().filter(|r| group(&r.name) == g).filter_map(|r| crate::runtimes::rank(&r.name)).min().unwrap_or(u32::MAX);
@@ -738,7 +716,6 @@ fn rows() -> Vec<Row> {
     // Flat, by leaderboard rank (grouping by fork put #2 below #27).
     keyed.sort_by_key(|k| (k.0.2, k.0.1.clone()));
     let mut rows: Vec<Row> = keyed.into_iter().map(|((_, g, rk), mut r)| { r.title = if rk == u32::MAX { format!("{g} \u{00B7} {}", r.title) } else { format!("#{rk} {g} \u{00B7} {}", r.title) }; r }).collect();
-    rows.push(Row { name: MIX.into(), title: "Mix".into(), version: String::new(), licence: String::new(), upstream: String::new(), frames: None, missing: None });
     for r in &mut old {
         r.title = format!("Archived \u{00B7} {}", r.title);
     }
@@ -794,19 +771,6 @@ fn select(hwnd: HWND, i: usize) {
     });
     if changed == Some(true) {
         refill_presets(None);
-        if is_mix() {
-            UI.with(|u| {
-                if let Some(ui) = u.borrow().as_ref() {
-                    if !crate::mix::conflicts(&current_mix(ui)).is_empty() {
-                        if let Some(app) = current_mix(ui).app().map(str::to_owned) {
-                            unify(ui, &app);
-                        }
-                    }
-                    check_mix(ui);
-                }
-            });
-        }
-        mix_mode();
         unsafe { InvalidateRect(hwnd, null(), 0) };
     }
 }
@@ -822,25 +786,12 @@ fn play(hwnd: HWND) {
     };
     let _ = fs::create_dir_all(saved().parent().unwrap_or(Path::new(".")));
     let _ = fs::write(saved(), game.display().to_string());
-    let mix = is_mix();
     let runtime = running();
     let (sel_name, preset) = with_state(|s| (s.rows.get(s.sel).map(|r| r.name.clone()).unwrap_or_default(), (s.preset > 0).then(|| s.presets.get(s.preset).cloned()).flatten())).unwrap_or_default();
-    let (parts, sets) = UI.with(|u| {
-        let u = u.borrow();
-        let Some(ui) = u.as_ref() else { return (None, Vec::new()) };
-        let sets: Vec<String> = edit_text(ui.options).lines().map(str::trim).filter(|l| l.contains('=')).map(str::to_owned).collect();
-        (Some(current_mix(ui)), sets)
-    });
+    let sets: Vec<String> = UI.with(|u| u.borrow().as_ref().map(|ui| edit_text(ui.options).lines().map(str::trim).filter(|l| l.contains('=')).map(str::to_owned).collect()).unwrap_or_default());
     let mut memory = format!("runtime={sel_name}\n");
     if let Some(p) = &preset {
         memory.push_str(&format!("preset={p}\n"));
-    }
-    // Part picks are remembered only for a mix run: stale part.* lines made a
-    // plain run look like a mix.
-    if mix {
-        for (k, v) in parts.iter().flat_map(|m| m.parts.iter()) {
-            memory.push_str(&format!("part.{k}={v}\n"));
-        }
     }
     for s in &sets {
         memory.push_str(&format!("opt={s}\n"));
@@ -850,7 +801,7 @@ fn play(hwnd: HWND) {
     // SAFETY: the picker's thread is the launcher's only one here.
     unsafe { std::env::set_var("NEONBRIDGE_DIAG", if DIAG.get() { "1" } else { "0" }) };
     let _ = fs::write(last_pick(), memory);
-    PICKED.with(|p| *p.borrow_mut() = Some(Pick { folder, exe, runtime: Some(runtime), preset, mix: if mix { parts } else { None }, sets }));
+    PICKED.with(|p| *p.borrow_mut() = Some(Pick { folder, exe, runtime: Some(runtime), preset, sets }));
     unsafe { DestroyWindow(hwnd) };
 }
 
@@ -1023,229 +974,34 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
 // ------------------------------------------------------- Advanced window
 
 const WM_MOUSELEAVE: u32 = 0x02A3;
-const ID_SAVED: usize = 112;
-const ID_NAME: usize = 113;
-const ID_SAVE: usize = 114;
 const ID_OPTS_HELP: usize = 115;
 const ID_OPTIONS: usize = 116;
 const ID_DONE: usize = 117;
 const ID_DIAG: usize = 118;
 const ID_STATUS: usize = 901;
-const ID_PART: usize = 200;
 const CBN_SELCHANGE: usize = 1;
 const ADV_WIDTH: i32 = 760;
 /// The node editor: source nodes (one per tree) on the left, crate nodes on
 /// the right, wires from each crate's picked tree.
-const NODES_TOP: i32 = 120;
-const SRC_X: (i32, i32) = (24, 224);
-const SRC_STEP: i32 = 26;
-const SRC_H: i32 = 22;
-const PART_X: (i32, i32) = (ADV_WIDTH - 24 - 240, ADV_WIDTH - 24);
-const PART_STEP: i32 = 46;
-const PART_H: i32 = 38;
-/// Wire colours, one per source tree (cycled).
-const WIRES: [COLORREF; 8] = [PINK, CYAN, GREEN, rgb(255, 176, 46), rgb(170, 120, 255), rgb(255, 99, 99), rgb(90, 160, 255), rgb(230, 230, 110)];
 
-#[derive(Clone, Copy, PartialEq)]
-enum Node {
-    Src(usize),
-    Part(usize),
-}
-
-thread_local! {
-    /// The node being dragged from, where the press was, and the cursor now.
-    static NODE_DRAG: Cell<Option<(Node, (i32, i32), (i32, i32))>> = const { Cell::new(None) };
-}
 
 struct Ui {
-    saved: HWND,
-    /// Saved mixes in the saved list's order (index 0: none).
-    saved_names: Vec<String>,
-    name: HWND,
-    save: HWND,
-    /// (part, its list, the trees in the list's order).
-    parts: Vec<(String, HWND, Vec<String>)>,
     options: HWND,
-    status: HWND,
-    /// Every tree a mix can take parts from: the source nodes, in order.
-    trees: Vec<String>,
 }
 
-fn canvas_h(trees: usize, parts: usize) -> i32 {
-    (trees as i32 * SRC_STEP).max(parts as i32 * PART_STEP) + 8
-}
 
-fn src_rect(i: usize) -> RECT {
-    let t = NODES_TOP + i as i32 * SRC_STEP;
-    rect(SRC_X.0, t, SRC_X.1, t + SRC_H)
-}
 
-fn part_rect(i: usize) -> RECT {
-    let t = NODES_TOP + i as i32 * PART_STEP;
-    rect(PART_X.0, t, PART_X.1, t + PART_H)
-}
 
-fn src_port(i: usize) -> (i32, i32) {
-    let r = src_rect(i);
-    (r.right, (r.top + r.bottom) / 2)
-}
 
-fn part_port(i: usize) -> (i32, i32) {
-    let r = part_rect(i);
-    (r.left, (r.top + r.bottom) / 2)
-}
 
-fn inside(r: RECT, (x, y): (i32, i32)) -> bool {
-    x >= r.left - 6 && x < r.right + 6 && y >= r.top && y < r.bottom
-}
 
-fn node_at(ui: &Ui, p: (i32, i32)) -> Option<Node> {
-    (0..ui.trees.len()).find(|&i| inside(src_rect(i), p)).map(Node::Src).or_else(|| (0..ui.parts.len()).find(|&i| inside(part_rect(i), p)).map(Node::Part))
-}
 
-fn wire_color(ui: &Ui, tree: &str) -> COLORREF {
-    ui.trees.iter().position(|t| t == tree).map_or(SUB, |i| WIRES[i % WIRES.len()])
-}
 
-/// The tree part `i` takes now.
-fn part_tree(ui: &Ui, i: usize) -> Option<&String> {
-    let (_, h, have) = &ui.parts[i];
-    have.get(selected(*h))
-}
 
-fn wire(dc: HDC, a: (i32, i32), b: (i32, i32), color: COLORREF, width: i32) {
-    let dx = ((b.0 - a.0).abs() / 2).max(40);
-    let pts = [POINT { x: a.0, y: a.1 }, POINT { x: a.0 + dx, y: a.1 }, POINT { x: b.0 - dx, y: b.1 }, POINT { x: b.0, y: b.1 }];
-    unsafe {
-        let pen = CreatePen(PS_SOLID, width, color);
-        let op = SelectObject(dc, pen);
-        PolyBezier(dc, pts.as_ptr(), 4);
-        SelectObject(dc, op);
-        DeleteObject(pen);
-    }
-}
 
-fn draw_nodes(dc: HDC, ui: &Ui, f: &Fonts) {
-    let on = is_mix();
-    let drag = NODE_DRAG.get();
-    // Wires under the nodes.
-    for i in 0..ui.parts.len() {
-        if let Some(t) = part_tree(ui, i) {
-            if let Some(s) = ui.trees.iter().position(|x| x == t) {
-                wire(dc, src_port(s), part_port(i), if on { wire_color(ui, t) } else { FAINT }, 2);
-            }
-        }
-    }
-    if let Some((from, _, cur)) = drag {
-        let (a, b) = match from {
-            Node::Src(s) => (src_port(s), cur),
-            Node::Part(p) => (cur, part_port(p)),
-        };
-        wire(dc, a, b, TEXT, 1);
-    }
-    let mix = current_mix(ui);
-    let hover = drag.and_then(|(_, _, c)| node_at(ui, c));
-    for (i, t) in ui.trees.iter().enumerate() {
-        let r = src_rect(i);
-        let used = (0..ui.parts.len()).any(|p| part_tree(ui, p) == Some(t));
-        let edge = if hover == Some(Node::Src(i)) { CYAN } else { BORDER };
-        rounded(dc, r, if used { ROW_ON } else { PANEL }, edge, 8, BACKGROUND);
-        text(dc, &short_title(t), rect(r.left + 10, r.top, r.right - 12, r.bottom), if on && used { TEXT } else { SUB }, f.small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
-        let (px, py) = src_port(i);
-        dot(dc, px, py, if on { wire_color(ui, t) } else { FAINT });
-    }
-    for (i, (p, _, _)) in ui.parts.iter().enumerate() {
-        let r = part_rect(i);
-        let tree = part_tree(ui, i);
-        let bad = tree.is_some_and(|t| crate::mix::clash(&mix, p, t).is_some());
-        let edge = if hover == Some(Node::Part(i)) { CYAN } else if bad { PINK } else { BORDER };
-        rounded(dc, r, PANEL, edge, 8, BACKGROUND);
-        let shown = if p == crate::mix::APP { "app" } else { p.trim_start_matches("victory-") };
-        text(dc, shown, rect(r.left + 14, r.top + 2, r.right - 8, r.top + 20), if on { TEXT } else { SUB }, f.strong, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
-        let from = tree.map_or("-".to_owned(), |t| short_title(t));
-        let from = if bad { format!("\u{2717} {from} (incompatible)") } else { from };
-        text(dc, &from, rect(r.left + 14, r.top + 19, r.right - 8, r.bottom - 2), if bad { PINK } else { SUB }, f.small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
-        let (px, py) = part_port(i);
-        dot(dc, px, py, if !on { FAINT } else { tree.map_or(FAINT, |t| wire_color(ui, t)) });
-    }
-}
 
-/// Points part `i` at `tree` through its (hidden) list, then runs the same
-/// path a pick in that list runs (unify, clashes, presets, main window).
-fn pick_part(hwnd: HWND, i: usize, tree: &str) {
-    let ok = UI.with(|u| {
-        u.borrow().as_ref().and_then(|ui| {
-            let (_, h, have) = ui.parts.get(i)?;
-            let at = have.iter().position(|t| t == tree)?;
-            unsafe { SendMessageW(*h, CB_SETCURSEL, at, 0) };
-            Some(())
-        })
-    });
-    if ok.is_some() {
-        advanced_command(hwnd, ID_PART + i, CBN_SELCHANGE);
-    }
-    unsafe { InvalidateRect(hwnd, null(), 0) };
-}
 
-/// The fallback picker: a menu of the trees part `i` can come from.
-fn part_menu(hwnd: HWND, i: usize) {
-    let Some((have, cur)) = UI.with(|u| u.borrow().as_ref().map(|ui| (ui.parts[i].2.clone(), part_tree(ui, i).cloned()))) else { return };
-    unsafe {
-        let menu = CreatePopupMenu();
-        for (k, t) in have.iter().enumerate() {
-            let w = wide(&short_title(t));
-            AppendMenuW(menu, MF_STRING | if cur.as_ref() == Some(t) { MF_CHECKED } else { 0 }, k + 1, w.as_ptr());
-        }
-        let r = part_rect(i);
-        let mut p = POINT { x: r.left, y: r.bottom };
-        ClientToScreen(hwnd, &mut p);
-        let k = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, p.x, p.y, 0, hwnd, null());
-        DestroyMenu(menu);
-        if k > 0 {
-            if let Some(t) = have.get(k as usize - 1) {
-                pick_part(hwnd, i, t);
-            }
-        }
-    }
-}
 
-fn node_mouse(hwnd: HWND, msg: u32, lparam: LPARAM) {
-    let p = ((lparam & 0xffff) as i16 as i32, ((lparam >> 16) & 0xffff) as i16 as i32);
-    match msg {
-        WM_LBUTTONDOWN => {
-            if !is_mix() {
-                return;
-            }
-            if let Some(n) = UI.with(|u| u.borrow().as_ref().and_then(|ui| node_at(ui, p))) {
-                NODE_DRAG.set(Some((n, p, p)));
-                unsafe { SetCapture(hwnd) };
-            }
-        }
-        WM_MOUSEMOVE => {
-            if let Some((n, start, _)) = NODE_DRAG.get() {
-                NODE_DRAG.set(Some((n, start, p)));
-                unsafe { InvalidateRect(hwnd, null(), 0) };
-            }
-        }
-        WM_LBUTTONUP => {
-            let Some((from, start, _)) = NODE_DRAG.take() else { return };
-            unsafe { ReleaseCapture() };
-            let moved = (p.0 - start.0).abs() > 4 || (p.1 - start.1).abs() > 4;
-            let to = UI.with(|u| u.borrow().as_ref().and_then(|ui| node_at(ui, p)));
-            let pair = match (from, to) {
-                (Node::Src(s), Some(Node::Part(i))) | (Node::Part(i), Some(Node::Src(s))) => UI.with(|u| u.borrow().as_ref().and_then(|ui| ui.trees.get(s).cloned())).map(|t| (i, t)),
-                _ => None,
-            };
-            unsafe { InvalidateRect(hwnd, null(), 0) };
-            match (pair, from) {
-                (Some((i, t)), _) => pick_part(hwnd, i, &t),
-                (None, Node::Part(i)) if !moved => part_menu(hwnd, i),
-                _ => {}
-            }
-        }
-        _ => {}
-    }
-}
 
 fn child(parent: HWND, class: &str, text: &str, style: u32, (x, y, w, h): (i32, i32, i32, i32), id: usize) -> HWND {
     let (class_w, text) = (wide(class), wide(text));
@@ -1343,95 +1099,16 @@ fn edit_text(edit: HWND) -> String {
     String::from_utf16_lossy(&buf[..n.max(0) as usize])
 }
 
-fn current_mix(ui: &Ui) -> crate::mix::Mix {
-    crate::mix::Mix {
-        parts: ui.parts.iter().filter_map(|(p, h, trees)| trees.get(selected(*h)).map(|t| (p.clone(), t.clone()))).collect(),
-    }
-}
 
-/// A tree's title without its parenthesis, for the crate grid.
-fn short_title(tree: &str) -> String {
-    let t = crate::runtimes::title(tree);
-    t.split(" (").next().unwrap_or(&t).to_owned()
-}
 
-/// Marks each part's trees that clash with the other picks, per
-/// vendor/mix-compat.toml (drawn faint); the selection stays.
-fn mark_clashes(ui: &Ui) {
-    let mix = current_mix(ui);
-    for (p, h, trees) in &ui.parts {
-        let titles: Vec<String> = trees
-            .iter()
-            .map(|t| {
-                let title = short_title(t);
-                if crate::mix::clash(&mix, p, t).is_some() { format!("\u{2717} {title} (incompatible)") } else { title }
-            })
-            .collect();
-        fill(*h, &titles, selected(*h));
-    }
-}
 
-fn set_mix(ui: &Ui, mix: &crate::mix::Mix) {
-    for (p, h, trees) in &ui.parts {
-        if let Some(i) = mix.parts.get(p).and_then(|t| trees.iter().position(|x| x == t)) {
-            unsafe { SendMessageW(*h, CB_SETCURSEL, i, 0) };
-        }
-    }
-}
 
-/// Every part from `tree` where it has one: a consistent mix to start from.
-fn unify(ui: &Ui, tree: &str) {
-    for (_, h, trees) in &ui.parts {
-        if let Some(i) = trees.iter().position(|t| t == tree) {
-            unsafe { SendMessageW(*h, CB_SETCURSEL, i, 0) };
-        }
-    }
-}
 
-/// Marks the clashes and says under the grid why the mix cannot build
-/// (vendor/mix-compat.toml, or a compile that failed before); no pop-ups.
-fn check_mix(ui: &Ui) {
-    mark_clashes(ui);
-    let mix = current_mix(ui);
-    let bad = crate::mix::conflicts(&mix);
-    let line = if let Some(first) = bad.first() {
-        let more = if bad.len() > 1 { format!(" (+{} more)", bad.len() - 1) } else { String::new() };
-        format!("Incompatible: {first}{more}")
-    } else if let Some(e) = crate::mix::incompatible(&mix) {
-        format!("Did not compile before: {}", e.lines().next().unwrap_or(""))
-    } else {
-        String::new()
-    };
-    let w = wide(&line);
-    unsafe { SetWindowTextW(ui.status, w.as_ptr()) };
-}
 
-/// The crate grid works only when the runtime is Mix.
-fn mix_mode() {
-    let on = is_mix();
-    UI.with(|u| {
-        if let Some(ui) = u.borrow().as_ref() {
-            for h in [ui.saved, ui.name, ui.save] {
-                unsafe { EnableWindow(h, on as i32) };
-            }
-            for (_, h, _) in &ui.parts {
-                unsafe { EnableWindow(*h, on as i32) };
-            }
-        }
-    });
-}
 
-/// Every option of the runtime that runs, or of every tree in the mix (they
-/// mix freely: each is an environment switch or the run's own flag).
+/// Every option of the runtime that runs.
 fn options_help() -> String {
     let mut trees = vec![running()];
-    if is_mix() {
-        UI.with(|u| {
-            if let Some(ui) = u.borrow().as_ref() {
-                trees.extend(current_mix(ui).parts.into_values());
-            }
-        });
-    }
     trees.sort();
     trees.dedup();
     let mut seen: Vec<String> = Vec::new();
@@ -1502,7 +1179,7 @@ fn show_advanced() {
     }
 }
 
-fn advanced_command(hwnd: HWND, id: usize, code: usize) {
+fn advanced_command(hwnd: HWND, id: usize, _code: usize) {
     match id {
         ID_DIAG => unsafe {
             DIAG.set(!DIAG.get());
@@ -1511,45 +1188,7 @@ fn advanced_command(hwnd: HWND, id: usize, code: usize) {
         ID_DONE => unsafe {
             ShowWindow(hwnd, SW_HIDE);
         },
-        ID_SAVED if code == CBN_SELCHANGE => UI.with(|u| {
-            if let Some(ui) = u.borrow().as_ref() {
-                let pick = ui.saved_names.get(selected(ui.saved)).cloned().unwrap_or_default();
-                if let Some(m) = crate::mix::load(&pick) {
-                    set_mix(ui, &m);
-                    check_mix(ui);
-                    let w = wide(&pick);
-                    unsafe { SetWindowTextW(ui.name, w.as_ptr()) };
-                }
-            }
-        }),
-        ID_SAVE => UI.with(|u| {
-            if let Some(ui) = u.borrow().as_ref() {
-                let name = edit_text(ui.name);
-                if name.trim().is_empty() {
-                    message(hwnd, "Name the mix first.", MB_ICONWARNING);
-                } else if let Err(e) = crate::mix::save(name.trim(), &current_mix(ui)) {
-                    message(hwnd, &format!("Saving the mix: {e}"), MB_ICONWARNING);
-                }
-            }
-        }),
         ID_OPTS_HELP => options_window(hwnd, &format!("{}: options", crate::runtimes::title(&running())), &options_help()),
-        id if (ID_PART..ID_PART + 64).contains(&id) && code == CBN_SELCHANGE => {
-            UI.with(|u| {
-                if let Some(ui) = u.borrow().as_ref() {
-                    if id == ID_PART && !crate::mix::conflicts(&current_mix(ui)).is_empty() {
-                        if let Some(app) = current_mix(ui).app().map(str::to_owned) {
-                            unify(ui, &app);
-                        }
-                    }
-                    check_mix(ui);
-                }
-            });
-            if id == ID_PART {
-                refill_presets(None);
-            }
-            // The main window's details name the mix's app tree.
-            unsafe { InvalidateRect(GetWindow(hwnd, GW_OWNER), null(), 0) };
-        }
         _ => {}
     }
 }
@@ -1608,13 +1247,13 @@ unsafe extern "system" fn advanced_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             let old_bitmap = SelectObject(dc, bitmap);
             fill_rect(dc, c, BACKGROUND);
             fonts(|f| {
-                text(dc, "Mix", rect(24, 16, 300, 40), TEXT, f.strong, DT_LEFT | DT_VCENTER);
-                text(dc, "Drag a tree onto a crate (or click a crate) to pick where it comes from. Pick Mix in the runtime list to use it.", rect(24, 40, ADV_WIDTH - 24, 60), SUB, f.small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+                text(dc, "Options", rect(24, 16, 300, 40), TEXT, f.strong, DT_LEFT | DT_VCENTER);
+                text(dc, "Switches for this run: KEY=VALUE, one per line. Options list shows what the runtime reads.", rect(24, 40, ADV_WIDTH - 24, 60), SUB, f.small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
             });
             // 1 px frames round the borderless edits.
             UI.with(|u| {
                 if let Some(ui) = u.borrow().as_ref() {
-                    for e in [ui.name, ui.options] {
+                    for e in [ui.options] {
                         let mut r: RECT = std::mem::zeroed();
                         GetWindowRect(e, &mut r);
                         let mut pts = [POINT { x: r.left, y: r.top }, POINT { x: r.right, y: r.bottom }];
@@ -1622,7 +1261,6 @@ unsafe extern "system" fn advanced_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                         let frame = rect(pts[0].x - 8, pts[0].y - 6, pts[1].x + 8, pts[1].y + 6);
                         rounded(dc, frame, PANEL, if GetFocus() == e { CYAN } else { BORDER }, 6, BACKGROUND);
                     }
-                    fonts(|f| draw_nodes(dc, ui, f));
                 }
             });
             BitBlt(screen, 0, 0, c.right, c.bottom, dc, 0, 0, SRCCOPY);
@@ -1636,14 +1274,14 @@ unsafe extern "system" fn advanced_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
         WM_CTLCOLORSTATIC | WM_CTLCOLOREDIT | WM_CTLCOLORLISTBOX => unsafe {
             let dc = wparam as HDC;
             let id = GetDlgCtrlID(lparam as HWND) as usize;
-            let field = msg != WM_CTLCOLORSTATIC || id == ID_NAME || id == ID_OPTIONS;
+            let field = msg != WM_CTLCOLORSTATIC || id == ID_OPTIONS;
             SetTextColor(dc, if id == ID_STATUS { PINK } else if field { TEXT } else { SUB });
             SetBkColor(dc, if field { PANEL } else { BACKGROUND });
             (if field { brushes().1 } else { brushes().0 }) as LRESULT
         },
         WM_COMMAND => {
             let (id, code) = (wparam & 0xffff, (wparam >> 16) & 0xffff);
-            if (id == ID_NAME || id == ID_OPTIONS) && (code == 0x100 || code == 0x200) {
+            if id == ID_OPTIONS && (code == 0x100 || code == 0x200) {
                 // EN_SETFOCUS / EN_KILLFOCUS: repaint the frame's focus colour.
                 unsafe { InvalidateRect(hwnd, null(), 0) };
             }
@@ -1666,10 +1304,6 @@ unsafe extern "system" fn advanced_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             }
             1
         }
-        WM_LBUTTONDOWN | WM_MOUSEMOVE | WM_LBUTTONUP => {
-            node_mouse(hwnd, msg, lparam);
-            0
-        }
         WM_CLOSE => {
             unsafe { ShowWindow(hwnd, SW_HIDE) };
             0
@@ -1678,8 +1312,8 @@ unsafe extern "system" fn advanced_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
     }
 }
 
-/// The Advanced window, made hidden at start (its options and mix are part of
-/// every pick).
+/// The Advanced window, made hidden at start (its options are part of every
+/// pick).
 fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     let class = wide("NeonbridgeAdvanced");
     let instance = unsafe { GetModuleHandleW(null()) };
@@ -1690,10 +1324,7 @@ fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     wc.hIcon = crate::picker::app_icon();
     wc.hCursor = unsafe { LoadCursorW(null_mut(), IDC_ARROW) };
     unsafe { RegisterClassW(&wc) };
-    let parts_n = 1 + crate::mix::crates().len();
-    let trees = crate::mix::trees();
-    let status_y = NODES_TOP + canvas_h(trees.len(), parts_n);
-    let options_y = status_y + 40;
+    let options_y = 96;
     let height = options_y + 24 + 96 + 24 + 36 + 24;
     let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN;
     let mut r = rect(0, 0, ADV_WIDTH, height);
@@ -1708,27 +1339,8 @@ fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     dark_window(hwnd);
     ADVANCED.set(hwnd);
 
-    let saved = combo(hwnd, (24, 72, 192, 0), ID_SAVED);
-    let mut saved_names = vec!["Saved mixes".to_owned(), "last-good".to_owned()];
-    saved_names.extend(crate::mix::saved_names());
-    fill(saved, &saved_names, 0);
-    let name = edit(hwnd, ES_AUTOHSCROLL as u32, (232, 72, 176, 32), ID_NAME);
-    let save = button(hwnd, "Save mix", (416, 72, 96, 32), ID_SAVE);
-    button(hwnd, "Options list", (520, 72, 96, 32), ID_OPTS_HELP);
+    button(hwnd, "Options list", (24, 56, 120, 32), ID_OPTS_HELP);
 
-    let mut part_names = vec![crate::mix::APP.to_owned()];
-    part_names.extend(crate::mix::crates());
-    // The lists hold each part's pick (current_mix/set_mix read them); the
-    // node editor stands in for them on screen.
-    let mut parts = Vec::new();
-    for (i, p) in part_names.iter().enumerate() {
-        let list = combo(hwnd, (0, 0, 200, 0), ID_PART + i);
-        unsafe { ShowWindow(list, SW_HIDE) };
-        let have: Vec<String> = trees.iter().filter(|t| crate::mix::has(t, p)).cloned().collect();
-        fill(list, &have.iter().map(|t| short_title(t)).collect::<Vec<_>>(), 0);
-        parts.push((p.clone(), list, have));
-    }
-    let status = child(hwnd, "STATIC", "", 0x4000 /* SS_ENDELLIPSIS */, (24, status_y + 4, ADV_WIDTH - 48, 20), ID_STATUS);
     label(hwnd, "Options for this run: KEY=VALUE, one per line", (24, options_y - 6, 400, 20));
     let options = edit(hwnd, WS_VSCROLL | (ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN) as u32, (24, options_y + 24, ADV_WIDTH - 48, 96), ID_OPTIONS);
     let opts: Vec<String> = memory.iter().filter(|(k, _)| k == "opt").map(|(_, v)| v.clone()).collect();
@@ -1738,22 +1350,11 @@ fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     DIAG.set(crate::runtimes::diag() && !memory.iter().any(|(k, v)| k == "diag" && v == "0"));
     button(hwnd, "Diagnostics", (24, options_y + 24 + 96 + 24, 420, 36), ID_DIAG);
 
-    let ui = Ui { saved, saved_names, name, save, parts, options, status, trees };
-    let mix = crate::mix::Mix { parts: memory.iter().filter_map(|(k, v)| k.strip_prefix("part.").map(|p| (p.to_owned(), v.clone()))).collect() };
-    let mix = if mix.parts.is_empty() { crate::mix::load("last-good").unwrap_or_default() } else { mix };
-    set_mix(&ui, &mix);
-    // A remembered mix that no longer fits starts over from its app tree.
-    if !crate::mix::conflicts(&current_mix(&ui)).is_empty() {
-        if let Some(app) = current_mix(&ui).app().map(str::to_owned) {
-            unify(&ui, &app);
-        }
-    }
-    check_mix(&ui);
+    let ui = Ui { options };
     UI.with(|u| *u.borrow_mut() = Some(ui));
 }
 
-/// Show the launcher window: the game, the runtime (or a mix of victory
-/// trees), its preset and options. None when it was closed without Play.
+/// Show the launcher window: the game, the runtime (/// trees), its preset and options. None when it was closed without Play.
 pub fn pick() -> Option<Pick> {
     unsafe { CoInitializeEx(null(), COINIT_APARTMENTTHREADED as u32) };
     dark_app();
@@ -1788,7 +1389,6 @@ pub fn pick() -> Option<Pick> {
     }
     create_advanced(hwnd, &memory);
     refill_presets(get("preset").as_deref());
-    mix_mode();
     unsafe {
         ShowWindow(hwnd, SW_SHOW);
         SetFocus(hwnd);

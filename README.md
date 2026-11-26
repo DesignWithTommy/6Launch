@@ -64,10 +64,6 @@ The first start of a runtime takes a while. It builds the runtime and prepares t
 
 ![The launcher: runtimes, details, preset and the game](assets/picker.png)
 
-**Advanced.** Mix parts of different runtimes, or set options for a run.
-
-![Advanced: mix mode and the run options](assets/mix.png)
-
 **The loader.** Shows what's happening before the game starts.
 
 ![The loader preparing the shaders](assets/loader.png)
@@ -77,10 +73,6 @@ The first start of a runtime takes a while. It builds the runtime and prepares t
 ![The controls overlay](assets/controls.png)
 
 How each runtime is built, prepared and started is in [DEVELOPERS.md](DEVELOPERS.md#how-each-runtime-is-wired).
-
-## Mix and match (help wanted)
-
-**Advanced** can build one runtime from parts of several, for example VIctory-fxceless with VItoriaBr's game file loader. The shader parts always come from the main runtime, so its shader cache keeps working. These mixes compiled in our own check, but nobody has played one yet. If you try one, please open an issue and tell us what happened. A mix that fails to compile is remembered and not offered again.
 
 ## Watch on your phone (Tailscale)
 
