@@ -1,4 +1,4 @@
-//! Neonbridge: run a dumped Xbox Series (Scarlett / GDK) executable on
+//! i95: run a dumped Xbox Series (Scarlett / GDK) executable on
 //! Windows through TuxBox's Rust console-library providers.
 //!
 //! The game's x64 code runs natively; the console DLLs it imports (d3d12_xs,
@@ -60,14 +60,14 @@ const USAGE: &str = "usage: neonbridge --game <dir> [--tuxbox <TuxBox checkout>]
   --rev        build providers and xshader from this commit's vendor/neonbridge-own (git archive
                snapshot, env NEONBRIDGE_REV), not the working tree
   providers build into %LOCALAPPDATA%/6ixpack/tuxbox; a release build ships them
-  prebuilt in a tuxbox folder beside neonbridge.exe and builds nothing
+  prebuilt in a tuxbox folder beside i95.exe and builds nothing
   replay-shaders <capture dir> [--xshader <exe>] [--against <dir>]  translate a
                TUXBOX_CAPTURE_FRAME capture's shaders offline and diff the outcomes
   --package-release DIR  build everything and lay out a portable release in DIR,
                zipped as neonbridge-<version>-win-x64.zip beside it
-  --package    the same with every runtime: dist/Neonbridge (the launcher, tuxbox,
+  --package    the same with every runtime: dist/i95 (the launcher, tuxbox,
                each vendor runtime's built exe and toml, README, CREDITS.md,
-               LICENSE), zipped as dist/Neonbridge-<version>.zip
+               LICENSE), zipped as dist/i95-<version>.zip
   --exe        executable name (default: the MicrosoftGame.Config Executable, else the only x64 exe)
   --log        game log file (default %LOCALAPPDATA%/6ixpack/logs/<exe>_<unix time>.log)
   --build-only build the providers, touch nothing in the game folder
@@ -260,7 +260,7 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
             }
             Some("--package") => {
                 let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("dist");
-                return package_release(tuxbox.unwrap_or_else(baked_tuxbox), &dist, Some("Neonbridge"));
+                return package_release(tuxbox.unwrap_or_else(baked_tuxbox), &dist, Some("i95"));
             }
             Some("--sandbox") => sandbox = true,
             Some("--cdb") => {
@@ -370,7 +370,7 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
     let tuxbox = tuxbox.unwrap_or_else(baked_tuxbox);
     if prebuilt.is_none() && !tuxbox.join("runtime/d3d12/d3d12_xs.def").is_file() {
         return Err(if tuxbox == baked_tuxbox() {
-            format!("no prebuilt providers in a tuxbox folder beside neonbridge.exe, and the source it was built from ({}) is gone; \
+            format!("no prebuilt providers in a tuxbox folder beside i95.exe, and the source it was built from ({}) is gone; \
                 unpack the full release zip, or pass --tuxbox <TuxBox checkout> (or set TUXBOX_ROOT)", tuxbox.display())
         } else {
             format!("{} is not a TuxBox provider source (no runtime/d3d12/d3d12_xs.def)", tuxbox.display())
@@ -1103,9 +1103,9 @@ fn prebuilt_dir() -> Option<PathBuf> {
     ["neonbridge-own", "tuxbox"].iter().map(|d| exe_dir.join(d)).find(|dir| PROVIDERS.iter().all(|p| dir.join(p.1).is_file()))
 }
 
-const RELEASE_README: &str = r"Neonbridge (portable)
+const RELEASE_README: &str = r"i95 (portable)
 
-Run neonbridge.exe, pick the dumped game folder (it holds MicrosoftGame.Config)
+Run i95.exe, pick the dumped game folder (it holds MicrosoftGame.Config)
 or its executable, and press Launch. Nothing is built: the runtime DLLs in
 tuxbox\ are copied beside the game exe (originals are kept in _6ixpack_orig\;
 neonbridge --restore --game <dir> puts them back).
@@ -1121,7 +1121,7 @@ tuxbox\dxil.dll are the Windows SDK's redistributable copies (Redist\D3D\x64).
 Options: neonbridge --help. The game starts in a 16:9 window; Alt+Enter or F11
 toggles borderless fullscreen (TUXBOX_FULLSCREEN=1 starts borderless).
 
-Licences: LICENSE (Neonbridge), tuxbox\LICENSE (TuxBox runtime),
+Licences: LICENSE (i95), tuxbox\LICENSE (TuxBox runtime),
 tuxbox\NOTICE-acphal (LGPL xma code in AcpHal.dll).
 ";
 
@@ -1148,7 +1148,7 @@ fn package_release(tuxbox: PathBuf, dir: &Path, all: Option<&str>) -> Result<(),
     }
     let runtime = stage.join("neonbridge-own");
     fs::create_dir_all(&runtime)?;
-    fs::copy(std::env::current_exe()?, stage.join("neonbridge.exe"))?;
+    fs::copy(std::env::current_exe()?, stage.join("i95.exe"))?;
     for dll in &dlls {
         fs::copy(dll, runtime.join(dll.file_name().unwrap()))?;
     }
@@ -1438,6 +1438,19 @@ fn staged_size(game: &Path, name: &str) -> Option<u64> {
         let (n, size) = l.split_once('\t')?;
         n.eq_ignore_ascii_case(name).then(|| size.parse().ok()).flatten()
     })
+}
+
+/// TuxBox's providers left in the game folder by an earlier TuxBox run: the
+/// other runtimes load the game's own DLLs from there, so they got TuxBox's
+/// XboxBvhBuilder.dll, d3d12_xs.dll and the rest instead (every VIctory fork
+/// then stopped at the intro on device slot 0x330). Put the originals back.
+pub(crate) fn unstage_for_others(game: &Path) {
+    if game.join(STAGED).is_file() {
+        println!("[launch] TuxBox's DLLs were still in the game folder: putting the game's own back");
+        if let Err(e) = restore(game) {
+            println!("[launch] could not put the game's DLLs back: {e}");
+        }
+    }
 }
 
 fn restore(game: &Path) -> Result<(), Box<dyn Error>> {
@@ -1991,7 +2004,7 @@ fn panic_hook() {
             let _ = writeln!(f, "{text}");
         }
         splash::close();
-        runtimes::fail_box(&format!("Neonbridge stopped on an internal error (thread {thread}):\n{info}\n\nWritten to {}", path.display()));
+        runtimes::fail_box(&format!("i95 stopped on an internal error (thread {thread}):\n{info}\n\nWritten to {}", path.display()));
         std::process::exit(101);
     }));
 }

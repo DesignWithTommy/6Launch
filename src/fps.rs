@@ -86,7 +86,7 @@ pub fn show(name: String, window: fn(&str) -> Option<HWND>) {
 fn run(name: String, window: fn(&str) -> Option<HWND>) {
     unsafe {
         let instance = GetModuleHandleW(std::ptr::null());
-        let class = wide("Neonbridge.Fps");
+        let class = wide("i95.Fps");
         let wc = WNDCLASSW { lpfnWndProc: Some(proc_), hInstance: instance, lpszClassName: class.as_ptr(), ..std::mem::zeroed() };
         RegisterClassW(&wc);
         let hwnd = CreateWindowExW(

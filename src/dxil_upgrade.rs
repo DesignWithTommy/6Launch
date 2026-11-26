@@ -212,7 +212,7 @@ fn game_running() -> bool {
 // with it, each pipeline a long nvgpucomp64 compile). A launcher that exits
 // with jobs queued starts `neonbridge --drain-upgrades`, detached, which works
 // the queue at idle priority until it is empty, stepping aside (and killing
-// its dxc) while any other neonbridge.exe runs: that one's own thread, or its
+// its dxc) while any other i95.exe runs: that one's own thread, or its
 // game, has the machine. One drainer at a time (upgrade/drain.pid); its log
 // is upgrade/drain.log. NEONBRIDGE_DXC_UPGRADE_DRAIN=0 off.
 
@@ -270,7 +270,7 @@ fn other_launcher() -> bool {
     // The drainer runs from its own copy (neonbridge-drain.exe): it yields to the launcher's name.
     let exe = std::env::current_exe().ok().and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
         .map(|n| n.replace(DRAIN_SUFFIX, ""))
-        .unwrap_or_else(|| "neonbridge.exe".into());
+        .unwrap_or_else(|| "i95.exe".into());
     unsafe {
         let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
         if snap == INVALID_HANDLE_VALUE {
@@ -331,7 +331,7 @@ pub fn spawn_drainer() {
     const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
     const IDLE_PRIORITY_CLASS: u32 = 0x40;
     let Ok(exe) = std::env::current_exe() else { return };
-    // Its own copy beside the queue: a build's `taskkill /IM neonbridge.exe`
+    // Its own copy beside the queue: a build's `taskkill /IM i95.exe`
     // (needed while the exe is locked) ended the drainer mid-queue, and a
     // drainer running the launcher's exe locked it against the next build.
     // NEONBRIDGE_DRAIN_COPY=0 runs the launcher's exe as before.

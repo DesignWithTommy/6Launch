@@ -409,7 +409,7 @@ pub fn human(bytes: u64) -> String {
     }
 }
 
-/// Neonbridge: prints the findings (only problems unless `all`) and returns the worst level.
+/// i95: prints the findings (only problems unless `all`) and returns the worst level.
 pub fn print(dir: &Path, all: bool) -> Level {
     let rep = run(dir);
     for f in rep.findings.iter().filter(|f| all || f.level != Level::Ok) {

@@ -1,5 +1,5 @@
 //! Copied from ScarlettPort (ZigZagBoi1/ScarlettPort, launcher/src/report.rs at 925f90a, GPL-3.0) with credit;
-//! REPO_URL is Neonbridge's and parse_fps comes from its engine.rs.
+//! REPO_URL is i95's and parse_fps comes from its engine.rs.
 #![allow(dead_code)]
 //! One-click hardware report: GPU and driver, CPU, RAM, Windows build, runtime version, the last
 //! run's frame-rate lines and the last 200 log lines (user name and paths scrubbed), opened as a
@@ -177,7 +177,7 @@ pub fn parse_fps(line: &str) -> Option<f32> {
     n.parse().ok()
 }
 
-/// Neonbridge: `neonbridge --report [--runtime <name>]`: the machine, the runtime and its
+/// i95: `neonbridge --report [--runtime <name>]`: the machine, the runtime and its
 /// last run (frame-rate summary and the last 200 log lines, user name and folders scrubbed),
 /// opened as a prefilled GitHub issue in the browser. Nothing is sent until the user submits it.
 pub fn open(runtime: &str, game: Option<&std::path::Path>) {

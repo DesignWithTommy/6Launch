@@ -1,11 +1,11 @@
-# Neonbridge for developers
+# i95 for developers
 
 Everything a player doesn't need: building from source, the command line, the runtime trees and their settings. For playing, see the [README](README.md).
 
 ## Building from source
 
 ```
-cargo build --release                      # target\release\neonbridge.exe
+cargo build --release                      # target\release\i95.exe
 neonbridge                                 # the picker window (or, in a terminal, numbered choices)
 neonbridge --runtime victory --game <dump dir> [--log run.log] [--timeout S]
 ```
@@ -29,9 +29,9 @@ In picker order: each toml's `rank = N` (best first, by the leader's own publish
 | 5 | `xcl` | xcl | ivall/xcl |
 | 6 | `belobug` | VIctory-Belobug-AMD, a VIctory fork tuned for AMD | Belobug/VIctory-Belobug-AMD |
 | 7 | `scarlettport` (default for `--runtime`) | ScarlettPort's VIctory-based runtime and launcher scripts | ZigZagBoi1/ScarlettPort |
-| - | `neonbridge-own` | Neonbridge (own build), hidden from the picker: TuxBox console-library providers staged into the game folder, with Neonbridge's fixes and shader translator | brcly/TuxBox |
+| - | `neonbridge-own` | i95 (own build), hidden from the picker: TuxBox console-library providers staged into the game folder, with i95's fixes and shader translator | brcly/TuxBox |
 
-Each runtime's default launch is exactly its author's (flags, environment, preset, cited in its toml); anything of Neonbridge's is an optional `preset_*`.
+Each runtime's default launch is exactly its author's (flags, environment, preset, cited in its toml); anything of i95's is an optional `preset_*`.
 
 The picker selects the last pick, else `NEONBRIDGE_RUNTIME`, else rank 1.
 
@@ -93,7 +93,7 @@ The `neonbridge-own` runtime keeps its own options (`--debug`, `--rev`, `--tuxbo
 | Picker memory | `%LOCALAPPDATA%\6ixpack\last_game.txt`, `last_pick.txt` |
 | Mixes | `%LOCALAPPDATA%\6ixpack\mix\<hash>` |
 
-## Adding a runtime to Neonbridge
+## Adding a runtime to i95
 
 Each step is something an earlier runtime needed (named in brackets).
 
@@ -112,7 +112,7 @@ Each step is something an earlier runtime needed (named in brackets).
 5. **Never touch its shader cache key:** `victory-shader`, the build kind, `shader_cache.rs` or the translator's switches. A key change cost a full 6-minute retranslation (rt-anyxboxx).
 6. **Register it in `src/runtimes.rs`.** Add it to `cache_format` (VSH1 or VSH2) and the seed list. Add a `patch_root()` entry if it gets a patch.
 7. **Patch only a proven crash.** Example: device slot `0x330` / method 102, which killed VI-BR-PORT, unified, AnyXboxX and Flamingo. Patches go in `vendor/patches/<fix>-<name>.patch`, never in `victory-shader`. The build stamp then rebuilds the runtime with the patch.
-8. **Build and check.** `cargo check`, then rebuild `target/release/neonbridge.exe` (the desktop shortcut runs it). Don't build while a run is live.
+8. **Build and check.** `cargo check`, then rebuild `target/release/i95.exe` (the desktop shortcut runs it). Don't build while a run is live.
 9. **Test through the launcher only.** Prewarm first, then one run. Read the run with `triage.py` and the launcher's crash reason. Check that auto-A gets it past the start screens.
 10. **Document it.** Add its row to the README table (author's claim beside our result). Add its build, cache format and family to "How each runtime is wired" below.
 11. **Ship it.** Stage files by name and check the staged diff for private details. Commit on main and push with the hash guard.
@@ -120,7 +120,7 @@ Each step is something an earlier runtime needed (named in brackets).
 
 ## How each runtime is wired
 
-How Neonbridge builds, prepares and starts each runtime in `vendor/`. Every setting below is its author's own (the source is noted in its `vendor/<name>/NEONBRIDGE.toml`); the only things Neonbridge adds are listed under [What Neonbridge adds](#what-neonbridge-adds).
+How i95 builds, prepares and starts each runtime in `vendor/`. Every setting below is its author's own (the source is noted in its `vendor/<name>/NEONBRIDGE.toml`); the only things i95 adds are listed under [What i95 adds](#what-neonbridge-adds).
 
 All nine are builds of [VIctory](https://github.com/Marvisak/VIctory) (Marvisak): the same `victory.exe` with the same commands (`run`, `translate`, `warm`). They differ in their fixes, their switches and their shader cache format.
 
@@ -198,7 +198,7 @@ VIctory (Marvisak)
 
 Every switch above is a `VICTORY_` environment variable (`RELAY=1` means `VICTORY_RELAY=1`).
 
-### What Neonbridge adds
+### What i95 adds
 
 The same for every runtime, and none of it changes how a runtime draws:
 
@@ -226,4 +226,4 @@ The family shares one binding ABI, so a crate from one tree can usually replace 
 
 ### Known gaps seen here
 
-- **VI-BR-PORT:** the game stops itself on a breakpoint about 20 s in, after the menus, right after calling a graphics-device method that VI-BR-PORT does not implement (`method not implemented object="device" slot=0x330`). Seen on an RTX 4060 8 GB, every run, also when run alone exactly as its README says (so not caused by Neonbridge); the other runtimes never call it.
+- **VI-BR-PORT:** the game stops itself on a breakpoint about 20 s in, after the menus, right after calling a graphics-device method that VI-BR-PORT does not implement (`method not implemented object="device" slot=0x330`). Seen on an RTX 4060 8 GB, every run, also when run alone exactly as its README says (so not caused by i95); the other runtimes never call it.

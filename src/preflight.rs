@@ -1,4 +1,4 @@
-//! Pre-launch check (the idea of xcl's preflight.rs, written for Neonbridge): before a
+//! Pre-launch check (the idea of xcl's preflight.rs, written for i95): before a
 //! run, ask the graphics card what every runtime needs (D3D12 at feature level 12_0,
 //! Shader Model 6.6, mesh shaders, 64- or 32-lane waves) and look at RAM and free disk,
 //! so "the game draws nothing" becomes a named problem with a fix. Read-only.

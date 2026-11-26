@@ -3,7 +3,7 @@
 //! Most VIctory forks key every cached shader on the bytes of victory.exe
 //! (victory-gpu shader_cache.rs build()), so any rebuild (a patch, a new
 //! folder, a new toolchain) translated every shader again. For the build,
-//! Neonbridge makes that read take `neonbridge-key.bin` beside the exe when
+//! i95 makes that read take `neonbridge-key.bin` beside the exe when
 //! it is there: a copy of the exe the cache was made with. So a rebuilt exe
 //! makes exactly the old keys. The first build of a runtime with no earlier
 //! exe keys on itself. The edit is put back after the build, like the

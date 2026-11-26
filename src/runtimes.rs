@@ -78,7 +78,7 @@ pub fn command(program: impl AsRef<std::ffi::OsStr>) -> Command {
 
 const GAME_EXE: &str = "game_scarlett_master.exe";
 pub const DEFAULT: &str = "scarlettport";
-/// Neonbridge's own build: TuxBox's providers with Neonbridge's fixes and
+/// i95's own build: TuxBox's providers with i95's fixes and
 /// shader translator, vendored at vendor/neonbridge-own.
 pub const TUXBOX: &str = "neonbridge-own";
 /// Its old id, still taken for one release while no vendor/tuxbox runtime
@@ -95,7 +95,7 @@ pub fn name(arg: Option<&str>) -> String {
         .unwrap_or_else(|| DEFAULT.into())
 }
 
-/// `tuxbox` meant Neonbridge's own build until it was renamed neonbridge-own.
+/// `tuxbox` meant i95's own build until it was renamed neonbridge-own.
 pub fn alias(name: &str) -> String {
     if name == OLD_OWN && !vendor().join(OLD_OWN).join("NEONBRIDGE.toml").is_file() {
         println!("[launch] runtime {OLD_OWN} is now {TUXBOX}; the old name works for this release only");
@@ -104,7 +104,7 @@ pub fn alias(name: &str) -> String {
     name.to_owned()
 }
 
-/// NEONBRIDGE_VENDOR, else the vendor folder beside neonbridge.exe (a
+/// NEONBRIDGE_VENDOR, else the vendor folder beside i95.exe (a
 /// release, `--package`), else the checkout it was built from.
 pub fn vendor() -> PathBuf {
     std::env::var_os("NEONBRIDGE_VENDOR").map(PathBuf::from)
@@ -293,7 +293,7 @@ pub fn missing(name: &str) -> Option<(String, Vec<&'static str>)> {
     Some((reason, pages))
 }
 
-/// The PC GDK release Neonbridge fetches (with the user's yes) from
+/// The PC GDK release i95 fetches (with the user's yes) from
 /// github.com/microsoft/GDK into %LOCALAPPDATA%\6ixpack\gdk\<version> and
 /// installs with its own setup. Never committed.
 pub const GDK_VERSION: &str = "2610.0.9661";
@@ -565,7 +565,7 @@ fn settings(spec: &Spec, preset: Option<&str>, sets: &[String]) -> Result<Vec<(S
 /// `--list <runtime>`: its options, defaults and the values a run would use.
 pub fn list_runtime(name: &str, preset: Option<&str>, sets: &[String]) -> Result<(), Box<dyn Error>> {
     if name == TUXBOX {
-        println!("{TUXBOX}: Neonbridge's own build, the TuxBox providers with Neonbridge's fixes (vendor/neonbridge-own), staged into the game folder; its options: neonbridge --runtime {TUXBOX} --help");
+        println!("{TUXBOX}: i95's own build, the TuxBox providers with i95's fixes (vendor/neonbridge-own), staged into the game folder; its options: neonbridge --runtime {TUXBOX} --help");
         return Ok(());
     }
     let (root, spec) = load(name)?;
@@ -681,7 +681,7 @@ fn auto_setup(name: &str, root: &Path, spec: &Spec, game: &Path) {
         println!("[setup] {name}: asking whether to run a step that {mark}");
         let _ = std::io::stdout().flush();
         let wide = |t: &str| t.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
-        let (text, title) = (wide(&format!("{name}'s setup has a step that {mark}.\n\nRun it now?")), wide("Neonbridge"));
+        let (text, title) = (wide(&format!("{name}'s setup has a step that {mark}.\n\nRun it now?")), wide("i95"));
         // SAFETY: both strings are NUL-terminated and live across the call.
         // Topmost and focused: an ownerless box opened behind the topmost
         // loader and the launch sat at "Setting up" with nothing to click.
@@ -701,7 +701,7 @@ fn auto_setup(name: &str, root: &Path, spec: &Spec, game: &Path) {
 
 /// (name, about, presets) of tuxbox and every vendor/<name>/NEONBRIDGE.toml.
 fn rows() -> Vec<(String, String, Vec<String>)> {
-    let mut rows = vec![(TUXBOX.to_owned(), "Neonbridge's own build: the TuxBox providers with Neonbridge's fixes (vendor/neonbridge-own), staged into the game folder".to_owned(), Vec::new())];
+    let mut rows = vec![(TUXBOX.to_owned(), "i95's own build: the TuxBox providers with i95's fixes (vendor/neonbridge-own), staged into the game folder".to_owned(), Vec::new())];
     if let Ok(dir) = fs::read_dir(vendor()) {
         for e in dir.flatten() {
             let n = e.file_name().to_string_lossy().into_owned();
@@ -1014,8 +1014,8 @@ fn interpreter(cmd: &[String]) -> Result<Vec<String>, String> {
 }
 
 /// A Python build (upstream TuxBox's build.py) runs in an x64 Visual Studio
-/// developer environment (vcvars64 via vswhere, as Neonbridge's own build
-/// does) with the dxc Neonbridge finds (shaders::find_dxc) first on PATH, so
+/// developer environment (vcvars64 via vswhere, as i95's own build
+/// does) with the dxc i95 finds (shaders::find_dxc) first on PATH, so
 /// choosing the game folder is all it needs. NEONBRIDGE_BUILD_VCVARS=0 runs
 /// it in the launcher's own environment.
 fn build_env(name: &str, c: &mut Command) -> Result<(), String> {
@@ -1118,7 +1118,7 @@ pub fn names() -> Vec<String> {
 }
 
 /// Where a runtime sits in the picker, best first: its toml's `rank = N`.
-/// Neonbridge's own build has no toml and is 10. None: unranked, listed last.
+/// i95's own build has no toml and is 10. None: unranked, listed last.
 /// An older leader kept for comparison: listed under "Archived", after the Mix.
 /// The project a runtime forks (its toml's fork, e.g. "victory-fork"): the picker groups by it.
 pub fn fork(name: &str) -> Option<String> {
@@ -1140,7 +1140,7 @@ pub fn rank(name: &str) -> Option<u32> {
 /// its toml's about (up to the first comma, without the licence).
 pub fn title(name: &str) -> String {
     if name == TUXBOX {
-        return "Neonbridge (own build)".into();
+        return "i95 (own build)".into();
     }
     let about = load(name).ok().and_then(|(_, s)| s.str("about").map(str::to_owned)).unwrap_or_default();
     let head = about.split(',').next().unwrap_or("").trim();
@@ -1229,7 +1229,7 @@ fn patch(name: &str, root: &Path) -> Result<Vec<PathBuf>, Box<dyn Error>> {
     // canonicalize gives a \\?\ verbatim path, which git cannot open: plain,
     // with forward slashes.
     let f = plain(&fs::canonicalize(&f).unwrap_or(f));
-    crate::splash::status(0.05, &format!("Applying Neonbridge patches to {name}"));
+    crate::splash::status(0.05, &format!("Applying i95 patches to {name}"));
     if git_apply(&tree, &f, &["--check", "-R"]).0 {
         println!("[launch] {name}: {} is already applied", f.display());
         return Ok(Vec::new());
@@ -1289,7 +1289,7 @@ fn git_apply(tree: &Path, patch: &Path, extra: &[&str]) -> (bool, String) {
 pub fn fail_box(e: &dyn std::fmt::Display) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
     let wide = |t: &str| t.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
-    let (text, title) = (wide(&e.to_string()), wide("Neonbridge"));
+    let (text, title) = (wide(&e.to_string()), wide("i95"));
     // SAFETY: both strings are NUL-terminated and live across the call.
     unsafe { MessageBoxW(std::ptr::null_mut(), text.as_ptr(), title.as_ptr(), MB_OK | MB_ICONERROR) };
 }
@@ -1968,9 +1968,10 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     }
     // The shared family cache is only for the runtimes that always used it;
     // the method-102 patched forks keep their own cache (their warmed files).
+    crate::unstage_for_others(&game);
     if elevated() {
-        println!("[launch] running as administrator: the GPU driver keeps its shader cache elsewhere, so warmed pipelines may not be found. Start Neonbridge normally.");
-        crate::splash::status(0.02, "Running as administrator: start Neonbridge normally to keep the driver's shader cache");
+        println!("[launch] running as administrator: the GPU driver keeps its shader cache elsewhere, so warmed pipelines may not be found. Start i95 normally.");
+        crate::splash::status(0.02, "Running as administrator: start i95 normally to keep the driver's shader cache");
     }
     let family = victory_tree(name).is_some() && matches!(name, "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo");
     // The victory family's cache is the one shared folder; this runtime's

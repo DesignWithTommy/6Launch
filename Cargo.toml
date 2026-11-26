@@ -6,7 +6,7 @@ license = "GPL-3.0-or-later"
 publish = false
 
 [[bin]]
-name = "neonbridge"
+name = "i95"
 path = "src/main.rs"
 
 [workspace]

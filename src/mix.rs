@@ -235,7 +235,7 @@ fn merged_manifest(app: &str, others: &[PathBuf]) -> String {
     if extra.is_empty() {
         return app.to_owned();
     }
-    app.replacen("[workspace.dependencies]", &format!("[workspace.dependencies]\n# Neonbridge mix: from the other trees\n{}", extra.join("\n")), 1)
+    app.replacen("[workspace.dependencies]", &format!("[workspace.dependencies]\n# i95 mix: from the other trees\n{}", extra.join("\n")), 1)
 }
 
 type Pair = ((String, String), (String, String), String);

@@ -1,14 +1,14 @@
-# Neonbridge: one launcher for every GTA VI (GTA 6) Xbox Series runtime on PC
+# i95: one launcher for every GTA VI (GTA 6) Xbox Series runtime on PC
 
-![Neonbridge: GTA 6 Xbox Series launcher for Windows PC](assets/banner.svg)
+![i95: GTA 6 Xbox Series launcher for Windows PC](assets/banner.svg)
 
 Test them all in one convenient launcher.
 
-Neonbridge is a Windows app that runs every project trying to bring the Xbox Series version of GTA VI to PC, from one window, on a copy of the game you dumped from your own console. **None of them is playable yet.** No game files are included.
+i95 is a Windows app that runs every project trying to bring the Xbox Series version of GTA VI to PC, from one window, on a copy of the game you dumped from your own console. **None of them is playable yet.** No game files are included.
 
 ## Standings
 
-The race's top 10 from the [GTA VI PC race tracker](https://github.com/vuyp/gta6-pc-race) ([live page](https://vuyp.github.io/gta6-pc-race/)), all in Neonbridge. **Nothing is playable yet** (the tracker's bar: 20 fps and 30 minutes without a crash). The launcher lists them grouped by the project each forks, best first.
+The race's top 10 from the [GTA VI PC race tracker](https://github.com/vuyp/gta6-pc-race) ([live page](https://vuyp.github.io/gta6-pc-race/)), all in i95. **Nothing is playable yet** (the tracker's bar: 20 fps and 30 minutes without a crash). The launcher lists them grouped by the project each forks, best first.
 
 "Here" = our PC: i5-14400F, RTX 4060 8 GB, 16 GB RAM, Windows 11. Most authors test on faster cards, so expect less here.
 
@@ -30,8 +30,8 @@ The race's top 10 from the [GTA VI PC race tracker](https://github.com/vuyp/gta6
 ## Get started
 
 1. Download the **v0.3.0-alpha** zip from [Releases](../../releases).
-2. Unzip it anywhere, for example `C:\Games\Neonbridge`.
-3. Run `neonbridge.exe`.
+2. Unzip it anywhere, for example `C:\Games\i95`.
+3. Run `i95.exe`.
 4. If it doesn't find your game folder by itself, click **Change** and choose it. Then pick a runtime and press **Play**.
 
 The first start of a runtime takes a while: it builds the runtime and prepares the game's shaders. The loading screen shows real counts for each step (for example "translating shaders: 1,000 / 26,503"), and a moving pulse where a runtime gives no count. Later starts are quicker: a runtime that hasn't changed isn't built again.
@@ -80,10 +80,10 @@ The shader translator, shader cache reader and pipeline builder (`victory-shader
 
 ## Watch on your phone (Tailscale)
 
-Hand this to your AI agent (Claude Code, Codex and the like), or run it yourself in a terminal in the Neonbridge folder:
+Hand this to your AI agent (Claude Code, Codex and the like), or run it yourself in a terminal in the i95 folder:
 
 ```powershell
-.\neonbridge.exe --feed-only
+.\i95.exe --feed-only
 ```
 
 1. It prints `Tailscale sign-in needed: open <link>`. Open that link, sign in to your own free Tailscale account and approve the PC (once; nothing to install).
@@ -103,7 +103,7 @@ Each runtime has its own keyboard and mouse layout. F1 shows it in game.
 
 ## Where things are
 
-Everything Neonbridge keeps is in `%LOCALAPPDATA%\6ixpack`. Paste that into the Explorer address bar to open it.
+Everything i95 keeps is in `%LOCALAPPDATA%\6ixpack`. Paste that into the Explorer address bar to open it.
 
 | What | Folder |
 |---|---|
@@ -113,7 +113,7 @@ Everything Neonbridge keeps is in `%LOCALAPPDATA%\6ixpack`. Paste that into the 
 
 ## Troubleshooting
 
-- **The game crashed or closed.** Every run is logged, so there is always a log to send. Neonbridge shows its location. Send that file from `%LOCALAPPDATA%\6ixpack\logs` (the newest one) when you report the problem.
+- **The game crashed or closed.** Every run is logged, so there is always a log to send. i95 shows its location. Send that file from `%LOCALAPPDATA%\6ixpack\logs` (the newest one) when you report the problem.
 - **A runtime is greyed out.** It needs something that isn't installed yet. Select it to see what, then click **Install...**.
 - **The first start is slow.** That's the shader preparation. It's only slow the first time.
 - **It says no game was found.** Click **Change** and choose the folder that holds `game_scarlett_master.exe`.
@@ -122,7 +122,7 @@ Everything Neonbridge keeps is in `%LOCALAPPDATA%\6ixpack`. Paste that into the 
 
 - **Can I play GTA 6 on PC with this?** Not yet. Every runtime here is still a work in progress.
 - **Is this a download or a crack?** No. There are no game files, keys or protection bypasses. You need your own dump.
-- **Whose work is this?** Mostly the authors of the projects it runs. Neonbridge is the launcher around them. See [CREDITS.md](CREDITS.md).
+- **Whose work is this?** Mostly the authors of the projects it runs. i95 is the launcher around them. See [CREDITS.md](CREDITS.md).
 - **Does it go online?** Only when you say yes, for example to an **Install...** download.
 
 <details>
@@ -134,10 +134,10 @@ Building from source, the command line, runtime settings, patches and environmen
 
 ## Credits
 
-Every runtime and every project Neonbridge borrows from is named in [CREDITS.md](CREDITS.md), with its authors, licence and version. Thanks especially to [realblastex](https://github.com/realblastex) for [Flamingo](https://github.com/realblastex/flamingo) and to [Belobug](https://github.com/Belobug) for [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD).
+Every runtime and every project i95 borrows from is named in [CREDITS.md](CREDITS.md), with its authors, licence and version. Thanks especially to [realblastex](https://github.com/realblastex) for [Flamingo](https://github.com/realblastex/flamingo) and to [Belobug](https://github.com/Belobug) for [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD).
 
 ## Licence
 
-GPL-3.0-or-later ([LICENSE](LICENSE)). Each runtime keeps its own licence (`vendor/<name>/LICENSE`): xcl is GPL-2.0-only, the VIctory forks (Flamingo and VIctory-Belobug-AMD among them) and ScarlettPort are GPL-3.0, and Neonbridge's own TuxBox-based code is Apache-2.0. Grand Theft Auto, GTA and Rockstar Games are trademarks of Take-Two Interactive; Xbox is a trademark of Microsoft. Neonbridge isn't affiliated with or endorsed by them.
+GPL-3.0-or-later ([LICENSE](LICENSE)). Each runtime keeps its own licence (`vendor/<name>/LICENSE`): xcl is GPL-2.0-only, the VIctory forks (Flamingo and VIctory-Belobug-AMD among them) and ScarlettPort are GPL-3.0, and i95's own TuxBox-based code is Apache-2.0. Grand Theft Auto, GTA and Rockstar Games are trademarks of Take-Two Interactive; Xbox is a trademark of Microsoft. i95 isn't affiliated with or endorsed by them.
 
 <sub>Keywords: GTA 6 PC, GTA VI PC, GTA 6 launcher, Grand Theft Auto VI Windows, Xbox Series X|S to PC, Scarlett, VIctory, Flamingo, Belobug, ScarlettPort, xcl, ztrx.</sub>

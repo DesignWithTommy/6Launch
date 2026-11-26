@@ -126,7 +126,7 @@ pub fn preview(runtime: &str, rows: Vec<(String, String)>) {
     let Ok(exe) = std::env::current_exe() else { return };
     unsafe {
         let instance = GetModuleHandleW(std::ptr::null());
-        let class = wide("Neonbridge.ControlsPreview");
+        let class = wide("i95.ControlsPreview");
         let wc = WNDCLASSW { lpfnWndProc: Some(plain), hInstance: instance, lpszClassName: class.as_ptr(), hCursor: LoadCursorW(std::ptr::null_mut(), IDC_ARROW), ..std::mem::zeroed() };
         RegisterClassW(&wc);
         let title = wide(&format!("Controls preview: {runtime}"));
@@ -171,7 +171,7 @@ fn height(rows: usize) -> i32 {
 fn run(name: String) {
     unsafe {
         let instance = GetModuleHandleW(std::ptr::null());
-        let class = wide("Neonbridge.Controls");
+        let class = wide("i95.Controls");
         let wc = WNDCLASSW { lpfnWndProc: Some(proc_), hInstance: instance, lpszClassName: class.as_ptr(), ..std::mem::zeroed() };
         RegisterClassW(&wc);
         let rows = PANEL.lock().unwrap_or_else(|e| e.into_inner()).as_ref().map_or(0, |p| p.rows.len());

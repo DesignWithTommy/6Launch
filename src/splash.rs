@@ -260,7 +260,7 @@ fn wide(s: &str) -> Vec<u16> {
 fn run() {
     unsafe {
         let instance = GetModuleHandleW(std::ptr::null());
-        let class = wide("Neonbridge.Splash");
+        let class = wide("i95.Splash");
         let wc = WNDCLASSW {
             lpfnWndProc: Some(proc_),
             hInstance: instance,
@@ -270,7 +270,7 @@ fn run() {
         };
         RegisterClassW(&wc);
         let (sw, sh) = (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
-        let title = wide("Neonbridge");
+        let title = wide("i95");
         let hwnd = CreateWindowExW(
             WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             class.as_ptr(),

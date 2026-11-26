@@ -1,5 +1,5 @@
 //! Copied from ScarlettPort (ZigZagBoi1/ScarlettPort, launcher/src/display.rs at 925f90a, GPL-3.0) with credit.
-//! Neonbridge tweaks: no serde (filled from NEONBRIDGE_* variables in from_env), and env() also
+//! i95 tweaks: no serde (filled from NEONBRIDGE_* variables in from_env), and env() also
 //! gives the victory family's VICTORY_DISPLAY_MODE / VICTORY_PACE_FPS.
 #![allow(dead_code)]
 //! Display settings: the config the Settings page edits, the environment the runtime reads
@@ -161,7 +161,7 @@ mod tests {
     }
 }
 
-/// Neonbridge: the config from NEONBRIDGE_DISPLAY (windowed|borderless|fullscreen),
+/// i95: the config from NEONBRIDGE_DISPLAY (windowed|borderless|fullscreen),
 /// NEONBRIDGE_RESOLUTION (WxH), NEONBRIDGE_FPS_CAP (30|60), NEONBRIDGE_VSYNC (0|1) and
 /// NEONBRIDGE_MONITOR (index); None when none is set, so each runtime keeps its author's default.
 pub fn from_env() -> Option<DisplayCfg> {
@@ -179,7 +179,7 @@ pub fn from_env() -> Option<DisplayCfg> {
     Some(d)
 }
 
-/// Neonbridge: the variables for every runtime (each reads only its own names).
+/// i95: the variables for every runtime (each reads only its own names).
 pub fn all_env(d: &DisplayCfg) -> Vec<(String, String)> {
     let mut v: Vec<(String, String)> = env(d, monitors().len()).into_iter().map(|(k, v)| (k.to_owned(), v)).collect();
     if let Some((w, h)) = parse_res(&d.resolution) {

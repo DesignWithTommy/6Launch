@@ -640,7 +640,7 @@ fn refill_presets(want: Option<&str>) {
 }
 
 fn rows() -> Vec<Row> {
-    // The top 7 leaders only; Neonbridge's own build stays reachable with --runtime neonbridge-own.
+    // The top 7 leaders only; i95's own build stays reachable with --runtime neonbridge-own.
     let names = crate::runtimes::names();
     let mut rows: Vec<Row> = names
         .into_iter()
@@ -650,7 +650,7 @@ fn rows() -> Vec<Row> {
             let project = title.split(" (").next().unwrap_or(&title).to_owned();
             let (name_part, version) = match project.rsplit_once(' ') {
                 Some((a, v)) if v.len() >= 7 && v.chars().all(|c| c.is_ascii_hexdigit()) => (a.to_owned(), v.to_owned()),
-                _ => (project.clone(), "Neonbridge".to_owned()),
+                _ => (project.clone(), "i95".to_owned()),
             };
             let licence = ["GPL-3.0", "GPL-2.0", "MIT", "Apache-2.0"].iter().find(|l| about.contains(*l)).map_or("-".to_owned(), |l| (*l).to_owned());
             let upstream = fs::read_to_string(crate::runtimes::vendor().join(&n).join("UPSTREAM")).ok().and_then(|u| u.lines().next().map(|l| l.trim().chars().take(12).collect())).unwrap_or_else(|| "-".into());
@@ -690,7 +690,7 @@ fn install_gdk(hwnd: HWND) {
         crate::runtimes::GDK_VERSION,
         crate::runtimes::gdk_dir().display()
     ));
-    let title = wide("Neonbridge");
+    let title = wide("i95");
     // SAFETY: both strings are NUL-terminated and live across the call.
     if unsafe { MessageBoxW(hwnd, text.as_ptr(), title.as_ptr(), MB_YESNO | MB_ICONQUESTION) } != IDYES {
         return;
@@ -709,7 +709,7 @@ fn install_gdk(hwnd: HWND) {
 }
 
 fn message(hwnd: HWND, text: &str, icon: u32) {
-    let (text, title) = (wide(text), wide("Neonbridge"));
+    let (text, title) = (wide(text), wide("i95"));
     unsafe { MessageBoxW(hwnd, text.as_ptr(), title.as_ptr(), MB_OK | icon) };
 }
 
@@ -1425,7 +1425,7 @@ pub fn pick() -> Option<Pick> {
     STATE.with(|s| *s.borrow_mut() = Some(State { rows, sel, hover: Hit::None, presets: Vec::new(), preset: 0, game: detect_game(), targets: Vec::new() }));
 
     let class = wide("NeonbridgePicker");
-    let title = wide("Neonbridge");
+    let title = wide("i95");
     let instance = unsafe { GetModuleHandleW(null()) };
     let mut wc: WNDCLASSW = unsafe { std::mem::zeroed() };
     wc.lpfnWndProc = Some(proc);

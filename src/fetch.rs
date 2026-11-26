@@ -106,7 +106,7 @@ fn ask(text: &str) -> bool {
         return true;
     }
     let wide = |t: &str| t.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
-    let (text, title) = (wide(text), wide("Neonbridge"));
+    let (text, title) = (wide(text), wide("i95"));
     // SAFETY: both strings are NUL-terminated and live across the call.
     unsafe { MessageBoxW(std::ptr::null_mut(), text.as_ptr(), title.as_ptr(), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2 | MB_TOPMOST | MB_SETFOREGROUND) == IDYES }
 }
