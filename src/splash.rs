@@ -21,7 +21,7 @@ use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
 const WIDTH: i32 = 560;
-const HEIGHT: i32 = 210;
+const HEIGHT: i32 = 214;
 const BACKGROUND: COLORREF = rgb(11, 11, 20);
 const TRACK: COLORREF = rgb(32, 30, 48);
 /// The pulse: a faint sheen moving through the unfilled track.
@@ -343,6 +343,11 @@ unsafe fn fill(dc: HDC, r: RECT, color: COLORREF) {
     }
 }
 
+unsafe fn font_italic(height: i32, weight: i32) -> HFONT {
+    let face = wide("Segoe UI Black");
+    unsafe { CreateFontW(height, 0, 0, 0, weight, 1, 0, 0, DEFAULT_CHARSET as u32, 0, 0, CLEARTYPE_QUALITY as u32, 0, face.as_ptr()) }
+}
+
 unsafe fn font(height: i32, weight: i32) -> HFONT {
     let face = wide("Segoe UI");
     unsafe { CreateFontW(height, 0, 0, 0, weight, 0, 0, 0, DEFAULT_CHARSET as u32, 0, 0, CLEARTYPE_QUALITY as u32, 0, face.as_ptr()) }
@@ -380,20 +385,40 @@ unsafe fn paint(hwnd: HWND) {
         let old_bitmap = SelectObject(dc, bitmap);
         SetBkMode(dc, TRANSPARENT as i32);
 
-        fill(dc, RECT { left: 0, top: 0, right: WIDTH, bottom: HEIGHT }, BACKGROUND);
-        // Neon frame: pink top edge, cyan bottom edge.
-        fill(dc, RECT { left: 0, top: 0, right: WIDTH, bottom: 3 }, PINK);
-        fill(dc, RECT { left: 0, top: HEIGHT - 3, right: WIDTH, bottom: HEIGHT }, CYAN);
+        // Sunset over the coast: night purple at the top through magenta to
+        // orange at the horizon, in 2 px bands.
+        let mix = |a: (f32, f32, f32), b: (f32, f32, f32), t: f32| rgb((a.0 + (b.0 - a.0) * t) as u8, (a.1 + (b.1 - a.1) * t) as u8, (a.2 + (b.2 - a.2) * t) as u8);
+        let (night, dusk, glow) = ((18.0, 8.0, 38.0), (92.0, 18.0, 96.0), (255.0, 122.0, 60.0));
+        let mut y = 0;
+        while y < HEIGHT {
+            let t = y as f32 / HEIGHT as f32;
+            let c = if t < 0.55 { mix(night, dusk, t / 0.55) } else { mix(dusk, glow, (t - 0.55) / 0.45) };
+            fill(dc, RECT { left: 0, top: y, right: WIDTH, bottom: y + 2 }, c);
+            y += 2;
+        }
+        // A striped setting sun behind the wordmark.
+        let (cx, cy, r) = (WIDTH - 120, 118, 74);
+        let sun = CreateSolidBrush(rgb(255, 196, 70));
+        let no_pen = GetStockObject(NULL_PEN);
+        let (ob, op) = (SelectObject(dc, sun), SelectObject(dc, no_pen));
+        Ellipse(dc, cx - r, cy - r, cx + r, cy + r);
+        SelectObject(dc, ob);
+        SelectObject(dc, op);
+        DeleteObject(sun);
+        for (i, gap) in [4, 6, 8, 10].iter().enumerate() {
+            let top = cy + 8 + i as i32 * 16;
+            let t = top as f32 / HEIGHT as f32;
+            fill(dc, RECT { left: cx - r, top, right: cx + r, bottom: top + gap }, mix(dusk, glow, ((t - 0.55) / 0.45).clamp(0.0, 1.0)));
+        }
+        // Dark ground under the card's text.
+        fill(dc, RECT { left: 0, top: 138, right: WIDTH, bottom: HEIGHT }, rgb(14, 6, 26));
+        fill(dc, RECT { left: 0, top: 138, right: WIDTH, bottom: 140 }, PINK);
 
-        let title = font(44, 800);
-        let small = font(17, 400);
-        text(dc, "i", RECT { left: 32, top: 28, right: WIDTH / 2, bottom: 84 }, PINK, title, DT_LEFT | DT_VCENTER);
-        let mut size: windows_sys::Win32::Foundation::SIZE = std::mem::zeroed();
-        let neon = wide("i");
-        let old = SelectObject(dc, title);
-        GetTextExtentPoint32W(dc, neon.as_ptr(), 4, &mut size);
-        SelectObject(dc, old);
-        text(dc, "95", RECT { left: 32 + size.cx, top: 28, right: WIDTH - 32, bottom: 84 }, CYAN, title, DT_LEFT | DT_VCENTER);
+        // The wordmark: heavy italic, white over a hot-pink drop shadow.
+        let title = font_italic(64, 900);
+        let small = font(17, 600);
+        text(dc, "i95", RECT { left: 36, top: 26, right: WIDTH, bottom: 104 }, rgb(255, 46, 151), title, DT_LEFT | DT_VCENTER);
+        text(dc, "i95", RECT { left: 32, top: 22, right: WIDTH, bottom: 100 }, rgb(255, 255, 255), title, DT_LEFT | DT_VCENTER);
         // Counted lines carry their own numbers; dots only for waits.
         // No count: dots and the step's elapsed time ("Warming the shaders... 1m 20s").
         let dots = match since.map(|t| t.elapsed()).filter(|_| pulse) {
@@ -401,20 +426,33 @@ unsafe fn paint(hwnd: HWND) {
             Some(_) => ".".repeat((tick / 12 % 4) as usize),
             None => String::new(),
         };
-        text(dc, &format!("{line}{dots}"), RECT { left: 32, top: 104, right: WIDTH - 32, bottom: 130 }, TEXT, small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+        text(dc, &format!("{line}{dots}"), RECT { left: 32, top: 146, right: WIDTH - 32, bottom: 170 }, TEXT, small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
 
-        // Progress bar with a moving highlight.
-        let bar = RECT { left: 32, top: 146, right: WIDTH - 32, bottom: 156 };
-        fill(dc, bar, TRACK);
-        let filled = bar.left + ((bar.right - bar.left) as f32 * shown.clamp(0.0, 1.0)) as i32;
-        fill(dc, RECT { right: filled, ..bar }, PINK);
-        // No count: one faint sheen moves through the unfilled track only.
-        if pulse && filled < bar.right {
-            let rest = bar.right - filled;
-            let at = filled + (tick as i32 * 3) % (rest + 80) - 80;
-            fill(dc, RECT { left: at.max(filled), right: (at + 80).min(bar.right), ..bar }, SHEEN);
+        // Progress: a road. Asphalt the whole way, the lane line painted as far
+        // as the load has come, and a car at the front of it.
+        let road = RECT { left: 32, top: 174, right: WIDTH - 32, bottom: 196 };
+        fill(dc, road, rgb(34, 30, 44));
+        fill(dc, RECT { bottom: road.top + 2, ..road }, rgb(150, 140, 170));
+        fill(dc, RECT { top: road.bottom - 2, ..road }, rgb(150, 140, 170));
+        let filled = road.left + ((road.right - road.left) as f32 * shown.clamp(0.0, 1.0)) as i32;
+        let mid = (road.top + road.bottom) / 2;
+        // Dashes scroll while it waits, as if driving.
+        let shift = if pulse { (tick as i32 * 2) % 24 } else { 0 };
+        let mut x = road.left - shift;
+        while x < filled {
+            let (l, r) = (x.max(road.left), (x + 14).min(filled));
+            if r > l {
+                fill(dc, RECT { left: l, top: mid - 1, right: r, bottom: mid + 2 }, rgb(255, 200, 60));
+            }
+            x += 24;
         }
-        text(dc, &format!("{}%", (shown * 100.0).floor() as u32), RECT { left: 32, top: 162, right: WIDTH - 32, bottom: 186 }, TEXT, small, DT_RIGHT | DT_VCENTER);
+        // The car: hot-pink body, cyan windshield, rear light.
+        let car = (filled - 26).max(road.left);
+        fill(dc, RECT { left: car, top: road.top + 4, right: car + 26, bottom: road.bottom - 4 }, PINK);
+        fill(dc, RECT { left: car + 15, top: road.top + 6, right: car + 21, bottom: road.bottom - 6 }, CYAN);
+        fill(dc, RECT { left: car, top: road.top + 5, right: car + 2, bottom: road.top + 8 }, rgb(255, 60, 60));
+        fill(dc, RECT { left: car, top: road.bottom - 8, right: car + 2, bottom: road.bottom - 5 }, rgb(255, 60, 60));
+        text(dc, &format!("{}%", (shown * 100.0).floor() as u32), RECT { left: 32, top: 146, right: WIDTH - 32, bottom: 170 }, TEXT, small, DT_RIGHT | DT_VCENTER);
 
         BitBlt(screen, ox, oy, WIDTH, HEIGHT, dc, 0, 0, SRCCOPY);
         SelectObject(dc, old_bitmap);
