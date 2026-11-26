@@ -145,9 +145,6 @@ pub fn watch(exe: &std::path::Path) {
                 focused = true;
                 // The title only reads input while it has focus (the auto A press
                 // for its player-selection prompt included), so hand it the foreground.
-                if !game.is_null() {
-                    unsafe { SetForegroundWindow(game) };
-                }
             }
             for hwnd in top_level_windows() {
                 let mut pid = 0;

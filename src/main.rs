@@ -11,7 +11,6 @@
 
 mod fetch;
 mod shaderkey;
-mod autopress;
 mod verify;
 mod preflight;
 mod display;
@@ -1610,7 +1609,6 @@ q
         .spawn()?;
     shaders::GAME_PID.store(child.id(), std::sync::atomic::Ordering::Relaxed);
     neonbridge_feed::watch_pid(child.id());
-    autopress::start(child.id());
     kill_on_close(&child);
     splash::watch(exe);
     controls::show(runtimes::TUXBOX, exe, controls::tuxbox_rows());

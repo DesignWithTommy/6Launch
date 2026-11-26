@@ -1563,7 +1563,6 @@ fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<
     let mut child = hidden(cmd.stdout(Stdio::piped()).stderr(Stdio::piped())).spawn()?;
     // Auto-press A (Enter) through the start screens for the game, not warms or builds.
     if game {
-        crate::autopress::start(child.id());
     }
     let frames = Arc::new(Mutex::new((0u64, false)));
     let pump = |r: Box<dyn std::io::Read + Send>| {
