@@ -4,13 +4,26 @@
 
 Try them all from one window.
 
-i95 is a Windows app that runs the projects trying to bring the Xbox Series version of GTA VI to PC. You pick one and press Play; i95 does the rest: it builds the runtime, prepares the shaders and starts it. It doesn't include or download the game, and there are no game files, keys or protection bypasses in it.
+i95 is a Windows launcher for the projects trying to run the Xbox Series version of GTA VI on PC. It doesn't include or download the game, and there are no game files, keys or protection bypasses in it.
+
+**It builds every runtime from source on your PC.** Each runtime's source code is pinned to one commit you can read on GitHub, and i95 compiles it locally with Rust, so you never run an .exe someone else built. That's safer than downloading prebuilt runtime exes, which is how fake "GTA 6 PC" malware spreads.
+
+## What it does
+
+- **One list of runtimes**, ranked like the race tracker, each with its author's own default launch settings.
+- **Builds and rebuilds** a runtime only when its source changed, and keeps each runtime's shader cache when it does.
+- **Prepares shaders** before the game starts, with a loading screen that shows real progress.
+- **Checks your PC first**: graphics card features (D3D12, Shader Model 6.6, mesh shaders), RAM and free disk, and names what's missing.
+- **Presets** per runtime, such as Series S, 8 GB cards and crash diagnostics, plus any extra setting a runtime reads.
+- **In game**: an fps and frame-time overlay, a controls overlay, and the display kept awake.
+- **After a run**: explains why it ended by reading the log, writes a short timeline, and can file an issue report.
+- **Asks before going online**, for example before fetching a runtime's source or an optional download.
 
 **None of these runtimes is playable yet.** The tracker's bar for playable is 20 fps and 30 minutes without a crash, and nobody has cleared it.
 
 ## Standings
 
-Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 25 runtimes, and the launcher lists them in one list in that order.
+Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 27 runtimes, and the launcher lists them in one list in that order.
 
 "Its author reports" is what each project says about itself, in its own words where we could. "Here" is our own PC: i5-14400F, RTX 4060 8 GB, 16 GB RAM, Windows 11. Most authors test on faster cards, so expect less on yours if it's like ours.
 
@@ -41,6 +54,8 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 28 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | victory-fork | About 4 fps in the opening mission, RTX 3060 | ✅ 3D at 2 to 3 fps |
 | 31 | [VIctory](https://github.com/Marvisak/VIctory) | (the original) | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | Not run yet |
 | – | [Victory-United](https://github.com/Fayberr/Victory-United) | VIctory | One tree of VIctory's best open pull requests; 9.3 fps median over 15 minutes after merging VIctory-7900XTX's speed work | Not run yet |
+| – | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | VIctory-NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker | Not run yet |
+| – | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | CGBJ | cool_fox with VIctory-NVIDIA's 8 GB patches; 7.7 fps at half render scale, 2–3 fps native; not on the tracker | Not run yet |
 | – | i95-Victory (ours) | Kelvaroq | Our own fork: Kelvaroq plus the 8 GB and skin fixes from VI-BR-PORT, soldsawn and VItoriaBr | Not run yet |
 
 **Not in i95:** ztrx (#15) and victory-perf (#20) are gone from GitHub. omonkey (#21), Doomsday (#23) and suri (#24) are private builds with no public code, so there's nothing to run.

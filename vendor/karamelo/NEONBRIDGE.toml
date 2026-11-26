@@ -1,0 +1,49 @@
+# Launcher spec for vendor/karamelo: badDevelopper's VKarameloVI (VIctory-NVIDIA based).
+# Build and env are its README "Build" section and scripts/play-nvidia.ps1 (default: Series S, half scale).
+# Not done: its Smooth Motion copy (victory_sm.exe); the launcher runs victory.exe itself, like -NoSmoothMotion.
+name = "karamelo"
+fork = "VIctory"
+about = "VKarameloVI 2711f62 (GPL-3.0): 11 fps real, 21.8 with NVIDIA Smooth Motion, on its author's card; not yet run here"
+upstream = "https://github.com/badDevelopper/VKarameloVI"
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:195
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/diag/victory.exe"
+diag_build = []
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play-nvidia.ps1:56
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]   # README.md:208
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_series_x = ["--console=series-x", "VICTORY_OWN_UPSCALER=", "VICTORY_RENDER_SCALE="]   # play-nvidia.ps1 -SeriesX
+preset_8gb = ["VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours: its 1536 MB card buffers trimmed for 8 GB cards
+
+[env]   # play-nvidia.ps1:18-35
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_SKIP_PIPELINES = "none"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_PIPELINE_WAIT_MS = "10000"
+VICTORY_DYNAMIC_SLOTS = "524288"
+VICTORY_RENDER_SCALE = "0.5"
+VICTORY_OWN_UPSCALER = "1"
+VICTORY_BVH_MISS = "1"
+VICTORY_CARD_BUFFERS_MIN_MB = "1"
+VICTORY_CARD_BUFFERS_MB = "1536"
+VICTORY_COMPOSE = "1"

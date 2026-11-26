@@ -1,0 +1,39 @@
+# Launcher spec for vendor/coolfox12: miaohaixiang1-netizen's cool-fox-12gb (cool_fox + VIctory-NVIDIA, 8 GB patches).
+# Build, run and env are its README and Play-VIctory.cmd.
+name = "coolfox12"
+fork = "VIctory"
+about = "cool-fox-12gb 67298e8 (GPL-3.0): 7.7 fps at half render scale, 2-3 fps native, for 8 GB cards; not yet run here"
+upstream = "https://github.com/miaohaixiang1-netizen/cool-fox-12gb"
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:48
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:96
+run = ["run", "{game_exe}", "--console", "series-s", "--execute"]   # Play-VIctory.cmd
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_half_scale = ["VICTORY_RENDER_SCALE=0.5", "VICTORY_OWN_UPSCALER=1"]   # README: its 7.7 fps row
+
+[env]   # Play-VIctory.cmd
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"
+VICTORY_AMBIENT_AIR = "1.5"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"

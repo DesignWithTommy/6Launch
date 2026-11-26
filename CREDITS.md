@@ -44,3 +44,5 @@ Ranks come from [vuyp](https://github.com/vuyp)'s [GTA VI PC race tracker](https
 - i95-Victory, our own fork of Kelvaroq with fixes from VI-BR-PORT, soldsawn/victory-nvidia-8gb and VItoriaBr, GPL-3.0 (vendor/i95-victory; credits in its source/CREDITS.md)
 
 - **CGBJ** (vendor/cgbj): [DoubleGhosty/cool_fox](https://github.com/DoubleGhosty/cool_fox), a continuation of codec-d/cool_fox. GPL-3.0.
+- **VKarameloVI** (vendor/karamelo): [badDevelopper/VKarameloVI](https://github.com/badDevelopper/VKarameloVI). GPL-3.0.
+- **cool-fox-12gb** (vendor/coolfox12): [miaohaixiang1-netizen/cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb). GPL-3.0.
