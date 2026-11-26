@@ -1,0 +1,80 @@
+run-20261125-021830-jouer.log — extract (Desktop 440e19e + FSR 0.5, cache gta6b), 02:18:30-02:23:32 Paris (log times UTC 01:xx).
+Raw log stays on the PC (_work\runs). Extract relayed by the PC session, paths replaced with ~.
+
+ENDING: no crash in the log (no AV/exception/alloc failure/panic/device removed). Ends on window close:
+01:23:31 victory_hle::modules::lifecycle: window closed: suspending the title routines=2
+01:23:32 victory_hle::modules::lifecycle: title did not finish suspending in time; ending the title
+At 01:23:31 process 20.1 GB private, 8.1 GB working set. The 32.9 GB is the overlay's figure; nothing in the log about RAM.
+Only memory signal: 01:20:28 WARN host pipeline refused error=(0x8007000E) shaders=[compute 39f0e9aeb156a61c]
+
+WARM START: hits=2178 misses=0 01:18:42; hits=3049 01:19:08; hits=3056 misses=18 01:22:35.
+Library: saved bytes=0 early=2762 made=0 loaded=2729 started_early=2729 (01:19:49); bytes=736712 early=2774 made=8 loaded=2739 (01:20:39); final bytes=736858 early=2776 made=9 loaded=2740 started_early=2734.
+
+PERIODIC (sampled):
+01:18:38 30.6 fps, 7 draws (1 being made); host copies in the card: 1 copies 174 MB
+01:19:09 26.0 fps, 10 draws; index queue 0 slots
+01:19:35 card clock: nothing queued 2076.3 ms (card ~4% busy) [world loading]
+01:19:43 0.9 fps, 1147.7 ms/frame (579.4 preparing: copies 34.4 ms 137.7 MB, textures 534.3 ms 88.7 MB; 19.1 GPU; 86.2 copying back 25.4 MB), 1778 draws, dropped 829 (1 being made); index queue 19934 slots, 18769 due (oldest 1132 frames); host copies in the card 97 copies 881 MB, 45.7 MB sent up, 19270 pieces compared, 456 fetched (29.3 MB), 75.7 ms waits
+01:20:17 1.8 fps, 563.0 ms/frame (299.7 prep; textures 228.5 ms; 44.8 GPU; 103.1 back 67.4 MB), 3772 draws, dropped 2980; queue 18791 slots / 17420 due; card copies 881 MB, 106.8 MB sent up, 1130 fetched (73.6 MB)
+01:20:36 card ~49% busy
+01:20:53 3.1 fps, 325.5 ms (102.6 prep; 106.6 GPU; 150.4 back 47.4 MB), 5958 draws, dropped 412 (0 being made); queue 10136 slots / 8180 due
+01:21:28 6.1 fps, 162.7 ms (73.3 prep: copies 42.2 ms 121.4 MB, textures 4.7 ms; 71.0 GPU; 133.3 back 55.7 MB), 6864 draws, dropped 321; queue 4320 slots / 1201 due; card copies 881 MB, 81.8 MB sent up, 1047 fetched (68.1 MB), 106.2 ms waits
+Shadow: 01:19:57 26.5 MB in 300 ranges, 0.0 MB in >=1 MiB copies; 01:20:28 30.5 MB/299, 4.3 MB; 01:21:30 27.7 MB/310, 1.1 MB.
+
+LAST 2 MINUTES (fps, ms/frame, prep, GPU, copy-back, draws/dropped):
+01:21:33 5.2 192.0 (108.4 prep: copies 40.2/116.0 MB, tex 41.1; 55.2 GPU; 115.6 back) 6053/338
+01:21:39 6.2 160.6 (80.5; 45.3; 108.0) 5225/317
+01:21:44 7.4 134.9 (61.5; 52.8; 106.7) 5235/318
+01:21:50 7.6 131.5 (56.5; 55.6; 107.1) 5253/317
+01:21:55 7.9 126.7 (58.8; 51.2; 104.5) 5236/317
+01:22:00 7.9 126.7 (57.6; 52.9; 104.5) 5183/317
+01:22:05 7.8 128.2 (56.9; 53.8; 105.2) 5296/314
+01:22:11 6.6 151.6 (76.8; 57.3; 112.8) 5338/313
+01:22:16 4.1 243.5 (121.3 prep, tex 62.2 ms 53.5 MB; 80.3; 114.4) 6450/344
+01:22:22 4.3 230.6 (114.8, tex 61.4; 81.9; 104.0) 5407/318
+01:22:27 5.7 174.0 (74.0; 79.7; 112.9) 5312/310
+01:22:33 6.7 149.2 (56.4; 72.8; 116.6) 5255/311
+01:22:38 6.5 154.8 (60.4; 75.8; 117.9) 5237/318
+01:22:44 6.7 150.3 (56.0; 72.1; 116.6) 5227/312
+01:22:49 5.3 188.0 (86.0, tex 27.6; 69.1; 119.0) 5227/313
+01:22:54 3.9 258.0 (155.1, tex 88.9; 77.4; 112.2) 5247/308
+01:23:00 6.1 163.5 (65.9; 73.4; 110.9) 5261/311
+01:23:05 6.0 167.0 (67.7; 75.5; 116.6) 5266/310
+01:23:10 6.6 150.9 (55.8; 72.8; 117.2) 5232/312
+01:23:16 6.5 152.7 (59.9; 65.9; 117.0) 5201/311
+01:23:21 6.4 156.7 (60.8; 74.7; 120.3) 5228/312
+01:23:27 5.6 177.3 (72.6 prep: copies 35.6 ms 108.0 MB, tex 14.4 ms; 82.7; 112.5 back 48.2 MB) 5040/339
+Host copies in the card throughout: "97 copies 881 MB", 64-77 MB sent up/frame, ~15,900-16,500 pieces compared, 720-973 fetched (47-63 MB), 7.1-8.1 more waits (~106-126 ms).
+Index queue: 3222 -> 2712-2776 slots, 39-256 due, 11-21 waiting for memory, ~1720-1820 uploaded in part.
+Card clock: 22-34 ms idle (78-83% busy) calm; 96-146 ms (46-56%) during texture spikes.
+Shadow: 29-34 MB in 282-331 ranges, 4.8 MB in >=1 MiB copies. Relay: ~30-36 flights in 9.4-12.2 landings/frame.
+Texture refreshes jump 3 ms -> 51-72 ms/frame in the last seconds (01:23:24-31), 19-29 pages/frame "read through the kernel", up to 26 "left for the next refresh".
+
+WARN/ERROR (deduplicated):
+16x victory_gpu::device: a pipeline creation method that is not implemented slot=0x1c8
+13x same, slot=0x218
+4x pipeline enables the depth bounds test, which its host pipeline leaves out
+1x host pipeline refused (0x8007000E) shaders=[compute 39f0e9aeb156a61c]
+1x constant buffer not 256-byte aligned on the host
+1x buffer view not on an element of its host copy offset=N element=12
+1x buffer view the host would refuse left null format=39 first=2 count=556 stride=0 raw=true width=4194304
+1x unordered buffer view not on an element of its host copy offset=N element=32
+1x textures picked by index: the card has no room for more; they wait
+1x unordered buffer view the host would refuse left null format=39 first=10479520 count=0 stride=0 raw=true width=182452224
+1x host mesh pipeline refused (0x80070057) shaders=[mesh f5e50eb2, pixel ce3f0432]
+1x kernel: a host DLL outside the host policy: refused dll="rpcrt4.dll"
+1x draw: a dispatch without a host pipeline dropped
+1x draw: a shader takes the address of a buffer view that is not there: it reads 0 slot=1 dword=8
+1x descriptor::host: placed unordered texture view not mirrored dimension=3
+
+LAST LINES (trimmed; before 01:23:24 the same per-second stats repeat):
+01:23:24 texture refreshes per frame, all threads: 51.1 ms; did not wait for title memory: 9.6 read through the kernel, 4.6 left for next
+01:23:25 texture refreshes 12.7 ms; 12.8 / 6.3
+01:23:26 texture refreshes 13.4 ms; 9.3 / 2.2. first bind mesh 60a50defd311ed8d / pixel 769ba9fabad0ed7a (frame 2355)
+01:23:27 texture refreshes 14.4 ms; 16.0 / 5.7. placed texture views: 2471 writes; first bind mesh 6baf9e1f9b168934 / pixel 2567ef6bc3625832 (frame 2363)
+01:23:28 first bind vertex afad629131a4d329 (2365); texture refreshes 13.2 ms, 27.5 / 14.3. first bind mesh 380b405ddff5e093 / pixel 6b243b1af419b934 (2366): translated (cache miss), host mesh pipeline made. Library saved bytes=736858 made=9 loaded=2740.
+01:23:29 indirect mesh groups 14876; card 46% busy (140.8 ms idle, 107.7 while submitting); texture refreshes 72.4 ms; 24.5 / 10.0
+01:23:30 card 58% busy; texture refreshes 35.7 ms; 29.0 / 26.2. first bind mesh dbbc6ccc56963935 / pixel fb93cb23cbe58dc0 (2375)
+01:23:31 card 51% busy; texture refreshes 71.1 ms; 19.2 / 7.8; title buffer copies 28
+01:23:31 window closed: suspending the title routines=2
+01:23:32 title did not finish suspending in time; ending the title

@@ -1,0 +1,10 @@
+World-entry / cutscene phase (first ~2-3 min after first frame >=200 draws), per ~5 s line: t+s fps ms/frame draws dropped(being made) indirect
+A) D13z2 39215a4 normal, mesh REACH ON (run-20261124-161000-d13z2-normal.log) -> the run the user saw (black, 0.1-0.2 fps)
+60 3.3 308 511 265(10) 36 | 66 0.2 5659 496 3(7) 41 | 74 0.2 4443 2020 1852(1) 34 | 82 0.2 4475 8116 5572(11) 125 | 90 0.4 2713 7586 774(1) 57 | 97 0.4 2399 1818 4885(0) 97 | 102 0.6 1573 2068 1150 53 | 109 0.6 1707 2896 508 140 | 114 0.2 5444 2993 637 327 | 120 0.2 5295 2118 384 603 | 128 0.1 8545 718 418 51 | 133 0.2 5012 | 141 0.1 8029 | 150 0.1 9048 1908 1121 715 | 166 0.1 16058 5604 791 1467 | 183 0.1 16206 | 198 0.1 15875 | 216 0.1 17673 3953 733 1463
+ dropped +15s: 3b90165a 1259, f6e47efa 1105, 5552dac6 416, 162216b9/3df629ff/6f6a359d/f28a33a8 406, 4b5aedc0 404, 198f6dfd 265, cb9647e7 167
+B) same exe REACH=0 (run-20261124-161539-d13z2-normal-reach0.log): 0.5-1.0 fps throughout (998-1833 ms), 525-6481 draws
+ dropped +15s: f6e47efa 186, 3b90165a 170, 5552dac6 52, 198f6dfd 51, 162216b9.. 47, 4b5aedc0 44, cb9647e7 25, bb55c842 24
+C) D13x 639d54d diag (cold-ish): 0.1-0.5 fps, 37 "still being made" incl 39f0 43 s+, 61d7c333 32 s
+D) D13y b6d0a12 async2 warm: 0.4-0.8 fps
+Every launch: the same computes fail to compile after 7-15 s each, made=false: a1266cc7, 52ab310c, 203f78ef, 0ae69044, 4e69dc87, f018c205, a73284b6 (costs ~8 s at world entry, every run).
+No device removed in A-D.

@@ -1,0 +1,16 @@
+perf d13z5 (release ba2fad2 = abde37b + 30d0696 one write-watch ask per buffer), cache jouer, 2nd launch (driver still rebuilt library 16x). log run-20261124-171432-perf-d13z5.log. Clean, 0 errors, 0 "no free dynamic descriptor slots".
+STEADY world (n=60): 0.91 fps / 1196 ms / GPU 448 / copies 487 ms 99 MB / 2688 draws / dropped 599+48.
+From 16:18 (n=33): recording 239, preparing 577, indexed SRVs 465, waiting 216, asks 138600.
+Last split 16:21:07 (1.1 fps 903 ms, 1767 draws): recording 242.6 (blocked: pipeline 0, buffer lock 3.8); 26 submissions; preparing 508.7 (snapshots 75.8 ms/1267.6 MB; 133210 asks (88072 kernel) 215.6 ms; copies 415.2 ms 142.3 MB; texture checks 26.4 ms 148.3 MB; uploads 2.0; last refresh 2.9; indexed SRVs 395.5); submitting 1.4; waiting 200.9; copying back 63.0 ms 19.6 MB.
+vs Jouer abde37b steady 1.06 fps / 1036 ms / 2025 draws / indexed SRVs 300-550 / waiting ~1.1 s.
+=> per draw 0.44 vs 0.51 ms (~13% better) but different scenes; indexed SRVs NOT visibly lower (444-465 ms); asks still 130-160k/frame. Waiting much lower (200 ms vs 1.1 s).
+
+ASYNC_SUBMIT=2 (same exe, 3rd launch, no driver rebuild), log run-20261124-172136-perf-d13z5-async.log, user-closed after 2.7 min in world. 0 slot errors, 0 errors.
+STEADY (n=29): 1.04 fps / 1228 ms / GPU 487 / copies 342 / 3267 draws / dropped 794+56 -> 0.376 ms/draw vs plain 0.445 (~15% better).
+Avg split (n=32): recording 613, preparing 483, indexed SRVs 291, waiting 225.
+Last: recording 650.9; 32 submissions; preparing 683.6 (snapshots 215 ms/3.9 GB; 157192 asks (91101 kernel) 285.8; copies 448 ms 63 MB; indexed SRVs 423.6); waiting 270; copy back 188 ms 50 MB.
+
+== perf d13z5c 4648ca5 release B0DD24800368EB11 (2026-11-24 ~20:12-20:24 Paris)
+plain (1st launch of exe, 12 driver library rebuilds): 0.97 fps / 1043 ms / GPU 446 / copies 389 / 4684 draws; copy-back avg 87.7 ms (379f21a regression gone). 157k write-watch asks, 99589/100608 kernel refused, 271 ms; indexed SRVs 428 ms.
+async=2 (2nd launch, warm): 1.37 fps / 838 ms / GPU 388 / copies 211 / 4337 draws; copy-back 82 ms. 76k asks, 37658/38236 refused, 126 ms; indexed SRVs 187 ms.
+Caveat: plain was the cold first launch, so the plain vs async gap is overstated. Best so far: 1.37 fps.

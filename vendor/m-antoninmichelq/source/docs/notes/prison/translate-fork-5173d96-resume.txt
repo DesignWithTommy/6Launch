@@ -1,0 +1,21 @@
+Offline translate, fork-stack-a 5173d96 (victory-tools-gta6.exe), prison shader dump _work\prison\shaders (19105 .bin), --validate --list, no --pipelines, VICTORY_HOST_MAX_WAVE unset (host wave 0). 2026-11-24 22:31:59-22:39:25 Paris (~7.5 min, ~23 s / 1000).
+Full output on PC: _work\prison\translate-fork-5173d96.txt
+
+Per shader (Vs 1164, Ps 8522, Ms 6685, Cs 2734): 18910 validated, 195 failed.
+Vs+Ps: 9643 emitted / 9686, 9588 validated. Ms: 6685 / 6685, 6602 validated. Cs: 2720 / 2734, 2720 validated.
+
+Failures by reason (count, stages, sample hashes):
+50 validator "vertex plus primitive output size is greater than 32768" Ms50: 052e365ca656d85f 0591d784444976c4 1984603583c27a2f 1c4341525e0dfa4a 23dd6a3775477825
+40 emit "a descriptor read only as data" Ps35 Cs5: 002e93a6cc2aa355 009233e6fc2ea950 020bb9a589623274 059e1fb464dd1a74 07c93bfb77fecebb
+34 validator "Program Output Signature does not match expected" Vs21 Ms13: 0d3aad74ed6c5fc0 0e69aa5aa95cf36d 1707628854aa2241 2226ea8e216c84c5 22780452dafd69d2
+28 validator "Program Input Signature does not match expected" Ps28: 06fedde8ed8adc20 0b0e0b59a44ce02f 11ef2e7bc596738e 124e65522054ae7a 1b1a663bba39b53a
+25 validator "interpolation mode differs from another element packed into the same row" (TEXCOORD/COLOR/NORMAL) Ms20 Ps3 Vs2: 05c16dbf5c47e349 08af929a0b50ab01 0bd4d80ad23b106b 1a3c05a4c0bec967 2745491a48f2c531
+8 emit "the first half of an interpolation" Ps8: 007bb29b393d08c5 15547db9d31b056b 288c43f50bc7abee 38bf0814e721a1b3 464ea474374b8ecd
+5 emit "v_cvt_f32_f64" Cs5: 5dc3b25986622949 6871d6e4b3ac9a10 6f225b641c5b0708 926c46bab3b86bd6 a10179ab7eda0dc3
+2 emit "wave sum of 16-bit floats where not every lane runs" Cs: a26a38d61f256901 b22a16a178976e1b
+1 emit "a descriptor's address or format read as data" Cs: ceb5eb68cd99cb07
+1 emit "v_permlanex16_b32" Cs: a929109552ce1e84
+1 validator "out of bound coord must be undef" Ps: 34e55a0ea39604a4
+No bvh failures, no WaveSize lines (host wave 0).
+
+Next: Cs-only pass with VICTORY_HOST_MAX_WAVE=64 + --pipelines (2734 Cs, batches of 500), started 22:39:33.

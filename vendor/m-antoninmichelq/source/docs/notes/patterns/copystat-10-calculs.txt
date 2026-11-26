@@ -1,0 +1,11 @@
+copystat, last 3 world frames, run-20261124-205928-10-calculs.log (d13z6 diag, ROOT_UAVS_ONLY 10, copy-back ON), 2026-11-24 ~21:05 Paris
+(only 10 "copied from" lines per report; re-sorted by MB requested; no "gpu writes" lines exist)
+
+20:05:20 copies/frame: 22 subs; 14666 title copies 7.3 MB; 14434 refreshes 25734.5 MB; 60 runs; moves 277.77 ms 748.35 MB unmapped; 146511 page faults; 84686 watches 1843.33 ms, 66696.4 MB checked, 66275.8 unchanged, 6279.0 memoized; 1204 fallbacks; 306 guard faults; textures 229.3 MB hashed
+ direct SRVs: 1696044 slots, 89608 merged ranges, 54890.95 MB requested, 233.67 filled, 1113.48 ms
+ shadow: conventional_ranges=10465 requested_mb=25312.4 filled_mb=986.5 ms=1280.3 watched_pages=1100050 dirty=7400 initial=45 watched_filled_mb=422.9 untracked_ranges=2040 untracked_filled_mb=797.3 watch_failures=2787 (7465.9 MB) shadow_allocations=1 (8.39 MB)
+ copied from 0x17789400000+0x800000 (memory 0x20000) 2x 16.78/16.59 MB 1.61 ms 2 failed probes; 0x178a6000000+0x800000 2x 1.79 ms; 0x17690c00000+0x800000 2x 1.61 ms; 0x17691800000+0x400000 2x 8.39/8.36 MB 39.28 ms(!); 0x1783f000000+0x400000 0.86 ms; 0x17862c00000+0x400000 0.82 ms
+20:05:28: 21 subs; 14219 refreshes 25013 MB; 1901398 page faults; 79972 watches 3442.49 ms; direct SRVs 52064.74 MB requested 231.94 filled 2086 ms; shadow conventional filled 1014.9 MB 1965.7 ms, untracked 2011 ranges 799.9 MB, watch_failures 2592 (6931 MB). Same 8/4 MB ranges 2x/frame; 0x17691800000+0x400000 46.13 ms.
+20:05:37: 23 subs; 14440 refreshes 25958.1 MB; 1059372 page faults; 83416 watches 2990.29 ms; direct SRVs 57427.13 MB requested 197.5 filled 2059.93 ms; shadow conventional filled 992.1 MB 1606.4 ms, untracked 1979 ranges 798.1 MB, watch_failures 2690 (7006 MB).
+ copied from 0x1d1b0000+0xae00000 (memory 0x40000) 30x/frame 5473.57 MB requested 9.24 filled 4.83 ms (the 174 MB range).
+RC reading: vs Jouer (3-6k refreshes / 7-17 GB, untracked_ranges ~1): 14.4k refreshes / 25 GB, untracked_ranges ~2000 (~800 MB filled), conventional filled ~1 GB, watch_failures ~2.7k (7 GB). The 8/4 MB ranges in memory 0x20000 at 0x176..-0x178.. copied fully 2x/frame with failed probes = likely the root-UAV buffers.

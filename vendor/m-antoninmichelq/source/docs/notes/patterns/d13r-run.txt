@@ -1,0 +1,27 @@
+D13r run (victory-stack-d13r 1f91534 + 34487b2), user PC, 2026-11-24 ~13:30-13:40 Paris
+Cache dir C:\Users\4nto\victory-cache\d13r (outside AppData -> no MSIX virtualization): WORKS.
+ run1 cold: hits=0 translated=2164. run2 warm: shader_hits=2009 translated=87 failed=67 (hits=1505 misses=0).
+No ERROR / device removed / page fault / OOM in any run.
+
+Untranslated (70 distinct):
+ 26 typed root view: 14394a32 162216b9 198f6dfd 28918b71 3b90165a 3df629ff 4b5aedc0 4ddd6f97 5552dac6 5c09eb42 5e19e7c7 7bb5b1b9 894c9165 9205d265 a197f50c a63e2dfc bb55c842 c42a3195 caa78b8c cb9647e7 e63d22c4 e9585883 f28a33a8 f6eb6498 f94e5d8b ffd93c8a
+   (198f6dfd 4b5aedc0 894c9165 9205d265 a63e2dfc cb9647e7 moved here from addr-not-from-root thanks to >>8 pointer views)
+ 19 addr not from root param: 0873f80d 17829ac7 32ed072b 3592426e 35e51bb2 36f04a4e 3cea4534 5062bc7a 5279ae36 559d9f01 5e687674 6d7fe774 a1b20bc4 afeea48b b58eb3ca caf96a32 e8c96235 f22a76fc f607780a
+ 9 lanes held elsewhere: 0ae69044 203f78ef 4e69dc87 52ab310c 82a2ad6d 90a0692a a1266cc7 a73284b6 f018c205
+ 5 addr from phi: 190fbf0e 6f6a359d 982f3ccc c85822de d9978c76
+ 2 f64: 5dc3b259 6f225b64 | 2 packed input half (pixel): 93667197 b15ba489 | 2 descriptor neither loaded nor built: 2da4beb3 aab1b3c7
+ 1 each: global store/atomic w/o root UAV f6e47efa (fixed by 67f6472, now in d13s) ; descriptor per lane several masks mesh fe660f2d ; v_permlanex16 a9291095 ; LDS not allocated 068c90ba ; LDS op 5cf00dc3
+ 3b90165a77d95cdf (compute) failed 63x.
+
+KEY: 39f0e9aeb156a61c (ScreenProbes compute) translates but the D3D12/driver compile NEVER finishes:
+ "pipeline still being made seconds=283 shaders=compute 39f0e9aeb156a61c" (run1), seconds=56 (run2), never made.
+ Likely why surfaces stay black. Other slow but made: compute efdb8133aabc37fe 28.2s, 043df98be0270424 11.5s, e05a2c1364dd1988 10.2s, vertex 9975d533 + pixel f9354d67/79b8290e ~12s.
+ Host refusal: mesh f5e50eb2108c425b + pixel ce3f0432a08f1d35 -> E_INVALIDARG 0x80070057.
+ made=false: mesh fe660f2d6d57de76 + pixel b0e293b1b8fa5a77 (4x).
+
+Frames: world 0.2-0.8 fps, GPU 160-2760 ms. Run1 draws/frame fall ~4000 -> 500-950, "without pipeline" 420-970 throughout.
+ Example: 0.4 fps 2361 ms/frame, copies 1404.6 ms 4217.2 MB per frame (!), 696 ms GPU.
+Memory (commit MiB): 12971 -> 24301 -> 27562 -> 32606 -> 35303 -> 38113 -> 41355 over 6 min (~+3-4 GB/min), VRAM 4.6 -> 5.7 GB.
+ Climbs on the WARM run too (25.0 -> 28.1 GB in 30 s) -> not translation cost; tied to frames/copies.
+Dumps local only (_work\shader-dump): 190fbf0ebe040169.bin 74508 B, 198f6dfd2b81bcea.bin 5224 B, cb9647e77864cb3a.bin 8028 B.
+Next build: victory-stack-d13s 4cd8549 = d13r + 67f6472 (pointer UAVs, VICTORY_ROOT_UAVS=1 only).

@@ -1,0 +1,33 @@
+# i95 spec for wolfattack199/victory-fork: a mix source (Mix page only, not in the runtime list).
+name = "m-wolfattack199"
+fork = "VIctory"
+mix_only = true
+about = "wolfattack199 f0cbcd1 (GPL-3.0): 8.4 fps in the first room (RTX 5060 Ti)"
+upstream = "https://github.com/wolfattack199/victory-fork"
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+run = ["run", "{game_exe}", "--execute"]
+prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+[env]
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+lb = "Q"
+rb = "E"
+lt = "Z"
+rt = "C"
+ls = "F"
+rs = "H"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"

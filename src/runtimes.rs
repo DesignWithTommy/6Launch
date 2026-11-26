@@ -1133,6 +1133,12 @@ pub fn fork(name: &str) -> Option<String> {
     load(name).ok().and_then(|(_, s)| s.str("fork").map(|f| f.trim().trim_matches('"').to_owned()))
 }
 
+/// A mix source only (mix_only = true): its crates show in the Mix page,
+/// but it is not in the runtime list.
+pub fn mix_only(name: &str) -> bool {
+    load(name).ok().and_then(|(_, s)| s.str("mix_only").map(|a| a.trim() == "true")).unwrap_or(false)
+}
+
 pub fn archived(name: &str) -> bool {
     load(name).ok().and_then(|(_, s)| s.str("archived").map(|a| a.trim() == "true")).unwrap_or(false)
 }

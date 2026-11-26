@@ -1,0 +1,304 @@
+//! `victory`: the command-line front end.
+//!
+//! Every command reads the user's own files and writes only to stdout or to
+//! the user's cache directory (outside the repository).
+
+mod census;
+mod inspect;
+mod run;
+mod shader;
+mod translate;
+mod translate_diff;
+
+use std::num::NonZeroUsize;
+use std::path::{Path, PathBuf};
+
+use anyhow::Result;
+use clap::{Parser, Subcommand, ValueEnum};
+
+#[derive(Parser)]
+#[command(
+    name = "victory",
+    version,
+    about = "Run an Xbox Series title natively on Windows"
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Summarise one PE image: headers, sections, imports, TLS, build id.
+    Inspect {
+        file: PathBuf,
+        /// List every imported function.
+        #[arg(long)]
+        imports: bool,
+        /// List every exported function.
+        #[arg(long)]
+        exports: bool,
+    },
+    /// Aggregate the imports of every PE image under the given paths and
+    /// show which ones our runtime covers. Defaults to the configured
+    /// game and test-title directories.
+    Census {
+        paths: Vec<PathBuf>,
+        /// Do not count host pass-through as covered.
+        #[arg(long)]
+        strict: bool,
+        /// List every missing `dll!function`, most used first.
+        #[arg(long)]
+        missing: bool,
+    },
+    /// List the `dll!export` pairs an import library describes.
+    LibExports {
+        lib: PathBuf,
+        /// List every export, not just per-DLL counts.
+        #[arg(long)]
+        list: bool,
+    },
+    /// Find shader containers in files or directories (also inside engine
+    /// archives, if uncompressed) and report their layout. Shader packs
+    /// among the paths are listed last, their stages named from the
+    /// containers found.
+    ShaderInfo {
+        paths: Vec<PathBuf>,
+        /// Print one line per container found (and per pack pipeline).
+        #[arg(long)]
+        verbose: bool,
+        /// Also list the decoded native instructions (implies --verbose).
+        #[arg(long)]
+        disasm: bool,
+        /// Instead list the effects of shader databases: technique, pass,
+        /// shaders (name, container hash, engine hash) and pass state.
+        #[arg(long)]
+        effects: bool,
+    },
+    /// Run every shader found (containers, SGD5 files) through the
+    /// translator and report what it cannot handle yet.
+    Translate {
+        paths: Vec<PathBuf>,
+        /// Check emitted DXIL with dxil.dll's validator (`VICTORY_DXIL`,
+        /// else the newest Windows SDK's).
+        #[arg(long)]
+        validate: bool,
+        /// Also create a host D3D12 pipeline for each emitted shader.
+        #[arg(long)]
+        pipelines: bool,
+        /// Print one line per program and outcome.
+        #[arg(long)]
+        list: bool,
+        /// With the list (implied): each emitted program's line names a
+        /// hash of its DXIL (`dxil=` and 16 hex digits of its BLAKE3,
+        /// before validation), for `translate-diff`.
+        #[arg(long)]
+        hashes: bool,
+        /// Worker threads, at least 1 (default: every logical core).
+        #[arg(long)]
+        jobs: Option<NonZeroUsize>,
+        /// Warm the run's shader cache: a file of shader hashes (the 16
+        /// hex digits a run's log names a shader by, anywhere in a line);
+        /// the containers with those hashes are translated into the
+        /// cache for the detected adapter. Set `VICTORY_HOST_WAVE` and
+        /// `VICTORY_VIEW_LIMIT` to warm for a different host.
+        #[arg(long)]
+        warm: Option<PathBuf>,
+        /// Upstream's warm-up: every container found, the same as `--warm
+        /// all` (upstream's pipeline pre-build, `--cache --pipelines`, is
+        /// not in this fork).
+        #[arg(long, conflicts_with_all = ["validate", "list", "hashes", "pipelines", "warm"])]
+        cache: bool,
+    },
+    /// Compare two `translate --list` outputs (two builds over the same
+    /// shaders): the programs one validates and the other does not, with
+    /// the other's reasons, and with `--hashes` lists, the programs both
+    /// validate whose DXIL differs.
+    TranslateDiff {
+        old: PathBuf,
+        new: PathBuf,
+        /// Also name each program (container hash and stage).
+        #[arg(long)]
+        keys: bool,
+    },
+    /// Prepare, map and bind a title executable; with --execute, run it.
+    Run {
+        exe: PathBuf,
+        /// What unimplemented imports do when called.
+        #[arg(long, value_enum, default_value_t = Unimplemented::Trap)]
+        unimplemented: Unimplemented,
+        /// Disable host pass-through (everything must be implemented by us).
+        #[arg(long)]
+        strict: bool,
+        /// Actually start the title. Without it, stop after binding.
+        #[arg(long)]
+        execute: bool,
+        /// The console model the title sees (device type, memory).
+        #[arg(long, value_enum, default_value_t = Console::SeriesX)]
+        console: Console,
+        /// Arguments for the title, after `--` (it reads the whole command
+        /// line; a title that relaunches itself passes some).
+        #[arg(last = true)]
+        title_args: Vec<String>,
+    },
+    /// Show the resolved configuration and check it.
+    Config,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum Unimplemented {
+    Trap,
+    Zero,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum Console {
+    SeriesX,
+    SeriesS,
+}
+
+fn main() -> Result<()> {
+    victory_core::logging::init("info");
+    // The audio recorder `run` starts for `VICTORY_AUDIO_CAPTURE`.
+    #[cfg(all(windows, feature = "diagnostics"))]
+    if victory_hle::modules::audio::capture::child() {
+        return Ok(());
+    }
+    let cli = Cli::parse();
+    match cli.command {
+        Command::Inspect {
+            file,
+            imports,
+            exports,
+        } => inspect::run(&file, imports, exports),
+        Command::Census {
+            paths,
+            strict,
+            missing,
+        } => census::run(paths, strict, missing),
+        Command::LibExports { lib, list } => inspect::lib_exports(&lib, list),
+        Command::ShaderInfo {
+            paths,
+            verbose,
+            disasm,
+            effects,
+        } => shader::run(paths, verbose || disasm, disasm, effects),
+        Command::Translate {
+            paths,
+            validate,
+            pipelines,
+            list,
+            hashes,
+            jobs,
+            warm,
+            cache,
+        } => {
+            let view_limit = std::env::var("VICTORY_VIEW_LIMIT").ok().and_then(|v| v.parse().ok());
+            let host_wave = std::env::var("VICTORY_HOST_WAVE").ok().and_then(|v| v.parse().ok());
+            if (warm.is_some() || cache) && (view_limit.is_none() || host_wave.is_none()) {
+                victory_hle::modules::d3d12x::prepare_shader_warm().map_err(anyhow::Error::msg)?;
+            }
+            // `VICTORY_VIEW_LIMIT=<null slot>`: translate as on a host whose view heap is capped
+            if let Some(n) = view_limit {
+                victory_shader::emit::set_view_heap_limit(n);
+            }
+            // `VICTORY_HOST_WAVE=32`: translate as for a GPU whose waves are at most 32 lanes
+            if let Some(n) = host_wave {
+                victory_shader::emit::set_host_max_wave(n);
+            }
+            let jobs = jobs.map(NonZeroUsize::get);
+            if let Some(file) = warm {
+                return translate::warm(paths, &file, jobs);
+            }
+            if cache {
+                return translate::warm(paths, Path::new("all"), jobs);
+            }
+            translate::run(paths, validate, pipelines, list, hashes, jobs)
+        }
+        Command::TranslateDiff { old, new, keys } => translate_diff::run(&old, &new, keys),
+        Command::Run {
+            exe,
+            unimplemented,
+            strict,
+            execute,
+            console,
+            title_args: _,
+        } => {
+            let code = run::run(&exe, unimplemented, strict, execute, console)?;
+            if code != 0 {
+                // Preserve all 32 bits of the Windows process status.
+                std::process::exit(code as i32);
+            }
+            Ok(())
+        }
+        Command::Config => show_config(),
+    }
+}
+
+fn show_config() -> Result<()> {
+    let cfg = victory_core::Config::load()?;
+    let status = |p: &Option<PathBuf>| match p {
+        Some(p) if p.exists() => format!("{}", p.display()),
+        Some(p) => format!("{}  (does not exist)", p.display()),
+        None => "(not set)".to_owned(),
+    };
+    println!(
+        "config file : {}",
+        cfg.source
+            .as_ref()
+            .map_or("(none)".into(), |p| p.display().to_string())
+    );
+    println!("game_dir    : {}", status(&cfg.game_dir));
+    println!("cache_dir   : {}", cfg.cache_dir.display());
+    println!("data_dir    : {}", cfg.data_dir.display());
+    println!("fidelityfx  : {}", status(&cfg.fidelityfx_dir));
+    for t in &cfg.test_titles {
+        println!("test_title  : {}", status(&Some(t.clone())));
+    }
+    for p in cfg
+        .game_dir
+        .iter()
+        .chain(&cfg.test_titles)
+        .chain([&cfg.cache_dir, &cfg.data_dir])
+    {
+        if let Err(e) = victory_core::ensure_outside_repo(p) {
+            println!("POLICY VIOLATION: {e}");
+        }
+    }
+    Ok(())
+}
+
+/// Paths given on the command line, or the configured game + test titles.
+pub(crate) fn default_paths(paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
+    if !paths.is_empty() {
+        return Ok(paths);
+    }
+    let cfg = victory_core::Config::load()?;
+    let all: Vec<PathBuf> = cfg.game_dir.into_iter().chain(cfg.test_titles).collect();
+    anyhow::ensure!(
+        !all.is_empty(),
+        "no paths given and none configured (see victory.example.toml)"
+    );
+    Ok(all)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn jobs(args: &[&str]) -> Result<Option<usize>, clap::Error> {
+        let all = [&["victory", "translate", "shaders"][..], args].concat();
+        match Cli::try_parse_from(all)?.command {
+            Command::Translate { jobs, .. } => Ok(jobs.map(NonZeroUsize::get)),
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn translate_jobs_must_be_at_least_one() {
+        let zero = jobs(&["--jobs", "0"]).expect_err("--jobs 0 is refused");
+        assert_eq!(zero.kind(), clap::error::ErrorKind::ValueValidation);
+        assert_eq!(jobs(&["--jobs", "1"]).unwrap(), Some(1));
+        assert_eq!(jobs(&[]).unwrap(), None);
+    }
+}

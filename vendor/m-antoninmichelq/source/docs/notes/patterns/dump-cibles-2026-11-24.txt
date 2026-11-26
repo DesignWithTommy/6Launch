@@ -1,0 +1,11 @@
+Target dump: d13z5c d8b2d19 diag, VICTORY_CAPTURE=_work, CAPTURE_AFTER_WORLD=60,120, DUMP_TARGETS=1 (no flat light). log run-20261124-183520-dump-cibles.log.
+Frames 1944 (night road/horizon, pylon) and 2004 (prison yard: booth, pole, bare trees, fence, wheels). 471 PNGs at HALF size in _work on the PC (local only).
+Notable 2560x1440 targets (i = first-use order, KB):
+ 1944 i26 f28 (res 0x24b565c55c0) = the 28:0 of couleurs/vue 3D: black bg + false-colour objects (normals/encoded).
+ 2004 i207 f28 (0x24b43c45170) 419 KB and 2004 i205 f87 B8G8R8A8 (0x24a855fc0e0) 172 KB: whole prison scene on white bg, per-pixel rainbow noise alternating pixel-to-pixel + green/pink at edges -> packed/interleaved G-buffer (checkerboard YCoCg/chroma?). Half-size dump may break a checkerboard. BEST ALBEDO CANDIDATE, needs decode / full-res look.
+ 2004 i267 / i260 f62 R8_UINT: whole scene grey = material ID/stencil (good geometry).
+ 1944 i144 f61 R8_UNORM: white mask/sky gradient with black silhouettes (AO/fog).
+ 1944 i89/i157 f10 RGBA16F and i238 f24 R10G10B10A2: lit HDR composite: dark blue sky, blurry pylon, star-like lights, nothing on ground.
+ 2004 i218 f24: flat grey + yellow bars.
+No target shows real colours directly. Next: full-res view of 0x24b43c45170 / 0x24a855fc0e0 (PRESENT_TARGET=2560x1440:87:0, or 28:<n of that resource among f28 targets>) to check checkerboard encoding.
+Full list in the RC report (thread Sync).

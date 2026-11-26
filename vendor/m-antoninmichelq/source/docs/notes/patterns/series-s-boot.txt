@@ -1,0 +1,16 @@
+Series S boot stall — fa75499 --console series-s (run-20261125-003406-jouer-series-s.log) vs Series X run-20261125-002317-jouer.log. Extracted 2026-11-25 00:45 Paris.
+
+(a) WARN/ERROR distinct (0 ERROR in both):
+S: 16x not-implemented slot=0x1c8; 13x slot=0x218; 4x depth bounds; 1x refused rpcrt4.dll; 1x refused amd_fidelityfx_upscaler_xbox.dll
+X: same 16/13/4/rpcrt4, plus in-world-only warnings (cbuffer align, dispatch dropped, views null, no room, mesh pipeline refused, 4 untranslated Cs). X never loads the upscaler.
+
+(b) S only: 00:34:10 INFO xmem: the title asks how much memory it uses asked=1 which=536870913 limit_mb=7776 used_mb=5014  (X has no such query). No alloc failed/OOM/0x8007000e/stub.
+
+(c) S around upscaler (00:34:09-00:34:17):
+ dstorage opens ttdb terrain/maps/interiors/props, lighting.ttpf, ui\platform, vfx, octa_imposters, core_bvh4.rpf
+ 00:34:10 dstorage core_licenses_data.rpf; XUserAddAsync offline user
+ 00:34:10 refused dll=amd_fidelityfx_upscaler_xbox.dll -> then mapped as title DLL at 0x7ffee25d0000, imports bound hle=7 host=79 missing=0
+ 00:34:10 xmem query (above); first compute bind 052a2316a03b9ba1; HDR disabled; frame interval 33.333ms
+ 00:34:13 vertex/pixel binds; 00:34:17 frame=256, hits=0 misses=7 (never moves after)
+(d) 00:34:17 on: 30 fps, 11 draws, 0.5 dispatches/frame forever; no hle activity (no dstorage/xmem/xuser) after 00:34:10.
+Divergence: X after XUserAddAsync (00:23:22) opened core_restofworld001.rpf, ttdb_ui, core_restofworld.rpf, ttdb_peds/props, textures_loose at 00:23:38. S never opens core_restofworld*: the title stops I/O right after the upscaler load + Series S memory query (limit 7776 MB, used 5014 MB).

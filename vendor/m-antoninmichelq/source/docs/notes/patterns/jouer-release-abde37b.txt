@@ -1,0 +1,9 @@
+User play run "Jouer VIctory (tout cumulé)": RELEASE build (no diagnostics) of victory-stack-d13z3 abde37b, normal lit view, no root UAVs, cold cache jouer.
+log run-20261124-164935-jouer.log, 15:49:35-15:57:35Z. Clean shutdown, 0 ERROR/device removed/exceptions.
+Cold: translated=2633 failed=62; pipelines being made until ~4 min into the world.
+World avg (n=72) 0.83 fps / 1447 ms / GPU 532 / copies 599 ms 87 MB / 2346 draws / dropped 730+430 ind.
+STEADY (n=34) 1.06 fps / 1036 ms / GPU 429 / copies 440 / 2025 draws / dropped 459+35. Peaks 1.6-1.7 fps.
+KEY: recording ~326 ms avg in release vs 2-5 s in diag builds -> diag perf numbers overstate CPU recording ~10x. Use release runs for perf comparisons.
+Last split: recording 222 ms; 31 submissions; preparing 429 ms (snapshots 84.6 ms/1.3 GB; 130128 write-watch asks 219 ms; copies 320.7 ms 42 MB; indexed SRVs 299.6 ms); WAITING 1089.5 ms; copy back 68 ms.
+=> bottleneck now: waiting on GPU/fences + preparing (indexed SRVs 300-550 ms, write-watch asks).
+Memory stable: commit ~25.3 GB (peak 27.3), video 6.2/6.9 GB.

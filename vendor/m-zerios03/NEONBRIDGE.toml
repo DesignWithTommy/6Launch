@@ -1,0 +1,33 @@
+# i95 spec for Zerios03/victory-ada: a mix source (Mix page only, not in the runtime list).
+name = "m-zerios03"
+fork = "VIctory"
+mix_only = true
+about = "victory-ada 9367497 (GPL-3.0): 9-12 fps, ~30 min sessions (NVIDIA Ada)"
+upstream = "https://github.com/Zerios03/victory-ada"
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+run = ["run", "{game_exe}", "--execute"]
+prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+[env]
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+lb = "Q"
+rb = "E"
+lt = "Z"
+rt = "C"
+ls = "F"
+rs = "H"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"

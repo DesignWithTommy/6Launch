@@ -1,0 +1,9 @@
+lumière 2 diag (d13z6n 28e9be6 + 34487b2, ROOT_UAVS_ONLY 10, ASYNC=2, INDIRECT_STATS, fresh cache), log run-20261124-215428-lumiere2-diag.log, 2026-11-24 ~21:55-22:03 Paris
+No crash. First world frame 2036; captures at 2096 (world+60) and 2156 (world+120).
+fps: avg world 0.62 / 1888 ms / GPU 555 / copies 598 / 3762 draws; steady 0.64 / 1744 ms / GPU 558 / copies 647 / 5617 draws / dropped 465+30
+copystat 21:02:46: 19 subs; 20494 title copies 9.8 MB; 17259 refreshes 30345.6 MB; moves 31.9 ms 515.5 MB unmapped; 185952 page faults; 20386 watches 16.81 ms (10-calculs: 83416 / 2990 ms); 60326.8 MB checked, 60042.9 unchanged, 9101.7 memoized; 720.5 fallbacks; 252 guard faults; textures 157.9 MB hashed, 2.5 MB changed
+direct SRVs: 1223885 slots, 75293 ranges, 44874.83 MB requested, 125.47 filled, 241.54 ms (10-calculs 2059.93 ms)
+shadow (frames=4): conventional 11751 ranges 29827.1 MB req 416.2 filled 346.8 ms; watched_pages 991874 dirty 4989; untracked 2187.5 ranges 994.5 MB filled; watch_failures 1302.75 (4545.8 MB); snapshot_mb 1514.0 snapshot_ms 83.5; copyback compared 6904.6 MB filled 55.1 ms 112.7; srv_materializations 67779.75 (3.57 ms)
+top copied: 0x2870000+0xae00000 (memory 0x40000) 29.5-29.8x/frame 5.4 GB requested 8.7-9.0 MB filled 3.2 ms
+indirect (last 3): draws 354 run 0.32/0.33/0.40M launched (10-calculs 0.09-0.14M); dispatches 1086 run 73 all zero 0.19-0.21M; mesh 4873 run 0.01M launched (max y1 z1)
+Targets: 497 PNGs local in _work (frame 2096: 235, 2156: 248). Largest 2156: i215 f87 2209 KB, i217 f28 2084 KB, i23 f28 815 KB (G-buffer normals much fuller than before: 21-45 KB), i27 f28 641, i28 f19 470, i236 f41 397.
