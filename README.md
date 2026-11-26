@@ -32,29 +32,29 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 |---:|---|---|---|---|
 | 1 | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | VIctory | The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet | Testing |
 | 2 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | VIctory, victory-fork | "Player in control" through the prologue, ~5.7 to 7.3 fps, 77 min session, RX 9070 XT | Testing again. Its intro crash was i95 leaving TuxBox DLLs in the game folder (fixed). The intro video flickers |
-| 3 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | victory-fork | "A versão para placas de 8 GB": 4 to 7 fps at 1080p, hour-long sessions, RTX 4060 Ti; the opening cutscene at ~18–19 fps on the Series S profile | ❌ The game stops about 20 s in |
-| 4 | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | VIctory | Aims for "the world at 30 frames a second". 13 to 22 fps in most scenes, longest run 41 min, RX 7900 XTX | ⚠️ Past the intro at ~15 fps, then out of graphics memory |
+| 3 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | victory-fork | ~5.6 fps on Series X at 1080p and ~14 fps on Series S in the prison, RTX 4060 Ti 8 GB; the opening cutscene at ~18–19 fps; "Ainda não está jogável" (not playable yet) | ❌ The game stops about 20 s in |
+| 4 | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | VIctory | Series X at 1440p: 20 fps with ray tracing off, 10 fps with it on, RX 7900 XTX | ⚠️ Past the intro at ~15 fps, then out of graphics memory |
 | 5 | [Kelvaroq](https://github.com/stellarr-studio/kelvaroq) | VIctory, victory-fork | ~10 fps in typical views on an RTX 5080; a tester's 36 min session without a crash; shaders now translated once (heavy frames ~18 s to ~60 ms) | Testing |
 | 6 | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | VIctory | 23.1 fps median in gameplay at Series X 4K on an RX 7900 XT; about 40 minutes played by hand | Not run yet |
-| 7 | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | VIctory, victory-fork | Open world at "até 6 fps" on an RTX 5060 Ti | ✅ 3D prison scene at 2 to 3 fps |
-| 8 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | VIctory (Neptune) | "~14 fps in the world" on an RTX 4070 SUPER, 14 to 17 fps over the last minute | ✅ 10 min, no crash, ~14 fps (earlier build). Try this one first on NVIDIA |
-| 9 | [victory-fork](https://github.com/fxceless/victory-fork) | VIctory | Half-hour sessions at about 7 to 12 fps; shadowed areas still black | ✅ Intro at 30 fps, 3D scene ~1 fps |
-| 10 | [Victory-United](https://github.com/Fayberr/Victory-United) | VIctory | VIctory's best open pull requests, now rebuilt on Vice-Tay's code; a 34.7 minute session played by hand ended normally | Not run yet |
-| 11 | [CBL VIctory](https://github.com/cocainebunnylaboratories/cblvictoryvi) | VIctory, victory-fork | 3.63 to 6.39 fps by scene at 4K, a 27 min run, RTX 5080 | Not run yet |
-| 12 | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | VIctory | The world at 5 to 8 fps on an RX 9070 XT, a 15 min drive | ❌ |
+| 7 | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | VIctory, victory-fork | 4 to 6 fps on its main preset, 22 fps in an experimental build not yet merged, RTX 5060 Ti at 1080p | ✅ 3D prison scene at 2 to 3 fps |
+| 8 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | VIctory (Neptune) | "About 16–17 fps in the world" (median, Series X), RTX 4070 SUPER | ✅ 10 min, no crash, ~14 fps (earlier build). Try this one first on NVIDIA |
+| 9 | [victory-fork](https://github.com/fxceless/victory-fork) | VIctory | 6.2 to 6.7 fps, 10 to 14 in light scenes, RTX 4070; the card is lost after 30 to 50 minutes | ✅ Intro at 30 fps, 3D scene ~1 fps |
+| 10 | [Victory-United](https://github.com/Fayberr/Victory-United) | VIctory | VIctory's best open pull requests, rebuilt on Vice-Tay's code; ~11 fps in the first room over 7 and 10 min runs, RTX 3080 Ti | Not run yet |
+| 11 | [CBL VIctory](https://github.com/cocainebunnylaboratories/cblvictoryvi) | VIctory, victory-fork | A 65 min session: 11.4 fps on the boat, 4.3 to 4.7 in the city, RTX 5080 | Not run yet |
+| 12 | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | VIctory | ~22 fps with ray tracing off on an RX 7900 XTX | ❌ |
 | 13 | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | VIctory-7900XTX | 20 to 22 fps indoors on an RTX 5070, at half render scale on the Series S profile; no session length given | Not run yet |
 | 14 | CGBJ ([cool_fox](https://github.com/DoubleGhosty/cool_fox), a continuation) | VIctory | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub | Not run yet |
 | 15 | [Flamingo](https://github.com/realblastex/flamingo) | victory-fork | Tuned on "an NVIDIA RTX 4070". 9 to 12 fps in the first scene, a 24 min session | ⚠️ Runs at ~20 fps on average, but models are very dark and the screen flashes black and white |
-| 16 | [Vertex](https://github.com/proneonn/Vertex) | VIctory | "Not playable yet." About 7 to 10 fps, no crash in 16 of 18 sessions, RTX 5070 | Not run yet |
-| 17 | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | KLBF Lab | Built for 8 GB cards and 16 GB RAM. 3.6 fps average, 39 min session, RX 6600 XT | Not run yet |
-| 18 | [victory-unified](https://github.com/Itsbatt/victory-unified) | VIctory | "A unified fork" of several. About 58 min without a crash at 2 to 3 fps, RTX 3070 8 GB | Not run yet |
-| 20 | [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) | victory-fork | "About 3 to 5 frames a second" on an RTX 4060 Ti, a 46 min session | Not run yet |
-| 21 | [darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) | victory-fork | A snapshot of victory-fork with its own changes. The stream build showed 5 to 24 fps (unconfirmed) | Not run yet |
+| 16 | [Vertex](https://github.com/proneonn/Vertex) | VIctory | "Not playable yet." 6.4 to 9.9 fps median by run, longest run 25 min, RTX 5070 | Not run yet |
+| 17 | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | KLBF Lab | Built for 8 GB cards and 16 GB RAM. 6 to 10 fps in the world (6.1 in heavy prison scenes), RX 6600 XT | Not run yet |
+| 18 | [victory-unified](https://github.com/Itsbatt/victory-unified) | VIctory | "A unified fork" of several, tuned for an RTX 3070 8 GB; ~22 fps on its RX 7900 XTX dev machine | Not run yet |
+| 20 | [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) | victory-fork | 6.6 fps median in a 280 s scripted first-room run, RTX 4060 Ti | Not run yet |
+| 21 | [darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) | victory-fork | A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070 | Not run yet |
 | 22 | [Vilocity](https://github.com/voidopcode/vilocity) | its own layer | "Not playable yet." About 11 fps on the Series S profile, RTX 5080; runs end about 7 min in | Not run yet |
-| 23 | [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) | victory-fork | "Developed and measured on an AMD Radeon card": 3.2 to 3.6 fps, a 25 min session, RX 7800 XT | Not run yet |
-| 25 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | victory-fork | About 4 fps in the opening mission, RTX 3060 | ✅ 3D at 2 to 3 fps |
-| 27 | [victory-amd](https://github.com/myokex/victory-amd) | victory-fork | First room at 2 to 3 fps, runs of about 8 min, RX 7800 XT | Not run yet |
-| 30 | [DexNom RayTime](https://github.com/DexNom/VIctory) | VIctory | Its "most complete tested build": 3.5 to 4 fps indoors, about 1 with ray tracing, RX 7900 XTX | Not run yet |
+| 23 | [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) | victory-fork | 10.5 fps on Series X with ray tracing off, 6.7 with it on, 15 fps on Series S, RX 7800 XT | Not run yet |
+| 25 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | victory-fork | ~3 fps with the full picture on an RTX 3060 (Series S); a user reports 7 to 8 fps on an RTX 5070 | ✅ 3D at 2 to 3 fps |
+| 27 | [victory-amd](https://github.com/myokex/victory-amd) | victory-fork | 2 to 4 fps in the world, RTX 4070 | Not run yet |
+| 30 | [DexNom RayTime](https://github.com/DexNom/VIctory) | VIctory | Its "most complete tested build": ~1.1 to 1.3 fps in the city with ray tracing on, RX 7900 XTX | Not run yet |
 | 31 | [VIctory](https://github.com/Marvisak/VIctory) | (the original) | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | Not run yet |
 | – | [Kitty6](https://github.com/kitty-core/Kitty6) | VIctory-7900XTX | 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker | Not run yet |
 | – | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | VIctory-NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker | Not run yet |
