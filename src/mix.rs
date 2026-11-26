@@ -146,7 +146,22 @@ pub fn saved_names() -> Vec<String> {
 /// A saved mix by name, or "last-good".
 pub fn load(name: &str) -> Option<Mix> {
     let file = if name == "last-good" { home().join("last-good.txt") } else { saved_dir().join(format!("{name}.txt")) };
-    fs::read_to_string(file).ok().map(|t| Mix::parse(&t)).filter(|m| !m.parts.is_empty())
+    fs::read_to_string(file).ok().map(|t| Mix::parse(&t)).filter(|m| !m.parts.is_empty()).or_else(|| (name == "last-good").then(recommended).flatten())
+}
+
+/// The starting mix before any mix has built: every part from the top-ranked
+/// runtime with a victory tree (VIctory-7900XTX, #1 on the tracker). Parts
+/// of different forks rarely compile together, and this tree already carries
+/// victory-fork's, DexNom's and Belobug's work.
+pub fn recommended() -> Option<Mix> {
+    let top = trees().into_iter().min_by_key(|t| crate::runtimes::rank(t).unwrap_or(u32::MAX))?;
+    let mut parts = BTreeMap::new();
+    for p in std::iter::once(APP.to_owned()).chain(crates()) {
+        if has(&top, &p) {
+            parts.insert(p, top.clone());
+        }
+    }
+    Some(Mix { parts })
 }
 
 pub fn save(name: &str, mix: &Mix) -> std::io::Result<()> {
