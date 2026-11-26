@@ -591,8 +591,19 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
         let mut sx = x;
         let seg_h = 32;
         let labels: Vec<String> = s.presets.iter().enumerate().map(|(i, p)| if i == 0 { "Default".to_owned() } else { p.clone() }).collect();
+        // Segments that would pass the right edge start a new row (each row framed).
+        let frame = |dc, l: i32, t: i32, r: i32| unsafe {
+            let brush = CreateSolidBrush(BORDER);
+            FrameRect(dc, &rect(l, t, r, t + seg_h), brush);
+            DeleteObject(brush);
+        };
         for (i, label) in labels.iter().enumerate() {
             let sw = width_of(dc, label, f.body) + 32;
+            if sx > x && sx + sw > w - 32 {
+                frame(dc, x, y, sx);
+                sx = x;
+                y += seg_h + 8;
+            }
             let r = rect(sx, y, sx + sw, y + seg_h);
             let on = i == s.preset;
             fill_rect(dc, r, if on { BUTTON } else if s.hover == Hit::Preset(i) { ROW_HOT } else { BACKGROUND });
@@ -600,17 +611,13 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
             if on {
                 fill_rect(dc, rect(r.left, r.bottom - 2, r.right, r.bottom), CYAN);
             }
-            if i > 0 {
+            if sx > x {
                 fill_rect(dc, rect(r.left, r.top, r.left + 1, r.bottom), BORDER);
             }
             s.targets.push((r, Hit::Preset(i)));
             sx += sw;
         }
-        unsafe {
-            let brush = CreateSolidBrush(BORDER);
-            FrameRect(dc, &rect(x, y, sx, y + seg_h), brush);
-            DeleteObject(brush);
-        }
+        frame(dc, x, y, sx);
     }
 
     // Footer: the game, Advanced... and Play.
