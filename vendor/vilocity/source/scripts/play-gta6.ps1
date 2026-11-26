@@ -21,6 +21,13 @@ $root = Split-Path $PSScriptRoot
 # jumpsuits' orange (run gta6-20261126-001004). Still missing on Series S:
 # the "INMATE" print on the jumpsuit's back.
 if (-not $env:VILOCITY_CONSOLE) { $env:VILOCITY_CONSOLE = if ($SeriesX) { "series-x" } else { "series-s" } }
+# Series S at half internal resolution, upscaled by the title's own upscaler
+# (trustno1-coder/VIctory-NVIDIA, how the 25-32 fps NVIDIA reports run):
+# 84-90 ms against 95-117 ms a frame, picture good (2026-11-26).
+if ($env:VILOCITY_CONSOLE -eq "series-s") {
+    if (-not $env:VILOCITY_RENDER_SCALE) { $env:VILOCITY_RENDER_SCALE = "0.5" }
+    if (-not $env:VILOCITY_OWN_UPSCALER) { $env:VILOCITY_OWN_UPSCALER = "1" }
+}
 $exe = Join-Path $root $(if ($Diag) { "target\diag\vilocity.exe" } else { "target\release\vilocity.exe" })
 $logs = Join-Path $env:LOCALAPPDATA "vilocity\logs"
 New-Item -ItemType Directory -Force $logs | Out-Null
@@ -88,6 +95,15 @@ if (-not $Defaults) {
     # gta6-20261126-011801, against 0 in the others): those launches ran at
     # 3-5 fps with black faces, a bald dark head and red jumpsuits. Cleared,
     # it plans no moves; four launches in a row were all fast (7-12 fps).
+    # The title's ray passes that are not left out walk no structure (none is
+    # built here): every node test answers "no hit" instead of reading whatever
+    # bytes lie there, up to 65,535 steps a wave (fxceless/victory-fork 96ff135):
+    # 71-85 ms against 85-117 ms a frame, picture as good (2026-11-26).
+    if (-not $env:VILOCITY_BVH_NO_HIT) { $env:VILOCITY_BVH_NO_HIT = "1" }
+    # Hair strands run (they were left out: some did not translate and the rest
+    # drew streaks); with today's translator fixes Lucia's hair shows, a long
+    # ponytail, no streaks (2026-11-26). VILOCITY_HAIR=0: left out again.
+    if (-not $env:VILOCITY_HAIR) { $env:VILOCITY_HAIR = "1" }
     if (-not $env:VILOCITY_ZERO_OUT) { $env:VILOCITY_ZERO_OUT = "CS_CombinedReflections,CS_ScreenProbes_Inject,CS_DefragHeap_ComputeRelocations" }
 }
 
@@ -101,6 +117,12 @@ if ($env:VILOCITY_FIDELITYFX_DIR -eq "off") { Remove-Item Env:VILOCITY_FIDELITYF
 elseif (Test-Path (Join-Path $ffx "amd_fidelityfx_upscaler_dx12.dll")) { $env:VILOCITY_FIDELITYFX_DIR = $ffx }
 
 $watch = Start-Process powershell -PassThru -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$monitor`" -Log `"$log`""
+# The in-game HUD: frame rate and memory on the right of the game's window
+# (VILOCITY_HUD=0: none).
+if ($env:VILOCITY_HUD -ne "0") {
+    $hud = Join-Path $PSScriptRoot "hud-gta6.ps1"
+    Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$hud`" -Log `"$log`"" | Out-Null
+}
 Write-Host "log: $log"
 try {
     $sandbox = @(if ($NoSandbox) { '--no-sandbox' })

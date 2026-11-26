@@ -14,19 +14,17 @@ developer or publisher.
 > [!TIP]
 > **[View the gameplay screenshots](https://github.com/TaynanGT/Vice-Tay-Screenshots#readme)**
 >
-> Ten in-game captures from the Series S playtest.
+> Ten captures from the Series S playtest on build `672cf831`.
 
 ## At a glance
 
-- **It plays.** A 70-minute session on the Series S profile went from the prison
-  through a playable flashback, a boat, a camp, a fist fight and two shoot-outs,
-  with menus, the map, checkpoints, deaths and retries, and never crashed or hung.
-- **It is not fast enough yet.** The world runs at 14 fps on the Series X profile
-  in a fresh session. In the 30-minute Series S boat test, median frame rate rose
-  from 21.6 to **22.7 fps**. [Series S playtest](https://github.com/TaynanGT/Vice-Tay/pull/37).
-- **It slows down the longer it runs.** In that 70-minute session the game's memory
-  grew from 33 GB to 52 GB, past the 43 GB of RAM Windows sees, and the frame rate
-  fell from about 20 to under 10. This is the next thing being worked on.
+- **Playable prologue.** In the latest Series S benchmark the world loaded in
+  126 seconds, and the run completed eight minutes of movement and camera tests.
+- **It is not fast enough yet.** Vice-Tay is measured on the Series S profile. On
+  the current build the world runs at **21.5 fps** (median; 18.4-24.0 for most
+  frames), short of the 30 fps goal.
+- **Memory in the latest run.** The game used 26.4 GB of private memory at the
+  median and peaked at 27.9 GB during the eight-minute benchmark.
 
 ## Test PC
 
@@ -48,7 +46,7 @@ developer or publisher.
 ## Measurements
 
 <!-- measurements:start -->
-### Measured sessions (build 672cf831)
+### Measured sessions (build bc090416)
 
 On the test PC above, with `scripts\play.ps1` and its RTX 4090 settings, in
 full screen, each session walking, running, turning the camera and taking
@@ -57,32 +55,24 @@ to video on the card's encoder throughout.
 
 | Profile | In the world | To the start screen / to the world | fps: median (p10-p90; 1% low) | ms per frame (median) | Game memory, median / max | Card: memory max, load, power, temperature |
 |---|---|---|---|---|---|---|
-| Series X | 10 min, ended by the runner | 103 s / 161 s | **14.3** (13.6-14.7; 1% low 3.5) | 69.7: 35.0 GPU, 24.3 preparing, 20.0 copying back | 29.3 / 30.6 GB | 13.6 GB, 90.0%, 152.9 W, 57.0 C |
-| Series S | 10 min, ended by the runner | 88 s / 127 s | **20.8** (19.2-21.8; 1% low 8.7) | 48.1: 0.2 GPU, 36.9 preparing, 15.8 copying back | 24.2 / 26.0 GB | 12.0 GB, 81.0%, 129.9 W, 48.0 C |
-| Series X, `-Safe` | 10 min, ended by the runner | 87 s / 125 s | **15.4** (13.5-17.8; 1% low 3.3) | 64.7: 5.2 GPU, 37.3 preparing, 14.4 copying back | 33.4 / 34.9 GB | 17.6 GB, 97.0%, 154.4 W, 50.8 C |
-| Series X, `-RayTracing` | 10 min, ended by the runner | 88 s / 133 s | **8.9** (6.8-11.4; 1% low 4.8) | 112.3: 63.0 GPU, 35.9 preparing, 14.9 copying back | 36.1 / 37.3 GB | 16.4 GB, 84.5%, 137.2 W, 50.4 C |
-| Series S, 70 minutes played through the prison | 70 min, ended by the runner | 88 s / 126 s | **12.9** (8.3-20.1; 1% low 5.0) | 77.2: 0.0 GPU, 45.5 preparing, 16.1 copying back | 39.4 / 52.3 GB | 18.4 GB, 49.5%, 110.2 W, 50.1 C |
+| Series S | 8 min, ended by the runner | 88 s / 126 s | **21.5** (18.4-24.0; 1% low 7.0) | 46.5: 0.1 GPU, 32.3 preparing, 12.3 copying back | 26.4 / 27.9 GB | 11.6 GB, 85.0%, 134.2 W, 59.4 C |
 
 Every number is from the game's own once-a-second frame lines in the world
 (over 1,000 draws a frame) and samples every 20 s; the full tables, with each
 part of a frame, are in [docs/measurements.md](docs/measurements.md).
 <!-- measurements:end -->
 
-The [play log](docs/play-log.md) records the 70-minute session in detail.
+What these runs found and fixed on this PC is in
+[docs/findings-rtx4090.md](docs/findings-rtx4090.md).
 
 ### Benchmark charts
 
-The charts cover the short benchmarks and the 70-minute Series S playtest on
-an RTX 4090. [Open the interactive benchmark dashboard](https://taynangt.github.io/Vice-Tay/).
+The charts show the latest completed Series S benchmark on an RTX 4090.
+Select a chart to explore the readings, adjust the FPS target and project a reduction in frame time.
 
-![Median FPS, 1% lows and percentile ranges by run, with a 30 fps target](docs/charts/profile-frame-rate.svg)
+[![Explore frame rate, 1% low and percentile range](docs/charts/profile-frame-rate.svg)](https://taynangt.github.io/Vice-Tay/#fps)
 
-![Median frame times, preparation times and copy counters by run](docs/charts/profile-frame-timing.svg)
-
-The chart below tracks the long Series S session minute by minute.
-[Explore the recorded minutes](https://taynangt.github.io/Vice-Tay/#session).
-
-![Series S FPS by minute, with the peak, lowest and final readings](docs/charts/session-frame-rate.svg)
+[![Explore frame timing and data transferred per frame](docs/charts/profile-frame-timing.svg)](https://taynangt.github.io/Vice-Tay/#timing)
 
 <!-- Refresh the charts with node scripts/generate-benchmark-charts.mjs after editing the source tables. -->
 
@@ -90,8 +80,8 @@ The chart below tracks the long Series S session minute by minute.
 
 - **Frame rate.** Below 30 fps in the world. Most of a frame goes to preparing the
   GPU's work on the CPU and copying data back, not to the GPU itself.
-- **Memory grows without limit.** About 0.4-0.5 GB a minute in new areas; past
-  physical RAM, frame preparation slows to a crawl.
+- **Memory.** The game holds 26-28 GB on the Series S profile. On a PC with less
+  free RAM than that, Windows pages part of it out and frames stall.
 - **Picture.** Skin, hair and some walls show flat bands of colour; some objects
   (tanks, tarps, plants, a skylight) glow in flat purple, pink or blue; some faces
   show scrambled colour patches and some eyes are lit white; clouds and reflections

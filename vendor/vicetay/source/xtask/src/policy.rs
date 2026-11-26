@@ -35,7 +35,6 @@ const ALLOWED_DOCUMENTATION: &[&str] = &[
     "docs/benchmark-data.js",
     "docs/charts/profile-frame-rate.svg",
     "docs/charts/profile-frame-timing.svg",
-    "docs/charts/session-frame-rate.svg",
     "docs/index.html",
     "scripts/generate-benchmark-charts.mjs",
 ];

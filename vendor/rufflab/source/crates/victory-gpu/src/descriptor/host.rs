@@ -5,8 +5,11 @@
 //! writes it (view creation and descriptor copies) and again when a draw
 //! reads it through a table and finds the slot changed.
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
+
+const SLOT_PLACED: u8 = 1;
+const SLOT_TEX: u8 = 2;
 
 use windows::Win32::Graphics::Direct3D12::*;
 use windows::Win32::Graphics::Dxgi::Common::*;
@@ -101,6 +104,10 @@ pub(crate) struct HostHeap {
     /// other memory there makes stale, and which to look at again when the
     /// runtime maps, unmaps or writes memory ([`remapped`]).
     placed: std::sync::Arc<Mutex<Spans>>,
+    /// Per-slot lock-free hints (`SLOT_PLACED`, `SLOT_TEX`) so buffer-slot
+    /// writes skip locking `placed` and `textures` when the slot never held
+    /// a placed texture or texture-queue entry.
+    slot_flags: Box<[AtomicU8]>,
 }
 
 /// The spans of every view heap made ([`HostHeap::placed`]), for the
@@ -1062,6 +1069,9 @@ impl HostHeap {
                 }
                 spans
             },
+            slot_flags: (0..if sampler { 0 } else { count })
+                .map(|_| AtomicU8::new(0))
+                .collect(),
         };
         // A slot never written is undefined: shaders reading one (a slot
         // the title wrote in a way we do not know, or a table entry no
@@ -1324,6 +1334,9 @@ impl HostHeap {
         slots.retain(|&slot| !self.tabled_lately(slot, frame));
         let mut textures = self.textures.lock().unwrap_or_else(|e| e.into_inner());
         for &slot in &slots {
+            if let Some(f) = self.slot_flags.get(slot as usize) {
+                f.fetch_or(SLOT_TEX, Ordering::Release);
+            }
             textures.changed(slot, frame, frame + 1);
         }
         STALE[3].fetch_add(slots.len() as u64, Relaxed);
@@ -1373,6 +1386,9 @@ impl HostHeap {
             return [held, slots.len(), 0];
         }
         for &slot in &slots {
+            if let Some(f) = self.slot_flags.get(slot as usize) {
+                f.fetch_or(SLOT_TEX, Ordering::Release);
+            }
             textures.changed(slot, frame, frame + PAGE_WRITE_AFTER);
         }
         [held, slots.len(), slots.len()]
@@ -1458,6 +1474,9 @@ impl HostHeap {
         slots.retain(|&slot| !self.tabled_lately(slot, frame));
         let mut textures = self.textures.lock().unwrap_or_else(|e| e.into_inner());
         for &slot in &slots {
+            if let Some(f) = self.slot_flags.get(slot as usize) {
+                f.fetch_or(SLOT_TEX, Ordering::Release);
+            }
             textures.changed(slot, frame, frame + 1);
         }
         crate::tiles::STATS[10].fetch_add(slots.len() as u64, std::sync::atomic::Ordering::Relaxed);
@@ -1710,7 +1729,10 @@ impl HostHeap {
             }
             _ => None,
         };
-        let stale = {
+        let slot_flag = self.slot_flags.get(index as usize);
+        let stale = if placed_view.is_some()
+            || slot_flag.is_none_or(|f| f.load(Ordering::Acquire) & SLOT_PLACED != 0)
+        {
             use std::sync::atomic::Ordering::Relaxed;
             let mut placed = self.placed.lock().unwrap_or_else(|e| e.into_inner());
             let span = placed_view.and_then(|(resource, start, first)| {
@@ -1734,6 +1756,14 @@ impl HostHeap {
                     SPANNED[1].fetch_max(end, Relaxed);
                     let stale = placed.note(index, start, end, !seen);
                     placed.shows(index, first);
+                    if let Some(f) = slot_flag {
+                        f.fetch_or(SLOT_PLACED, Ordering::Release);
+                    }
+                    for &st in &stale {
+                        if let Some(sf) = self.slot_flags.get(st as usize) {
+                            sf.fetch_and(!SLOT_PLACED, Ordering::Release);
+                        }
+                    }
                     if let Some(held) = held_stripes {
                         debug_assert!(
                             stale.iter().all(|&st| st == index
@@ -1745,9 +1775,14 @@ impl HostHeap {
                 }
                 None => {
                     placed.forget(index);
+                    if let Some(f) = slot_flag {
+                        f.fetch_and(!SLOT_PLACED, Ordering::Release);
+                    }
                     Vec::new()
                 }
             }
+        } else {
+            Vec::new()
         };
         // Measured for the texture side of the same gap (textures a shader
         // picks by a computed index are neither made, if placed, nor
@@ -1764,7 +1799,24 @@ impl HostHeap {
             }
             _ => false,
         };
-        self.queue_texture_with_stale(index, texture, seen, frame, &stale);
+        if texture
+            || !stale.is_empty()
+            || slot_flag.is_none_or(|f| f.load(Ordering::Acquire) & SLOT_TEX != 0)
+        {
+            self.queue_texture_with_stale(index, texture, seen, frame, &stale);
+            if let Some(f) = slot_flag {
+                if texture {
+                    f.fetch_or(SLOT_TEX, Ordering::Release);
+                } else {
+                    f.fetch_and(!SLOT_TEX, Ordering::Release);
+                }
+            }
+            for &st in &stale {
+                if let Some(sf) = self.slot_flags.get(st as usize) {
+                    sf.fetch_and(!SLOT_TEX, Ordering::Release);
+                }
+            }
+        }
         if !stale.is_empty() {
             STALE[0].fetch_add(stale.len() as u64, std::sync::atomic::Ordering::Relaxed);
         }
@@ -1778,8 +1830,11 @@ impl HostHeap {
         }
         let mut buffers = self.buffers.lock().unwrap_or_else(|e| e.into_inner());
         let was = if stride.is_some() {
-            buffers.insert(index);
-            true
+            let inserted = buffers.insert(index);
+            // When `seen` is true (materializing an already-tracked buffer slot
+            // inside `heap_buffers` or a draw), do not re-enqueue it into
+            // `self.changed` unless it was newly added to `buffers`.
+            !seen || inserted
         } else {
             buffers.remove(&index)
         };
@@ -2400,9 +2455,9 @@ pub(crate) fn buffer_copy(view: &View) -> Option<(std::sync::Arc<crate::shadow::
     // of the copy they find, so that the copy brought up to date is the
     // one the slot shows.
     if let Some((base, width)) = buffer_extent(view)
-        && let Some((first, count, element, stride, unknown)) = buffer_fields(view)
+        && let Some((first, count, element, stride, unknown, raw)) = buffer_fields(view)
         && let Some(whole) = crate::shadow::find(base, width)
-        && let Some((start, bytes)) = own_bytes(whole.offset(base), base, first, count, element, stride, unknown)
+        && let Some((start, bytes)) = own_bytes(whole.offset(base), base, first, count, element, stride, unknown, raw)
         && let Some(own) = crate::shadow::exact(start, bytes)
     {
         return Some((own, start, bytes));
@@ -2489,8 +2544,18 @@ fn own_copy_on() -> bool {
 /// a view has no host view there; it is made on a copy of its own bytes
 /// (`crate::shadow::exact`), where it starts at element 0. `None`: the
 /// view is made on its buffer's copy, as every other.
-fn own_bytes(offset: u64, base: u64, first: u64, count: u32, element: u64, stride: u32, unknown: bool) -> Option<(u64, u64)> {
-    own_bytes_if(own_copy_on(), offset, base, first, count, element, stride, unknown)
+#[allow(clippy::too_many_arguments)]
+fn own_bytes(
+    offset: u64,
+    base: u64,
+    first: u64,
+    count: u32,
+    element: u64,
+    stride: u32,
+    unknown: bool,
+    raw: bool,
+) -> Option<(u64, u64)> {
+    own_bytes_if(own_copy_on(), offset, base, first, count, element, stride, unknown, raw)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2503,21 +2568,40 @@ fn own_bytes_if(
     element: u64,
     stride: u32,
     unknown: bool,
+    raw: bool,
 ) -> Option<(u64, u64)> {
-    if !on || element == 0 || count == 0 || offset.is_multiple_of(element) {
+    if !on || element == 0 || count == 0 {
+        return None;
+    }
+    let bytes = u64::from(count).checked_mul(element)?;
+    // PC D3D12 requires raw buffer views (`ByteAddressBuffer` / `RWByteAddressBuffer`)
+    // to start on a 16-byte boundary (`(offset + first * 4) % 16 == 0`), whereas
+    // Xbox permits 4-byte alignment (observed in logs: `format=39 first=2` / `first=1615`).
+    // Give bounded unaligned raw views their own copy starting at `base + first * 4`
+    // so host `FirstElement == 0` satisfies D3D12 instead of falling back to null.
+    const MAX_RAW_OWN_COPY: u64 = 16 << 20;
+    let raw_unaligned = raw
+        && element == 4
+        && bytes <= MAX_RAW_OWN_COPY
+        && !first
+            .checked_mul(4)
+            .and_then(|f| f.checked_add(offset))
+            .is_some_and(|a| a.is_multiple_of(16));
+    if !raw_unaligned && offset.is_multiple_of(element) {
         return None;
     }
     if unknown && raw_window(offset, first, count, stride).is_some() {
         return None;
     }
     let start = base.checked_add(first.checked_mul(element)?)?;
-    Some((start, u64::from(count) * element))
+    Some((start, bytes))
 }
 
 /// Of a buffer view: its first element, its elements, the bytes of one (a
-/// raw view's: 4), its structure's stride, and whether it has no format.
+/// raw view's: 4), its structure's stride, whether it has no format, and
+/// whether it is a raw byte-address view.
 /// As [`buffer_srv`] and [`buffer_uav`] read them from the same words.
-fn buffer_fields(view: &View) -> Option<(u64, u32, u64, u32, bool)> {
+fn buffer_fields(view: &View) -> Option<(u64, u32, u64, u32, bool, bool)> {
     const BUFFER: u32 = 1;
     let (words, unordered): (&[u32; 10], bool) = match view {
         View::Shader(_, Some(d)) if d[1] == BUFFER => (d, false),
@@ -2529,19 +2613,21 @@ fn buffer_fields(view: &View) -> Option<(u64, u32, u64, u32, bool)> {
         let d = uav_desc(words);
         // SAFETY: a buffer view's union member.
         let b = unsafe { d.Anonymous.Buffer };
+        let raw = b.Flags.0 & D3D12_BUFFER_UAV_FLAG_RAW.0 != 0;
         let element = if b.StructureByteStride > 0 {
             u64::from(b.StructureByteStride)
-        } else if b.Flags.0 & D3D12_BUFFER_UAV_FLAG_RAW.0 != 0 {
+        } else if raw {
             4
         } else {
             crate::resource::element(d.Format.0 as u32).map_or(0, |(bytes, _)| bytes)
         };
-        Some((b.FirstElement, b.NumElements, element, b.StructureByteStride, d.Format == DXGI_FORMAT_UNKNOWN))
+        Some((b.FirstElement, b.NumElements, element, b.StructureByteStride, d.Format == DXGI_FORMAT_UNKNOWN, raw))
     } else {
         let d = srv_desc(words);
         // SAFETY: a buffer view's union member.
         let b = unsafe { d.Anonymous.Buffer };
-        Some((b.FirstElement, b.NumElements, element_size(&d), b.StructureByteStride, d.Format == DXGI_FORMAT_UNKNOWN))
+        let raw = b.Flags.0 & D3D12_BUFFER_SRV_FLAG_RAW.0 != 0;
+        Some((b.FirstElement, b.NumElements, element_size(&d), b.StructureByteStride, d.Format == DXGI_FORMAT_UNKNOWN, raw))
     }
 }
 
@@ -2617,7 +2703,8 @@ fn buffer_srv(
         // SAFETY: a buffer view's union member.
         let b = unsafe { desc.Anonymous.Buffer };
         let unknown = desc.Format == DXGI_FORMAT_UNKNOWN;
-        match own_bytes(offset, address, b.FirstElement, b.NumElements, element_size(&desc), b.StructureByteStride, unknown)
+        let raw = b.Flags.0 & D3D12_BUFFER_SRV_FLAG_RAW.0 != 0;
+        match own_bytes(offset, address, b.FirstElement, b.NumElements, element_size(&desc), b.StructureByteStride, unknown, raw)
             .and_then(|(start, bytes)| crate::shadow::exact(start, bytes))
         {
             Some(own) => {
@@ -2703,15 +2790,16 @@ fn buffer_uav(
     let (shadow, own) = {
         // SAFETY: a buffer view's union member.
         let b = unsafe { desc.Anonymous.Buffer };
+        let raw = b.Flags.0 & D3D12_BUFFER_UAV_FLAG_RAW.0 != 0;
         let element = if b.StructureByteStride > 0 {
             u64::from(b.StructureByteStride)
-        } else if b.Flags.0 & D3D12_BUFFER_UAV_FLAG_RAW.0 != 0 {
+        } else if raw {
             4
         } else {
             crate::resource::element(desc.Format.0 as u32).map_or(0, |(bytes, _)| bytes)
         };
         let unknown = desc.Format == DXGI_FORMAT_UNKNOWN;
-        match own_bytes(shadow.offset(address), address, b.FirstElement, b.NumElements, element, b.StructureByteStride, unknown)
+        match own_bytes(shadow.offset(address), address, b.FirstElement, b.NumElements, element, b.StructureByteStride, unknown, raw)
             .and_then(|(start, bytes)| crate::shadow::exact(start, bytes))
         {
             Some(own) => {
@@ -4474,20 +4562,29 @@ mod own_copy_tests {
         let base = 0xd_9000_0000u64;
         // On an element: the buffer's copy (the two cases of every run's
         // log are the ones below).
-        assert_eq!(own_bytes_if(true, 24, base, 3, 10, 12, 0, false), None);
-        assert_eq!(own_bytes_if(true, 0, base, 0, 10, 12, 0, false), None);
+        assert_eq!(own_bytes_if(true, 24, base, 3, 10, 12, 0, false, false), None);
+        assert_eq!(own_bytes_if(true, 0, base, 0, 10, 12, 0, false, false), None);
         // A typed view of 12-byte elements, 5,222,240 bytes into its copy
         // (8 past an element): its own bytes, from its first element.
-        assert_eq!(own_bytes_if(true, 5_222_240, base, 3, 10, 12, 0, false), Some((base + 36, 120)));
+        assert_eq!(own_bytes_if(true, 5_222_240, base, 3, 10, 12, 0, false, false), Some((base + 36, 120)));
         // A structured view of 32-byte elements 8 bytes in: not on 16, so
         // no raw view of the copy either.
-        assert_eq!(own_bytes_if(true, 8, base, 2, 4, 32, 32, true), Some((base + 64, 128)));
+        assert_eq!(own_bytes_if(true, 8, base, 2, 4, 32, 32, true, false), Some((base + 64, 128)));
         // The same 16 bytes in: off its elements, but a raw view of the
         // copy's bytes does (as before).
-        assert_eq!(own_bytes_if(true, 16, base, 2, 4, 32, 32, true), None);
+        assert_eq!(own_bytes_if(true, 16, base, 2, 4, 32, 32, true, false), None);
+        // Raw views with 4-byte-aligned but non-16-byte-aligned start (real log
+        // cases: `format=39 first=2 count=32` and `first=1615 count=4064`) get
+        // their own copy so host `FirstElement == 0` is 16-byte aligned; aligned
+        // raw views stay on their buffer's copy.
+        assert_eq!(own_bytes_if(true, 0, base, 2, 32, 4, 0, false, true), Some((base + 8, 128)));
+        assert_eq!(own_bytes_if(true, 0, base, 1615, 4064, 4, 0, false, true), Some((base + 6460, 16256)));
+        assert_eq!(own_bytes_if(true, 8, base, 2, 32, 4, 0, false, true), None); // 8 + 8 = 16 -> aligned
+        assert_eq!(own_bytes_if(true, 0, base, 4, 32, 4, 0, false, true), None); // 16 -> aligned
         // No elements, no size, or the switch off: as before.
-        assert_eq!(own_bytes_if(true, 8, base, 2, 0, 32, 32, true), None);
-        assert_eq!(own_bytes_if(true, 8, base, 2, 4, 0, 0, false), None);
-        assert_eq!(own_bytes_if(false, 8, base, 2, 4, 32, 32, true), None);
+        assert_eq!(own_bytes_if(true, 8, base, 2, 0, 32, 32, true, false), None);
+        assert_eq!(own_bytes_if(true, 8, base, 2, 4, 0, 0, false, false), None);
+        assert_eq!(own_bytes_if(false, 8, base, 2, 4, 32, 32, true, false), None);
+        assert_eq!(own_bytes_if(false, 0, base, 2, 32, 4, 0, false, true), None);
     }
 }

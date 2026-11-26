@@ -34,8 +34,9 @@ Kelvaroq is an Xbox Series X|S compatibility runtime for Windows x64, written in
 - **121 million** descriptor rows checked against recorded real gameplay, with **zero errors**.
 - **300× less** memory bookkeeping per heavy frame on real gameplay: **~18 s → ~60 ms** on an RTX 5080.
 - **0 GB** left behind when the game closes, down from about 19 GB per session, with a clean shutdown in about one second.
+- **Native DirectX 12 ray tracing (DXR)** is now implemented and working: the game's ray-tracing structures are built and traced through DXR on the GPU.
 
-The unified memory layer is **in testing** and goes public as soon as the build is stable and clean. Follow it live on [Discord](https://discord.gg/5Hvk5RFB3D).
+The unified memory layer is **fully functional and in testing**, and the remaining legacy components are being removed. It goes public as soon as the build is stable and clean. Follow it live on [Discord](https://discord.gg/5Hvk5RFB3D).
 
 ## The wall every project hits
 
@@ -49,7 +50,7 @@ We traced how the game really uses its memory, from the first instruction of the
 
 **Kelvaroq's memory layer is in testing now, and the first results are wild:** in the first scenes we tested, the memory copied every frame fell from over 100 MB to under 8 MB. We are tuning it for the open world before it ships.
 
-**Update, 26 November 2026: the memory layer now runs in the open world.** In a live test session, the GPU found more than half of the memory it needed, about 64 million of 115 million lookups, directly in the game's own memory instead of a copy; earlier the same day, it found none. What is left is speed: on recorded game data, translating each descriptor once, when the game writes it, brought the work per heavy frame from about 18 seconds down to about 60 ms, and the target is **5 ms per frame**. It is in testing now and goes public as soon as the build is stable and clean. Follow it live on [Discord](https://discord.gg/5Hvk5RFB3D).
+**Update, 26 November 2026: the new memory management system is now fully functional.** In a live test session, the GPU found more than half of the memory it needed, about 64 million of 115 million lookups, directly in the game's own memory instead of a copy; earlier the same day, it found none. On recorded game data, translating each descriptor once, when the game writes it, brought the work per heavy frame from about 18 seconds down to about 60 ms, and the target is **5 ms per frame**. We are now removing the remaining components of the legacy system. Native DirectX 12 ray tracing (DXR) is implemented as well. The next priority is performance optimization, with a focus on lower-end hardware. The new layer is in testing and goes public as soon as the build is stable and clean. Follow it live on [Discord](https://discord.gg/5Hvk5RFB3D).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/memory-dark.svg">
@@ -60,7 +61,7 @@ We traced how the game really uses its memory, from the first instruction of the
 ## Where this is going
 
 - **Goal:** the game runs from boot to credits exactly as it does on an Xbox Series X, with what a PC adds on top: DLSS super resolution, frame generation, higher resolutions and an unlocked frame rate.
-- **Modest PCs too:** the copy loop is what eats the processor today, and that is what shuts smaller machines out. Removing it lowers the bar for everyone, so the aim is a game that also runs well on mid-range and older PCs, not only on high-end ones. Minimum requirements will be published once they are measured.
+- **Modest PCs too, next priority:** the copy loop is what eats the processor today, and that is what shuts smaller machines out. Removing it lowers the bar for everyone. Once the legacy system is gone, performance optimization comes next, with the aim of a game that also runs well on mid-range and older PCs, not only on high-end ones. Minimum requirements will be published once they are measured.
 - **Release policy:** the memory layer goes public as soon as its build is stable and clean and every test suite passes. DLSS, frame generation and the remaining visual effects follow. Until then, the public build stays on the current engine while the new layer is tested.
 
 ## Status
@@ -71,7 +72,7 @@ The figures below are those of the current public build.
 
 Verified in play: the menus work, the character can be controlled, the HUD is shown, the game pauses, and sessions have run without a crash.
 
-Patches 0041–0042 cut median heavy-frame time from 198.3 to 119.8 ms, and patches 0044–0048 to 108.5 ms. The thread that prepares and submits GPU work now limits heavy frames: the GPU waits for it. About 7% of draws are still dropped, mostly because ray-tracing structures are not built yet. Textures wait for space when VRAM is full.
+Patches 0041–0042 cut median heavy-frame time from 198.3 to 119.8 ms, and patches 0044–0048 to 108.5 ms. The thread that prepares and submits GPU work now limits heavy frames: the GPU waits for it. About 7% of draws are still dropped in this public build, mostly because ray-tracing structures are not built yet; native DirectX 12 ray tracing (DXR) is now implemented and working in the build under test. Textures wait for space when VRAM is full.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/charts/milestones-dark.svg">
@@ -133,8 +134,9 @@ A tester played a build from this public repository and monitored it, on a Ryzen
 - [x] Ask Windows for changed pages once per reservation and submission (patch 0045): heavy-frame median 129 → 110 ms in an A/B.
 - [x] Present asynchronously, at most two frames ahead (patches 0046, 0048): the game no longer waits in present; p95 568 → 262 ms.
 - [x] Shader preloading screen in the launcher, and a live performance monitor (`Kelvaroq.exe --monitor`).
-- [ ] Remove the memory synchronisation that costs about two thirds of every heavy frame. *In testing: copies per frame down from over 100 MB to under 8 MB in the first scenes.*
-- [ ] Run 64-lane compute shaders on 32-lane GPUs, and build ray-tracing structures (about 515 dropped draws per frame).
+- [ ] Remove the memory synchronisation that costs about two thirds of every heavy frame. *The new layer is fully functional and in testing (copies per frame down from over 100 MB to under 8 MB in the first scenes); the remaining legacy components are being removed.*
+- [x] Native DirectX 12 ray tracing (DXR): ray-tracing structures are built and traced on the GPU, which removes the draws previously dropped for lack of them. Implemented and working in the build under test.
+- [ ] Run 64-lane compute shaders on 32-lane GPUs.
 - [ ] Address the remaining ~1,400 clamped indirect calls per frame across non-mesh draws and compute dispatches.
 - [ ] Address the VRAM budget and missing host pipelines.
 - [ ] DLSS super resolution and frame generation on NVIDIA RTX GPUs.

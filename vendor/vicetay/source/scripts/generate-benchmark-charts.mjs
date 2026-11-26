@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { parseBenchmark, parsePlayLog } from '../docs/benchmark-data.js';
+import { parseBenchmark } from '../docs/benchmark-data.js';
 
 const width = 920;
 const goal = 30;
@@ -88,7 +88,8 @@ function frameRateChart({ build, profiles }) {
   });
   const description = profiles.map(({ label, fps }) =>
     `${label} median ${decimal(fps.median)} fps, 1% low ${decimal(fps.low)}, P10 to P90 ${decimal(fps.p10)} to ${decimal(fps.p90)}.`).join(' ');
-  return chart('Frame rate by run', `RTX 4090 · Build ${build} · In-world samples`, description, bottom + 47, elements);
+  const title = profiles.length === 1 ? profiles[0].label + ' frame rate' : 'Frame rate by run';
+  return chart(title, `RTX 4090 · Build ${build} · In-world samples`, description, bottom + 47, elements);
 }
 
 const timingCounters = [
@@ -132,65 +133,14 @@ function frameTimingChart({ profiles }) {
   <text x="${x(frameBudget)}" y="${top - 11}" fill="${target}" font-size="15" font-weight="650" text-anchor="middle">33.3 ms at 30 fps</text>`);
   const description = profiles.map(p =>
     p.label + ' – ' + timingCounters.map(([label, key]) => label + ' ' + decimal(p.timing[key]) + ' ms').join(', ') + '.').join(' ');
-  return chart('Frame timing by run', 'Median values for four recorded counters', description, bottom + 51, elements);
-}
-
-function sessionChart({ profile, build, minutes }) {
-  const left = 70;
-  const right = 862;
-  const top = 153;
-  const bottom = 356;
-  const maximum = Math.max(goal, Math.ceil(Math.max(...minutes.map(p => p.fps)) / 5) * 5);
-  const first = minutes[0];
-  const last = minutes.at(-1);
-  const toX = scale(left, right, Math.max(1, last.elapsed - first.elapsed));
-  const y = value => compact(bottom - (bottom - top) * value / maximum);
-  const x = point => toX(point.elapsed - first.elapsed);
-  const high = minutes.reduce((a, b) => a.fps >= b.fps ? a : b);
-  const low = minutes.reduce((a, b) => a.fps <= b.fps ? a : b);
-  const colour = colours.at(-1);
-  const stats = [
-    ['Peak minute', high], ['Lowest minute', low], ['Final minute', last],
-  ];
-  const elements = [
-    '  <path d="M36 95H884" class="grid"/>',
-    ...stats.map(([label, sample], index) => {
-      const position = 36 + index * 286;
-      return `  <text x="${position}" y="124" fill="${colour}" font-size="18" font-weight="700">${decimal(sample.fps)} fps</text>
-  <text x="${position + 80}" y="124" class="tick">${label}</text>`;
-    }),
-  ];
-  for (let fps = 0; fps <= maximum; fps += 5) {
-    elements.push(`  <path d="M${left} ${y(fps)}H${right}" class="grid"/>
-  <text x="58" y="${y(fps) + 5}" class="tick" text-anchor="end">${fps}</text>`);
-  }
-  const path = minutes.map((point, index) => {
-    const connected = index > 0 && point.elapsed === minutes[index - 1].elapsed + 1;
-    return (connected ? 'L' : 'M') + x(point) + ' ' + y(point.fps);
-  }).join('');
-  elements.push(`  <path d="M${left} ${y(goal)}H${right}" class="guide"/>
-  <text x="${right - 5}" y="${y(goal) + 21}" fill="${target}" font-size="15" font-weight="650" text-anchor="end">30 fps target</text>
-  <path d="${path}" fill="none" stroke="${colour}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`);
-  for (const point of minutes) {
-    const annotated = point === high || point === low || point === last;
-    elements.push(`  <circle cx="${x(point)}" cy="${y(point.fps)}" r="${annotated ? 5 : 2}" fill="${colour}"${annotated ? ' stroke="' + panel + '" stroke-width="1.5"' : ''}/>`);
-  }
-  const tickIndices = new Set([0, .25, .5, .75, 1].map(part => Math.round((minutes.length - 1) * part)));
-  for (const index of tickIndices) {
-    const point = minutes[index];
-    elements.push(`  <text x="${x(point)}" y="382" class="tick" text-anchor="middle">${escapeXml(point.time)}</text>`);
-  }
-  elements.push('  <text x="862" y="409" class="tick" text-anchor="end">Time (UTC)</text>');
-  const description = `${profile} from ${first.time} to ${last.time} UTC. The per-minute medians range from ${decimal(low.fps)} to ${decimal(high.fps)} fps. The final minute measured ${decimal(last.fps)} fps.`;
-  return chart('Frame rate over the playtest', `${profile} · Build ${build} · FPS median for each logged minute`, description, 430, elements);
+  const title = profiles.length === 1 ? profiles[0].label + ' frame timing' : 'Frame timing by run';
+  return chart(title, 'Median values for four recorded counters', description, bottom + 51, elements);
 }
 
 const measurement = parseBenchmark(await readFile(new URL('../docs/measurements.md', import.meta.url), 'utf8'));
-const playLog = parsePlayLog(await readFile(new URL('../docs/play-log.md', import.meta.url), 'utf8'));
 const charts = {
   'profile-frame-rate.svg': frameRateChart(measurement),
   'profile-frame-timing.svg': frameTimingChart(measurement),
-  'session-frame-rate.svg': sessionChart(playLog),
 };
 
 await Promise.all(Object.entries(charts).map(([name, svg]) =>

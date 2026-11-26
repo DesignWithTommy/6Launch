@@ -5,7 +5,7 @@
 name = "victory"
 fork = "victory-fork"
 rank = 9   # #9 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-fxceless e4245f3 (GPL-3.0), the emulator victory"
+about = "VIctory-fxceless 52ac4ec (GPL-3.0), the emulator victory"
 upstream = "https://github.com/fxceless/victory-fork"
 # fxceless's victory has no Agility opt-in (no D3D12SDKVersion/D3D12SDKPath
 # exports, unlike ScarlettPort's copy): it runs on the system's D3D12.

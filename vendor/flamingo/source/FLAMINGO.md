@@ -24,6 +24,7 @@ GPL-2.0 and VIctory is GPL-3.0, so code is not copied between them.
 | Discord Rich Presence: the title's name, menus or world, the frame rate, the time played; looked at every second, sent when it changes (at most every 4 s, Discord's limit) | Flamingo (`apps/victory/src/discord.rs`) |
 | Structure builder: its last three programs translate on 32-lane GPUs | victory-fork PR #294 (working tree) |
 | The heap buffer pass no longer marks the slots it makes for the next pass (each was looked at twice): a third fewer slots looked at a frame | after victory-fork PR #1043 |
+| A mesh group's stride takes all three thread counts of PSV0 and the outputs (no program of this title changes) | after upstream VIctory #3304 |
 | Wave32 shared-memory synchronisation for the visibility dispatch; merged-stage shared memory size and GS vertex bound; lane masks through joins; lane selectors wrapped at the console's wave width; wave32 pixel and vertex wave operations per 32-lane half; literal select masks in local half-waves | victory-fork PRs #368, #367, #377, #298, #318, #277 (working tree) |
 | FP16 interpolation and integer render-target pipelines; signed wave prefix and integer NaN checks in f16 conversions; refused shaders' containers saved (`VICTORY_DUMP_REFUSED`) | victory-fork PRs #280, #355, #266 (working tree) |
 | Geometry stages: host pipelines with a geometry stage made from the console's merged ES+GS pair (stacked on #381, #373, #367, #309; replaces #367 here) | victory-fork PR #400 (working tree) |
@@ -177,7 +178,7 @@ TdrDelay raised to 60 s. Here TdrDelay is the default 2 s. Keep test runs short.
 | 106 | + victory-fork #854: wave64 programs in the paired form on 32-lane GPUs | no pipeline refused, no program untranslated (the cascades' alpha shadow program translates); rows of black boxes on the water |
 | 107, 108 | + `FLAMINGO_BVH_MISS=1` (every ray misses) | the black boxes on the water gone (light streaks left where reflections take their fallback); a cutscene face well lit; no hang in two runs. On in the newest-code launcher |
 
-### Runs 146-223 (2026-11-25 and 26)
+### Runs 146-236 (2026-11-25 and 26)
 
 Runs 109 to 145 are not logged here. From run 185 on: the Series S profile, the lean build, the
 first mission's boat cutscene. What was found, and what to look at next: [docs/handoff.md](docs/handoff.md).
@@ -230,6 +231,11 @@ first mission's boat cutscene. What was found, and what to look at next: [docs/h
 | 221 | the water's transmission volumetrics left out (`5dc3b25986622949`, `6f225b641c5b0708`) | **the dark blocks on the water gone**; the water loses its turquoise; 8 flat frames of 20 in this run |
 | 222 | the same two in the exact paired form (`VICTORY_WAVE_WIDE_ONLY` without them) | the turquoise back and the blocks with it: not the wave form, one of their inputs; 10.4 fps |
 | 223 | a capture about every 4 s from the menus to the boat (95 frames) | 10.1 fps; 1 flat frame of 55 in the boat window. The opening cutscene: a smooth low-detail head early on (streaming), a character's face dark or her head missing in some shots and whole in others, black silhouettes on the beach. The log: no device loss, no panic; from 59 s on 5,400-11,000 textures picked by index wait for room on the card the whole run |
+| 224 | `VICTORY_TEXTURE_ROOM_PERCENT=97` | 5,000-8,400 textures waiting against 5,400-8,600: the card is full; 106 GB uploaded in the run. Not used |
+| 225, 226 | the skinning programs with the driver asked not to optimize (`FLAMINGO_DXIL_STRICT`, test switch) | 225 cold pipelines (2.4 fps, not a test); 226: the floating heads stay: not the driver's optimizer |
+| 227, 228 | `VICTORY_PAGE_WRITES=1`, `=all` | the dark faces stay; they are right a few seconds into each shot: texture latency at camera cuts |
+| 229-235 | every input of the skinning passes dumped (`FLAMINGO_DUMP_TABLE_AT`, `FLAMINGO_DUMP_SLOT_WORD`) | geometry, bone-remap and the bone palette's rows right on the card; a mesh right just after its own pass; a few meshes' geometry decoded on the card (title memory keeps the encoded form) and right there too. Output dumps at the first cull come too early (it is recorded before the skinning) |
+| 236 | the skinning outputs copied after every skinning pass, the last copy kept (`FLAMINGO_DUMP_TABLE_AT` at the skinning passes) | in one frame's skinning (125 passes) 14 meshes come out wrong, and every one of them has a geometry buffer whose card copy is not decoded vertex data; no mesh whose card copy matches title memory is wrong. Title memory holds an encoded container for all such buffers; the card holds the decoded streams for the 15 that come out right |
 
 ## Stats overlay
 

@@ -5,7 +5,7 @@
 name = "belobug"
 fork = "VIctory"
 rank = 12   # #12 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-Belobug-AMD 81ebb7b (GPL-3.0): now built on VIctory-7900XTX's tree with RX 9070 XT fixes (magenta filter, VRAM eviction)"
+about = "VIctory-Belobug-AMD cd8dfc0 (GPL-3.0): now built on VIctory-7900XTX's tree with RX 9070 XT fixes (magenta filter, VRAM eviction)"
 upstream = "https://github.com/Belobug/VIctory-Belobug-AMD"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:49
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -24,6 +24,7 @@ preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # D3D12 crash brea
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (slow; diagnostics build only, host.rs cfg!(feature = "diagnostics"))
 
 
+preset_fsr4k = ["VICTORY_FSR_4K=quality"]   # play.ps1 -Fsr4K quality (cd8dfc0)
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads
 
 [env]   # scripts/play.ps1:15-25 (this tree is VIctory-7900XTX's, README.md:46)
@@ -43,7 +44,6 @@ VICTORY_CARD_AWAKE = "1"
 VICTORY_SHOW_AFTER = "1"
 VICTORY_AMBIENT = "0.8"
 VICTORY_D3D12_DRED = "light"
-VICTORY_SKIP_PIPELINES = "none"
 VICTORY_THIN = "1"
 VICTORY_JOIN_PARTS = "8"
 VICTORY_UPLOAD_AHEAD = "1"

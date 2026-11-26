@@ -2590,8 +2590,14 @@ impl State {
         // Flamingo diagnostics: `FLAMINGO_DUMP_AT` names direct dispatches too (with the
         // buffers of the heap slots named there).
         #[cfg(feature = "diagnostics")]
-        if p.name.contains(crate::capture::dump_at()) {
-            crate::capture::note_ranges(list, &self.named_slot_ranges(p, true));
+        {
+            let here = p.name.contains(crate::capture::dump_at());
+            let table = crate::capture::dump_table_at().is_some_and(|n| p.name.contains(n));
+            let mut ranges = if here { self.named_slot_ranges(p, true) } else { Vec::new() };
+            ranges.extend(self.table_view_ranges(p, true));
+            if here || table {
+                crate::capture::note_ranges(list, &ranges, table);
+            }
         }
         if self.ambient(list, p) {
             // The pass set its own heap, root signature and pipeline: the
@@ -3379,6 +3385,35 @@ impl State {
         slots
     }
 
+    /// With `FLAMINGO_DUMP_TABLE_VIEWS=1`: the title ranges of the buffer views the program reads
+    /// and writes through its tables, for the range dump (diagnostics builds).
+    #[cfg(feature = "diagnostics")]
+    fn table_view_ranges(&self, p: &HostPipeline, compute: bool) -> Vec<(u64, u64)> {
+        if !crate::capture::dump_table_at().is_some_and(|n| p.name.contains(n)) {
+            return Vec::new();
+        }
+        let mut out = Vec::new();
+        for stage in &p.stages {
+            for u in stage.translated().used.iter() {
+                if u.root != RootType::Table || !matches!(u.kind, ResourceType::Srv | ResourceType::Uav) {
+                    continue;
+                }
+                let Some(Root::Table(table)) = self.roots_ref(compute).get(usize::from(u.slot))
+                else {
+                    continue;
+                };
+                if let Some(v) = crate::descriptor::view(table + u64::from(u.table_offset_dwords) * 4)
+                    && let Some(range) = crate::descriptor::host::buffer_range(&v)
+                    && range.1 <= 64 << 20
+                    && !out.contains(&range)
+                {
+                    out.push(range);
+                }
+            }
+        }
+        out
+    }
+
     /// The title ranges of the buffer views at [`Self::named_slots`], for the range dump
     /// (diagnostics builds).
     #[cfg(feature = "diagnostics")]
@@ -3896,8 +3931,12 @@ impl State {
         // (`FLAMINGO_DUMP_RANGE`), or as the first indirect command whose pipeline is named
         // `FLAMINGO_DUMP_AT` left them.
         #[cfg(feature = "diagnostics")]
-        if p.name.contains(crate::capture::dump_at()) {
-            crate::capture::note_ranges(list, &[]);
+        {
+            let ranges = self.table_view_ranges(p, kind != MESH);
+            let table = crate::capture::dump_table_at().is_some_and(|n| p.name.contains(n));
+            if p.name.contains(crate::capture::dump_at()) || table {
+                crate::capture::note_ranges(list, &ranges, table);
+            }
         }
         // The scratch buffer stays readable as arguments: the next draw of
         // the window reads it with no barrier, and the next clamp moves it

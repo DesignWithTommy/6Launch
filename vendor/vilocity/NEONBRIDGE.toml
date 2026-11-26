@@ -2,7 +2,7 @@
 name = "vilocity"
 fork = "Vilocity"
 rank = 22   # #22 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vilocity 220f8b3 (GPL-3.0): its own layer, native engine for GTA VI"
+about = "Vilocity 5468633 (GPL-3.0): its own layer, native engine for GTA VI"
 upstream = "https://github.com/voidopcode/vilocity"
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"
@@ -30,6 +30,10 @@ VILOCITY_JOIN_COPIES = "1"
 VILOCITY_CARD_BUFFERS_MB = "1536"
 VILOCITY_LEAVE_OUT = "TraceRays_BVH,RTShadowTrace,RTDistantShadowTrace,RTDistantLODLightShadow,TraceShadowRays,RaytraceShadows,RaytraceVBuffer,IrradianceCache_ShadowTrace,ShadowRaytracing,CollisionRaytraced,PPR_Raytrace,CS_SpatialFilter,CS_BilateralBlur,CS_ScreenProbes_EvaluateRayRequests,CS_SortRayTiles,CS_Primary_RegisterAllocationRequests"
 VILOCITY_ZERO_OUT = "CS_CombinedReflections,CS_ScreenProbes_Inject,CS_DefragHeap_ComputeRelocations"
+VILOCITY_RENDER_SCALE = "0.5"   # play-gta6.ps1:27-30 (series-s, 5468633)
+VILOCITY_OWN_UPSCALER = "1"
+VILOCITY_BVH_NO_HIT = "1"   # play-gta6.ps1:102
+VILOCITY_HAIR = "1"   # play-gta6.ps1:106
 
 [controls]
 left_stick = "W A S D"

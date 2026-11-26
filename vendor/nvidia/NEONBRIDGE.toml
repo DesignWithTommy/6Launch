@@ -3,7 +3,7 @@
 name = "nvidia"
 fork = "VIctory"
 rank = 13   # #13 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-NVIDIA ce6b254 (GPL-3.0): 20-22 fps indoors on its author's RTX 5070 at half render scale; not yet run here"
+about = "VIctory-NVIDIA 6a31e43 (GPL-3.0): 20-22 fps indoors on its author's RTX 5070 at half render scale; not yet run here"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:234
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -28,7 +28,7 @@ VICTORY_CARD_REHASH_RUNS = "1"
 VICTORY_JOIN_COPIES = "1"
 VICTORY_INDIRECT_WINDOW = "1"
 VICTORY_RELAY_COPY = "1"
-VICTORY_WINDOWS_BAR_MB = "3072"   # play-nvidia.ps1 (ce6b254): no 0x8007000E crash
+VICTORY_WINDOWS_BAR_MB = "3072"   # play-nvidia.ps1:89-93: 3072 under 24 GB RAM (0 above); kept on, harmless with more RAM
 VICTORY_INDIRECT_BATCH = "2"
 VICTORY_MAP_THREADS = "1"
 VICTORY_TITLE_PRIORITIES = "0"

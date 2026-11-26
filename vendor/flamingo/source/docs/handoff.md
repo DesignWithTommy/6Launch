@@ -117,6 +117,28 @@ The same family shows in the opening cutscene: one character is drawn without th
 head (teeth and the outline of eyes and glasses drawn), and a man's body is coarse facets with his
 hair as shards.
 
+**Runs 229-235** narrowed it further. The bone palette (`s0+8`, 48-byte rows) holds sane
+matrices for the wrong meshes too, and the `_6` mesh that was wrong in run 205 came out right
+when dumped just after its own pass (run 230). Which meshes are wrong changes from run to run and
+does not follow the program variant: of two instances of one model, one can be right and the other
+wrong. A few meshes' geometry buffers hold decoded vertex streams on the card while title memory
+keeps an encoded container (a header of tagged chunk offsets); those come out right, so the
+decoding is on the card and the card copy is the one to keep. What is left: something between the
+skinning and the draws (the order of lists, or a write after the pass). Dumping the outputs needs
+the copy after the last skinning pass: the first pre-skinned cull of a frame is recorded before
+almost all of its skinning.
+
+**Run 236, the clearest so far:** with the skinning outputs copied after the frame's last
+skinning pass (one frame, 125 passes), 14 meshes come out wrong, and each of them reads a geometry
+buffer whose card copy does not hold decoded vertex streams (one holds floats in the hundreds, one
+a fill pattern, one what looks like another mesh). For every such buffer title memory holds an
+encoded container (a header of tagged chunk offsets, `42 40 00 00 26 ...`); the 15 that come out
+right have the decoded streams on the card. So the decoded data reaches the card some other way
+than through title memory (a decode pass at load time, or a copy from an upload buffer the
+op dump does not show), and for those 14 it did not arrive. `VICTORY_PAGE_WRITES=all` does not
+change it (run 228). Next: record the title's buffer copies in the op dump and capture the frames
+where the characters stream in, to find what writes those buffers and why it reads stale data.
+
 Earlier notes, from before those runs:
 
 One character's body is still missing in most shots of the boat cutscene: head, neck, arms and
@@ -183,6 +205,9 @@ polygons. Not pinned yet.
   (its commit 9613092b: "gives the water its colour but leaves dark patches on it").
 - Dark blocks on the horizon remain in some shots even with the impostors left out; a large dark
   triangle sticks up from the boat in one shot; one shot shows broken shards.
+- **Dark faces at camera cuts:** a face drawn dark in the first frames of a shot is right a few
+  seconds later (the opening cutscene, runs 223-228): its textures arrive late. `VICTORY_PAGE_WRITES=1`
+  and `=all` change nothing (runs 227, 228).
 - **Textures waiting for room:** from about a minute in, 5,400-11,000 textures picked by index wait for room on the card for the rest of the run (the store keeps to 90% of its budget, `VICTORY_TEXTURE_ROOM_PERCENT`; run 223's log). A texture that never gets there draws dark, which may be part of the dark faces and black silhouettes; to test next.
 - `VICTORY_RELAY=0` turns skin grey and makes eyes glow: do not use it for picture checks.
 - The water's GPU-written textures are copied back by default (`texback.rs`); with
@@ -225,6 +250,11 @@ polygons. Not pinned yet.
   describe those view heap slots as the title wrote them and as the host made them, and the range
   dump takes their buffers (card copy and title memory). `64:16,64:17` at
   `CS_PedStandardSkinning` gives the skinning passes' geometry and bone-remap buffers.
+- `FLAMINGO_DUMP_TABLE_AT=<part of a pipeline's name>`: the range dump also takes every buffer that
+  program reads or writes through its tables (up to 64 MiB each), and the `FLAMINGO_DUMP_RANGE`
+  ranges are taken there; each range is taken once a frame, at the first program that asks. At each program
+  `FLAMINGO_DUMP_TABLE_AT` names the `FLAMINGO_DUMP_RANGE` ranges are copied again into the same
+  read-back buffer, so the file holds them as the frame's last such program left them.
 
 ## Elsewhere: projects worth reading
 

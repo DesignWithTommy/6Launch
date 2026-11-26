@@ -50,18 +50,43 @@ loads saves and gets into the world. The world is where the work is now.
 | 9 | Missions start to finish | 🔴 not yet | ░░░░░░░░░░ |
 
 <!-- status:start (written by scripts/update-status.ps1 on every commit; edits here are overwritten) -->
-**Latest test run:** 2026-11-26 17:16, game build Series 1.0.2.1
+**Latest test run:** 2026-11-26 18:56, game build Series 1.0.2.1
 
 | Measure | Value |
 |---------|-------|
-| Best frame rate (menus included) | 30.7 fps |
-| Median frame time | 33 ms |
-| Last frame | 1.8 fps, 557 ms, 4280 draws, 673 dropped without a pipeline |
+| Best frame rate (menus included) | 30.0 fps |
+| Median frame time | 54 ms |
+| Last frame | 5.8 fps, 171 ms, 4584 draws, 263 dropped without a pipeline |
 | Shaders that failed to translate | none |
 | Host pipelines refused by the driver | 0 |
 <!-- status:end -->
 
-Latest: title buffers from 64 KiB up now get copies in the card's memory, compared
+Latest: Lucia's hair shows, a long ponytail: the hair strand programs, left
+out until now because they did not translate or drew streaks, run by default
+(`VILOCITY_HAIR=0` leaves them out). The title's ray passes that still run walk
+no structure: every node test answers "no hit" (`VILOCITY_BVH_NO_HIT`, from
+fxceless/victory-fork 96ff135) instead of reading garbage for up to 65,535 steps
+a wave: 71-85 ms against 85-117 ms a frame. The title's GPU-only view of its
+24 GB reservation now shows the same pages as the CPU one (from xcl 94bfcf0;
+the opening is still black until the characters show: not fixed yet). From
+DexNom/VIctory: textures with mapped middle blocks are uploaded (they were taken
+as not there), a staging overrun and a depth-pitch overlap fixed, layout tests
+against AMD's addrlib (they pass). And a small in-game HUD on the right of the
+game's window: frame rate, CPU, video memory and RAM (`VILOCITY_HUD=0`: none).
+
+Before that: three picture fixes from the codec-d/cool_fox snapshot (the build
+PortWatch verified at 25 fps): the shader translator dropped programs whose
+descriptor read sat behind a lane condition at a join (their transmission
+prefilter: black squares, broken eyes); decoration bakes are found by any stage
+or by their targets and take every due texture first; and one oversized indirect
+record no longer empties the draws after it. With them the "INMATE" print showed
+in 4 of 4 cell shots (about 1 in 3 before), hair and lit skin in 5 of 5. And
+Series S now renders at half resolution with the title's own upscaler
+(`VILOCITY_RENDER_SCALE=0.5`, `VILOCITY_OWN_UPSCALER=1`, from
+trustno1-coder/VIctory-NVIDIA): 84-90 ms against 95-117 ms a frame. The mouse
+now turns the camera and its buttons aim and fire (see Controls).
+
+Before that: title buffers from 64 KiB up now get copies in the card's memory, compared
 there (`VILOCITY_CARD_BUFFERS_MIN_KB=64`, `VILOCITY_CARD_BUFFERS_MB=2048`, the
 launcher's default; from fxceless/victory-fork c36971b, the setting
 trustno1-coder/VIctory-NVIDIA reports 27-32 fps with): copying back 20-29 ms to
@@ -221,8 +246,12 @@ and GPU use, where each frame's time goes, and the log's warnings and errors
 | Enter / Backspace | A / B |
 | Arrows | D-pad |
 | W A S D | left stick |
+| Mouse (or I J K L) | right stick: camera |
+| Left / right mouse button | right / left trigger: fire / aim |
 
-XInput pads work too. The full keyboard map is in
+The mouse works while the game's window has focus and no pad is connected; it
+holds the cursor in the window's middle. `VILOCITY_MOUSE_SENS` (pixels a poll for
+a full turn, 8) sets its speed, `VILOCITY_MOUSE=0` turns it off. XInput pads work too. The full keyboard map is in
 [`native/README.md`](native/README.md#getting-started).
 
 ### Sandbox
