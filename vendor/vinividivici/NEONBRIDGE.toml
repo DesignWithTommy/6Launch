@@ -2,7 +2,7 @@
 name = "vinividivici"
 fork = "VIctory"
 rank = 23   # #23 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIniVIdiVIci 297cf6e (GPL-3.0): 6.6 fps median in a 280 s scripted first-room run, RTX 4060 Ti"
+about = "VIniVIdiVIci 609765b (GPL-3.0): 6.6 fps median in a 280 s scripted first-room run, RTX 4060 Ti"
 upstream = "https://github.com/KomanderDG88/VIniVIdiVIci"
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:79
 exe = "target/release/victory.exe"
