@@ -30,7 +30,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 
 | Rank | Runtime | Based on | Its author reports | Here |
 |---:|---|---|---|---|
-| 1 | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | VIctory | The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet | Testing |
+| 1 | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | VIctory | The tracker's leader and playable by its own report: a 21.1 fps median over a 30-minute session played by hand, Series S profile, RTX 4090 | ❌ On Series X (its default) an 8 GB card runs out of graphics memory in the first cutscene, black screen, then a crash. Use the 8gb preset (Series S) |
 | 2 | [victory-fork](https://github.com/fxceless/victory-fork) | VIctory | 6.2 to 6.7 fps, 10 to 14 in light scenes, RTX 4070; the card is lost after 30 to 50 minutes | ✅ Intro at 30 fps, 3D scene ~1 fps |
 | 3 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | VIctory (Neptune) | "About 16–17 fps in the world" (median, Series X), RTX 4070 SUPER | ✅ 10 min, no crash, ~14 fps (earlier build). Try this one first on NVIDIA |
 | 4 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | VIctory, victory-fork | "Player in control" through the prologue, ~5.7 to 7.3 fps, 77 min session, RX 9070 XT | Testing again. Its intro crash was i95 leaving TuxBox DLLs in the game folder (fixed). The intro video flickers |
