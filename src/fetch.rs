@@ -221,3 +221,69 @@ pub fn sync_catalog(vendor: &Path) {
     }
     println!("[catalog] {changed} runtime(s) updated from GitHub");
 }
+
+/// The exe-keyed shader cache line some forks have (klbf): every rebuild
+/// threw its whole shader cache away. Replaced so the key is
+/// NEONBRIDGE_SHADER_KEY (a hash of the translator's sources, set by the
+/// launcher) when it is set, the exe as before when not.
+const EXE_KEY: &str = "let exe = std::env::current_exe().and_then(std::fs::read);";
+const SOURCE_KEY: &str = "let exe = match std::env::var(\"NEONBRIDGE_SHADER_KEY\") { Ok(k) => Ok(k.into_bytes()), Err(_) => std::env::current_exe().and_then(std::fs::read) }; // i95: keyed on the translator's sources, not the exe";
+
+/// Where a tree keeps its shader cache key and translator.
+const KEY_FILES: [(&str, &str); 3] = [
+    ("crates/victory-gpu/src/shader_cache.rs", "crates/victory-shader"),
+    ("third_party/victory/crates/victory-gpu/src/shader_cache.rs", "third_party/victory/crates/victory-shader"),
+    ("runtime/victory/crates/victory-gpu/src/shader_cache.rs", "runtime/victory/crates/victory-shader"),
+];
+
+/// Makes `root`'s shader cache survive rebuilds when it keys on the whole exe:
+/// patches the key line (once) and returns the translator folder to hash.
+/// NEONBRIDGE_SHADER_KEY_PATCH=0 leaves trees as their authors ship them.
+pub fn shader_key_patch(name: &str, root: &Path) -> Option<PathBuf> {
+    if std::env::var("NEONBRIDGE_SHADER_KEY_PATCH").is_ok_and(|v| v.trim() == "0") {
+        return None;
+    }
+    for (file, shader) in KEY_FILES {
+        let path = root.join(file);
+        let Ok(text) = fs::read_to_string(&path) else { continue };
+        if text.contains(EXE_KEY) {
+            if fs::write(&path, text.replacen(EXE_KEY, SOURCE_KEY, 1)).is_ok() {
+                println!("[fetch] {name}: shader cache keyed on its translator, not its exe (NEONBRIDGE_SHADER_KEY_PATCH=0 undoes it on a fresh copy)");
+            }
+            return Some(root.join(shader));
+        }
+        if text.contains(SOURCE_KEY) {
+            return Some(root.join(shader));
+        }
+    }
+    None
+}
+
+/// One hash of every file under `dir` (paths and bytes, sorted): changes only
+/// when the translator's sources change.
+pub fn tree_hash(dir: &Path) -> String {
+    use sha2::{Digest, Sha256};
+    fn walk(d: &Path, out: &mut Vec<PathBuf>) {
+        if let Ok(rd) = fs::read_dir(d) {
+            for e in rd.flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    if p.file_name().is_some_and(|n| n != "target") {
+                        walk(&p, out);
+                    }
+                } else {
+                    out.push(p);
+                }
+            }
+        }
+    }
+    let mut files = Vec::new();
+    walk(dir, &mut files);
+    files.sort();
+    let mut h = Sha256::new();
+    for f in files {
+        h.update(f.strip_prefix(dir).unwrap_or(&f).to_string_lossy().replace('\\', "/").as_bytes());
+        h.update(fs::read(&f).unwrap_or_default());
+    }
+    format!("{:x}", h.finalize())
+}

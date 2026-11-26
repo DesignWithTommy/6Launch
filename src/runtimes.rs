@@ -849,6 +849,7 @@ fn diag_build(name: &str, root: &Path, spec: &Spec, cmd: &[String], exe: &Path) 
 /// Builds the tree when its exe is stale. NEONBRIDGE_BUILD=0 never builds.
 fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>> {
     crate::fetch::ensure(name, &vendor().join(name), root, spec.str("upstream"))?;
+    crate::fetch::shader_key_patch(name, root);
     let exe = root.join(spec.str("exe").ok_or_else(|| format!("runtime {name}: NEONBRIDGE.toml names no exe"))?);
     let line = spec.list("build").map(<[String]>::to_vec).unwrap_or_default();
     let (line, target, exe) = match diag_build(name, root, spec, &line, &exe) {
@@ -2063,6 +2064,10 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     }
     if let Some(k) = spec.str("cache_env") {
         env.push((k.to_owned(), places.cache.clone()));
+    }
+    // Exe-keyed forks, patched at fetch: their key is the translator's sources.
+    if let Some(dir) = crate::fetch::shader_key_patch(name, &root) {
+        env.push(("NEONBRIDGE_SHADER_KEY".to_owned(), crate::fetch::tree_hash(&dir)));
     }
     // The rt patches name the per-runtime cache files from it.
     if family {
