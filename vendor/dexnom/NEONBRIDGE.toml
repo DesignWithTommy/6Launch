@@ -1,7 +1,7 @@
 # i95 launcher spec for DexNom/VIctory: what its own launcher runs (apps/victory/src/play_launcher.rs).
 name = "dexnom"
 fork = "VIctory"
-rank = 30   # #30 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 17   # #17 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "DexNom RayTime 64bd58f (GPL-3.0): Its 'most complete tested build': ~1.1 to 1.3 fps in the city with ray tracing on, RX 7900 XTX"
 upstream = "https://github.com/DexNom/VIctory"
 # README.md:36: the BCPack format tables first.

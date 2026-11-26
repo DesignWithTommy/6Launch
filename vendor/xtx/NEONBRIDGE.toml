@@ -2,7 +2,7 @@
 # Build, run and env are its README "How to run it" and scripts/play.ps1 (default: diag build, not -Safe).
 name = "xtx"
 fork = "VIctory"
-rank = 4   # #4 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 27   # #27 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VIctory-7900XTX 126acb3 (GPL-3.0): Series X at 1440p: 20 fps with ray tracing off, 10 fps with it on, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/avatarmanz/VIctory-7900XTX"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:49

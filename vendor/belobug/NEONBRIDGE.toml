@@ -4,7 +4,7 @@
 # on an RX 9070 XT; the depth-shaded ambient light most forks copy starts here.
 name = "belobug"
 fork = "VIctory"
-rank = 12   # #12 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 5   # #5 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VIctory-Belobug-AMD cd8dfc0 (GPL-3.0): ~22 fps with ray tracing off on an RX 7900 XTX"
 upstream = "https://github.com/Belobug/VIctory-Belobug-AMD"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:49

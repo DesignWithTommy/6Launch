@@ -1,7 +1,7 @@
 # i95 launcher spec for darkworldhm/victory-fork-darkworldhm: author build and run from its README.
 name = "darkworld"
 fork = "VIctory"
-rank = 21   # #21 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 26   # #26 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "darkworldhm 840243e (GPL-3.0): A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070"
 upstream = "https://github.com/darkworldhm/victory-fork-darkworldhm"
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:512

@@ -1,7 +1,7 @@
 # i95 launcher spec for LoverCatys/ruff-lab: author build and run from its README.
 name = "rufflab"
 fork = "klbf-lab"
-rank = 17   # #17 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 25   # #25 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "ruff-lab 6156dd7 (GPL-3.0): Built for 8 GB cards and 16 GB RAM. 6 to 10 fps in the world (6.1 in heavy prison scenes), RX 6600 XT"
 upstream = "https://github.com/LoverCatys/ruff-lab"
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:65

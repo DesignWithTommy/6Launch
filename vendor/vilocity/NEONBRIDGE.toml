@@ -1,7 +1,7 @@
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
-rank = 22   # #22 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 18   # #18 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Vilocity 768a468 (GPL-3.0): 'Not playable yet.' About 11 fps on the Series S profile, RTX 5080; runs end about 7 min in"
 upstream = "https://github.com/voidopcode/vilocity"
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
