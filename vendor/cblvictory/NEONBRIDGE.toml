@@ -13,6 +13,10 @@ game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
+preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
+preset_dred = ["VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log
+preset_warp = ["VICTORY_D3D12_WARP=1"]   # software GPU (slow; for GPU-driver faults)
+
 [env]
 
 [controls]

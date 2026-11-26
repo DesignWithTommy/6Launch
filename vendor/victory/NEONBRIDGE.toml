@@ -30,6 +30,9 @@ options = [
 preset_scarlettport_settings = ["VICTORY_OWN_UPSCALER=1", "VICTORY_NO_WATCHDOG=1", "VICTORY_RELAY=2", "VICTORY_SYNC_PRECISE=1", "VICTORY_READ_SETTLE_PRECISE=1", "VICTORY_PIPELINE_WAIT_MS=0"]
 preset_series_s = ["--console=series-s"]
 # Below: Neonbridge plumbing only, no change to how the author's build runs.
+preset_dred = ["VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log
+preset_warp = ["VICTORY_D3D12_WARP=1"]   # software GPU (slow; for GPU-driver faults)
+
 [env]
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
 VICTORY_PRESS_FILE = "{press}"   # Neonbridge: the launcher's key presses (controls overlay)

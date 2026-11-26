@@ -19,6 +19,10 @@ agility = false
 options = ["VICTORY_BVH_BUILDER=1: ray-traced indirect light, a third slower (play.ps1 -RayTracing)"]
 preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=0", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD="]
 
+preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
+preset_dred = ["VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log
+preset_warp = ["VICTORY_D3D12_WARP=1"]   # software GPU (slow; for GPU-driver faults)
+
 [env]   # scripts/play.ps1:15-25 (this tree is VIctory-7900XTX's, README.md:46)
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"

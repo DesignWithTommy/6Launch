@@ -13,6 +13,8 @@ game_env = "VILOCITY_GAME_DIR"
 cache_env = "VILOCITY_CACHE_DIR"
 agility = false
 
+preset_series_s = ["VILOCITY_CONSOLE=series-s"]   # apps/vilocity/src/main.rs:133
+
 [env]
 VILOCITY_CONSOLE = "series-s"   # scripts/play-gta6.ps1, its measured set
 VILOCITY_ASYNC_SUBMIT = "1"

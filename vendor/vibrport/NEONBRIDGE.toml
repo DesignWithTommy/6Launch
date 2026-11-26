@@ -21,6 +21,10 @@ options = [
   "VICTORY_TEXTURE_NO_WAIT, VICTORY_TEXTURE_BUDGET_MS (default 10): README.md:117",
 ]
 
+preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
+preset_dred = ["VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log
+preset_warp = ["VICTORY_D3D12_WARP=1"]   # software GPU (slow; for GPU-driver faults)
+
 [env]   # README.md:147-152, its recommended keys for an 8 GB card
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_RELAY = "1"

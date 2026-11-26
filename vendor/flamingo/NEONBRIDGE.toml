@@ -31,6 +31,10 @@ options = [
 # shadowed and indirect-lit passes write constants instead of the black left by rays not running.
 preset_visible = ["VICTORY_AMBIENT_STUB=1", "VICTORY_SHADOWMASK_STUB=1"]
 
+preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
+preset_dred = ["VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log
+preset_warp = ["VICTORY_D3D12_WARP=1"]   # software GPU (slow; for GPU-driver faults)
+
 [env]
 VICTORY_WIDE_TEXTURES = "1"   # flamingo-log.cmd:49-51
 VICTORY_VIEW_GUARD = "0"
