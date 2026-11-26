@@ -2139,7 +2139,6 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     }
     if matches!(task, Task::Run) {
         crate::splash::status(0.8, &format!("Starting the game ({name})"));
-        crate::splash::watch(&program);
         // The leader's own key map ([controls] in its NEONBRIDGE.toml).
         crate::controls::show(name, &program, crate::controls::rows(|k| spec.str(&format!("controls.{k}")).map(str::to_owned)));
     }

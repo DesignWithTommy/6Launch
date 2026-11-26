@@ -1610,7 +1610,6 @@ q
     shaders::GAME_PID.store(child.id(), std::sync::atomic::Ordering::Relaxed);
     neonbridge_feed::watch_pid(child.id());
     kill_on_close(&child);
-    splash::watch(exe);
     controls::show(runtimes::TUXBOX, exe, controls::tuxbox_rows());
     let tee = |r: Box<dyn std::io::Read + Send>, mut f: fs::File| {
         std::thread::spawn(move || {
