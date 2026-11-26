@@ -1054,7 +1054,9 @@ fn starter(name: &str, root: &Path, spec: &Spec, program: &Path) -> Result<Comma
         }
         None => {
             let mut c = crate::runtimes::command(program);
-            c.current_dir(spec.str("cwd").map(|c| root.join(c)).or_else(|| program.parent().map(Path::to_path_buf)).unwrap_or_else(|| root.to_path_buf()));
+            // A cwd of target/release is missing on the diagnostics build (target/diag):
+            // the exe's own folder stands in for it (VItoriaBr's warm failed, os error 267).
+            c.current_dir(spec.str("cwd").map(|c| root.join(c)).filter(|d| d.is_dir()).or_else(|| program.parent().map(Path::to_path_buf)).unwrap_or_else(|| root.to_path_buf()));
             Ok(c)
         }
     }
@@ -1756,7 +1758,11 @@ fn warm(name: &str, mut cmd: Command, cache: &Path, to: f32) -> Result<(), Strin
     let (tx, rx) = std::sync::mpsc::channel::<String>();
     let pump = |r: Box<dyn std::io::Read + Send>, err: bool, tx: std::sync::mpsc::Sender<String>| {
         std::thread::spawn(move || {
-            for l in BufReader::new(r).lines().map_while(Result::ok) {
+            // Split on \r as well as \n: VI-BR-PORT redraws "N shaders checked" in place with \r.
+            let lines = BufReader::new(r).split(b'\n').map_while(Result::ok).flat_map(|b| {
+                String::from_utf8_lossy(&b).split('\r').map(str::to_owned).filter(|s| !s.trim().is_empty()).collect::<Vec<_>>()
+            });
+            for l in lines {
                 if err { eprintln!("{l}") } else { println!("{l}") }
                 let _ = tx.send(l);
             }
@@ -1845,7 +1851,11 @@ fn graphics_chunk(name: &str, mut cmd: Command, skip: u64, all: Option<u64>) -> 
     let (tx, rx) = std::sync::mpsc::channel::<String>();
     let pump = |r: Box<dyn std::io::Read + Send>, err: bool, tx: std::sync::mpsc::Sender<String>| {
         std::thread::spawn(move || {
-            for l in BufReader::new(r).lines().map_while(Result::ok) {
+            // Split on \r as well as \n: VI-BR-PORT redraws "N shaders checked" in place with \r.
+            let lines = BufReader::new(r).split(b'\n').map_while(Result::ok).flat_map(|b| {
+                String::from_utf8_lossy(&b).split('\r').map(str::to_owned).filter(|s| !s.trim().is_empty()).collect::<Vec<_>>()
+            });
+            for l in lines {
                 if err { eprintln!("{l}") } else { println!("{l}") }
                 let _ = tx.send(l);
             }
