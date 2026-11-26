@@ -2,6 +2,7 @@
 # Build and run are its README "How to run it" and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "united"
 fork = "VIctory"
+rank = 10   # #10 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Victory-United 1b510ae (GPL-3.0): about 11 fps in the first playable room on its author's RTX 3080 Ti (Series S, minutes 3-6 of a 7 min run); not yet run here"
 upstream = "https://github.com/Fayberr/Victory-United"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:59

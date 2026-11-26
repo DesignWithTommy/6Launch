@@ -2,7 +2,7 @@
 # Build and run are its README.md "Building" (README.md:391-392); its defaults need no switches.
 name = "amd"
 fork = "VIctory"
-rank = 24   # #24 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 27   # #27 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "victory-amd aa8399e (GPL-3.0): AMD fork; cutscene and first room at 2-4 fps on its author's RX 7800 XT, ~8 min runs; not yet run here"
 upstream = "https://github.com/myokex/victory-amd"
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:391 (+--locked)

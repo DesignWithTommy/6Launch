@@ -2,7 +2,7 @@
 # Build, run and env are its README and Play-VIctory.cmd (VICTORY_LOG=warn left out: the loader reads the info-level fps line).
 name = "cgbj"
 fork = "VIctory"
-rank = 0   # top of our list (tracker has CGBJ at #9: unconfirmed 25 fps, videos of driving)
+rank = 14   # #14 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "CGBJ (cool_fox 472e841, GPL-3.0): 25 fps average relayed by PortWatch on an NVIDIA card, unconfirmed; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:34

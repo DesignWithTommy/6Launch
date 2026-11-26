@@ -2,7 +2,7 @@
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
 fork = "VIctory"
-rank = 7   # #7 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Vice-Tay 79d78bc (GPL-3.0): 14 fps in the world on Series X, 22.7 fps median in a 30 min Series S test on its author's RTX 4090; not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117

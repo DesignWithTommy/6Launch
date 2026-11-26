@@ -1,0 +1,55 @@
+# Launcher spec for vendor/rdna: XaviFortes's VIctory-RDNA (RDNA3-tuned VIctory, RX 7900 XT).
+# Build, run and env are its README and scripts/play-rdna.ps1 + rdna-preset.json (default: base + fast, Series X).
+name = "rdna"
+fork = "VIctory"
+rank = 6   # #6 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+about = "VIctory-RDNA 2c5a395 (GPL-3.0): 23.1 fps median in gameplay at Series X 4K on an RX 7900 XT, ~40 min by hand; not yet run here"
+upstream = "https://github.com/XaviFortes/VIctory-RDNA"
+build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:88
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"   # play-rdna.ps1:98 (-Build release default)
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]
+run = ["run", "--console", "series-x", "--execute", "{game_exe}"]   # play-rdna.ps1:181
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_PORT_CONSTANTS=", "VICTORY_PORT_DESCRIPTORS=", "VICTORY_PORT_CBV=", "VICTORY_PORT_GUARD=", "VICTORY_PORT_JOURNAL=", "VICTORY_PORT_BUFFERS=", "VICTORY_INPLACE=", "VICTORY_ASK_SPREAD=", "VICTORY_RESIDENCY=", "VICTORY_SYNC_FINE=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play-rdna.ps1 -Safe
+preset_series_s = ["--console=series-s"]   # play-rdna.ps1 -Console series-s
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play-rdna.ps1 -RayTracing
+preset_60fps = ["VICTORY_FRAME_INTERVAL_MS=16.667"]   # play-rdna.ps1 -Fps 60
+preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]
+preset_8gb = ["--console=series-s", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours
+
+[env]   # rdna-preset.json base + fast
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_CARD_BUFFERS_MIN_MB = "1"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_PORT_CONSTANTS = "1"
+VICTORY_PORT_DESCRIPTORS = "1"
+VICTORY_PORT_CBV = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_PORT_JOURNAL = "1"
+VICTORY_PORT_BUFFERS = "1"
+VICTORY_INPLACE = "2"
+VICTORY_ASK_SPREAD = "1"
+VICTORY_RESIDENCY = "1"
+VICTORY_SYNC_FINE = "1"

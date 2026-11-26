@@ -17,10 +17,11 @@ i95 is a launcher around other people's work. Each vendored tree under `vendor/`
 | `vendor/flamingo` | [Flamingo](https://github.com/realblastex/flamingo) | realblastex and the VIctory contributors | GPL-3.0 | `fe12291d37636b9cf5bc47a6a8c9fbd44a4dd069` |
 | `vendor/ka1qux` | [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) | ka1qux | GPL-3.0 | 05e4d50 |
 | `vendor/karamelo` | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | badDevelopper | GPL-3.0 | 2711f62 |
-| `vendor/kelvaroq` | [kelvaroq](https://github.com/fablinoo/kelvaroq) | fablinoo | GPL-3.0 | 1270c42 |
+| `vendor/kelvaroq` | [kelvaroq](https://github.com/stellarr-studio/kelvaroq) | fablinoo | GPL-3.0 | 1270c42 |
 | `vendor/klbf` | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | PastiiJay and the VIctory contributors | GPL-3.0 | `420e1e12485f0f652bfc2989723a273cab51669a` |
 | `vendor/marvisak` | [VIctory](https://github.com/Marvisak/VIctory) | Marvisak | GPL-3.0 | 63bcca4 |
 | `vendor/nvidia` | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | trustno1-coder | GPL-3.0 | ce6b254 |
+| `vendor/rdna` | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | XaviFortes | GPL-3.0 | 2c5a395 |
 | `vendor/rufflab` | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | LoverCatys | GPL-3.0 | bcca048 |
 | `vendor/scarlettport` | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | Ziggy (ZigZagBoi1), Vlad Bondarenko (vladbondarenko97), grooving6; its `runtime/victory` is the VIctory authors' and its `runtime/xcl` the xcl authors' | GPL-3.0-or-later; `runtime/xcl` GPL-2.0-only (its `LICENSE.md`) | `925f90a17b5897e34a4d8d3ce5e628d1dca08904` |
 | `vendor/unified` | [victory-unified](https://github.com/Itsbatt/victory-unified) | Itsbatt, with fxceless, Belobug, DexNom, Zettrox and the VIctory contributors | GPL-3.0-or-later | `d5b5fca6cf3c325634f90eb897aa43d0eb665847` |

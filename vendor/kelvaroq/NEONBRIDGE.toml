@@ -2,9 +2,9 @@
 # victory-fork f85101b plus its patches (scripts/build_native.py fetches and builds it).
 name = "kelvaroq"
 fork = "victory-fork"
-rank = 2   # #2 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 5   # #5 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Kelvaroq 1270c42 (GPL-3.0): ~10 fps, 36 min without a crash on its author's RTX 5080; not yet run here"
-upstream = "https://github.com/fablinoo/kelvaroq"
+upstream = "https://github.com/stellarr-studio/kelvaroq"
 build = ["python", "scripts/build_native.py"]   # README.md "Build from source" (fetches victory-fork f85101b)
 watch = ["native", "scripts/build_native.py"]
 exe = "target/release/native/kelvaroq-engine.exe"   # build_native.py:20,24 (renamed in f35b0a4)

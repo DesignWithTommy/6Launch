@@ -4,7 +4,7 @@
 # 5-9 fps on an AMD RX 9070 XT. Not yet confirmed on NVIDIA by its author.
 name = "klbf"
 fork = "victory-fork"
-rank = 5   # #5 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 2   # #2 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "KLBF Lab 0c529ca (GPL-3.0): claims 5-9 fps in free roam, 77 min without a crash (AMD); not yet verified here"
 upstream = "https://github.com/PastiiJay/klbf-lab"
 build = ["cargo", "build", "--release", "--locked"]   # README.md:127
