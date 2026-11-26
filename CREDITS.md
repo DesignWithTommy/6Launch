@@ -6,16 +6,34 @@ i95 is a launcher around other people's work. Each vendored tree under `vendor/`
 
 | Tree | Project | Authors | Licence | Upstream hash |
 |---|---|---|---|---|
-| `vendor/scarlettport` | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | Ziggy (ZigZagBoi1), Vlad Bondarenko (vladbondarenko97), grooving6; its `runtime/victory` is the VIctory authors' and its `runtime/xcl` the xcl authors' | GPL-3.0-or-later; `runtime/xcl` GPL-2.0-only (its `LICENSE.md`) | `925f90a17b5897e34a4d8d3ce5e628d1dca08904` |
-| `vendor/victory` | [VIctory-fxceless](https://github.com/fxceless/victory-fork) | fxceless, Marvis (Marvisak), Duff, 9hvn9yt2vk-netizen and the VIctory contributors | GPL-3.0 | `d8274192e67cd6cb3e425078e01a8bdf7653307c` |
-| `vendor/vitoriabr` | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | uiliannn, fxceless, Marvis (Marvisak), Duff and the VIctory contributors | GPL-3.0 | `2b33e081ed7831f49610b747a508fb56d3cb3aa9` |
-| `vendor/ztrx-victory` (archived, in git history) | [ztrx](https://github.com/Zettrox/ztrx) | Zettrox, Marvis (Marvisak), Duff, fxceless, 9hvn9yt2vk-netizen and the VIctory contributors | GPL-3.0 | `90b529f878a470fec9bf07b7be316bc769a12232` |
-| `vendor/vibrport` | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | edsuuu; built on VIctory (Marvisak) and victory-fork (fxceless) | GPL-3.0 | `96135bda29dc3048253d4ea66f02da6c60ec21a8` |
-| `vendor/flamingo` | [Flamingo](https://github.com/realblastex/flamingo) | realblastex and the VIctory contributors | GPL-3.0 | `fe12291d37636b9cf5bc47a6a8c9fbd44a4dd069` |
-| `vendor/klbf` | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | PastiiJay and the VIctory contributors | GPL-3.0 | `420e1e12485f0f652bfc2989723a273cab51669a` |
-| `vendor/belobug` | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | Belobug and the VIctory contributors | GPL-3.0 | `4f62c2a5e27e7beebf3e8d68f77898e43dc7b77c` |
-| `vendor/unified` | [victory-unified](https://github.com/Itsbatt/victory-unified) | Itsbatt, with fxceless, Belobug, DexNom, Zettrox and the VIctory contributors | GPL-3.0-or-later | `d5b5fca6cf3c325634f90eb897aa43d0eb665847` |
+| `vendor/amd` | [victory-amd](https://github.com/myokex/victory-amd) | myokex | GPL-3.0 | aa8399e |
 | `vendor/anyxboxx` | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | LooperSalty and the authors in its THIRD_PARTY.md | GPL-3.0-or-later | `fd9463ba59619f8d72d01e44e7a94c408c26d716` |
+| `vendor/belobug` | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | Belobug and the VIctory contributors | GPL-3.0 | `4f62c2a5e27e7beebf3e8d68f77898e43dc7b77c` |
+| `vendor/cblvictory` | [cblvictoryvi](https://github.com/cocainebunnylaboratories/cblvictoryvi) | cocainebunnylaboratories | GPL-3.0 | 0d6022c |
+| `vendor/cgbj` | [cool_fox](https://github.com/DoubleGhosty/cool_fox) | DoubleGhosty, continuing CGBJ (codec-d/cool_fox) | GPL-3.0 | 472e841 |
+| `vendor/coolfox12` | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | miaohaixiang1-netizen | GPL-3.0 | 67298e8 |
+| `vendor/darkworld` | [victory-fork-darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) | darkworldhm | GPL-3.0 | 840243e |
+| `vendor/dexnom` | [VIctory](https://github.com/DexNom/VIctory) | DexNom | GPL-3.0 | 64bd58f |
+| `vendor/flamingo` | [Flamingo](https://github.com/realblastex/flamingo) | realblastex and the VIctory contributors | GPL-3.0 | `fe12291d37636b9cf5bc47a6a8c9fbd44a4dd069` |
+| `vendor/ka1qux` | [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) | ka1qux | GPL-3.0 | 05e4d50 |
+| `vendor/karamelo` | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | badDevelopper | GPL-3.0 | 2711f62 |
+| `vendor/kelvaroq` | [kelvaroq](https://github.com/fablinoo/kelvaroq) | fablinoo | GPL-3.0 | 1270c42 |
+| `vendor/klbf` | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | PastiiJay and the VIctory contributors | GPL-3.0 | `420e1e12485f0f652bfc2989723a273cab51669a` |
+| `vendor/marvisak` | [VIctory](https://github.com/Marvisak/VIctory) | Marvisak | GPL-3.0 | 63bcca4 |
+| `vendor/nvidia` | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | trustno1-coder | GPL-3.0 | ce6b254 |
+| `vendor/rufflab` | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | LoverCatys | GPL-3.0 | bcca048 |
+| `vendor/scarlettport` | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | Ziggy (ZigZagBoi1), Vlad Bondarenko (vladbondarenko97), grooving6; its `runtime/victory` is the VIctory authors' and its `runtime/xcl` the xcl authors' | GPL-3.0-or-later; `runtime/xcl` GPL-2.0-only (its `LICENSE.md`) | `925f90a17b5897e34a4d8d3ce5e628d1dca08904` |
+| `vendor/unified` | [victory-unified](https://github.com/Itsbatt/victory-unified) | Itsbatt, with fxceless, Belobug, DexNom, Zettrox and the VIctory contributors | GPL-3.0-or-later | `d5b5fca6cf3c325634f90eb897aa43d0eb665847` |
+| `vendor/united` | [Victory-United](https://github.com/Fayberr/Victory-United) | Fayberr | GPL-3.0 | 1b510ae |
+| `vendor/vertex` | [Vertex](https://github.com/proneonn/Vertex) | proneonn | GPL-3.0 | 33f26c4 |
+| `vendor/vibrport` | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | edsuuu; built on VIctory (Marvisak) and victory-fork (fxceless) | GPL-3.0 | `96135bda29dc3048253d4ea66f02da6c60ec21a8` |
+| `vendor/vicetay` | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | TaynanGT | GPL-3.0 | 79d78bc |
+| `vendor/victory` | [VIctory-fxceless](https://github.com/fxceless/victory-fork) | fxceless, Marvis (Marvisak), Duff, 9hvn9yt2vk-netizen and the VIctory contributors | GPL-3.0 | `d8274192e67cd6cb3e425078e01a8bdf7653307c` |
+| `vendor/vilocity` | [vilocity](https://github.com/voidopcode/vilocity) | voidopcode | GPL-3.0 | 220f8b3 |
+| `vendor/vinividivici` | [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) | KomanderDG88 | GPL-3.0 | 721e6e7 |
+| `vendor/vitoriabr` | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | uiliannn, fxceless, Marvis (Marvisak), Duff and the VIctory contributors | GPL-3.0 | `2b33e081ed7831f49610b747a508fb56d3cb3aa9` |
+| `vendor/xtx` | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | avatarmanz | GPL-3.0 | 2de9980 |
+| `vendor/ztrx-victory` (archived, in git history) | [ztrx](https://github.com/Zettrox/ztrx) | Zettrox, Marvis (Marvisak), Duff, fxceless, 9hvn9yt2vk-netizen and the VIctory contributors | GPL-3.0 | `90b529f878a470fec9bf07b7be316bc769a12232` |
 
 All of the VIctory forks build on [VIctory](https://github.com/Marvisak/VIctory) by Marvisak and its contributors.
 
@@ -43,6 +61,3 @@ Ranks come from [vuyp](https://github.com/vuyp)'s [GTA VI PC race tracker](https
 - [Victory-United](https://github.com/Fayberr/Victory-United) by Fayberr, GPL-3.0 (vendor/united)
 - i95-Victory, our own fork of Kelvaroq with fixes from VI-BR-PORT, soldsawn/victory-nvidia-8gb and VItoriaBr, GPL-3.0 (vendor/i95-victory; credits in its source/CREDITS.md)
 
-- **CGBJ** (vendor/cgbj): [DoubleGhosty/cool_fox](https://github.com/DoubleGhosty/cool_fox), a continuation of codec-d/cool_fox. GPL-3.0.
-- **VKarameloVI** (vendor/karamelo): [badDevelopper/VKarameloVI](https://github.com/badDevelopper/VKarameloVI). GPL-3.0.
-- **cool-fox-12gb** (vendor/coolfox12): [miaohaixiang1-netizen/cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb). GPL-3.0.
