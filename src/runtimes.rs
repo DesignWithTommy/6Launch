@@ -1543,6 +1543,8 @@ struct Places {
     cache: String,
     jobs: String,
     press: String,
+    /// The runtime's source tree (where its build runs): files it ships, e.g. Kitty6's mods.
+    root: String,
 }
 
 /// `%NAME%` replaced by that environment variable, as cmd.exe would; an
@@ -1576,7 +1578,7 @@ pub fn expand_env(s: &str) -> String {
 }
 
 fn fill(s: &str, p: &Places) -> String {
-    expand_env(s).replace("{game_exe}", &p.game_exe).replace("{game}", &p.game).replace("{cache}", &p.cache).replace("{jobs}", &p.jobs).replace("{press}", &p.press)
+    expand_env(s).replace("{game_exe}", &p.game_exe).replace("{game}", &p.game).replace("{cache}", &p.cache).replace("{jobs}", &p.jobs).replace("{press}", &p.press).replace("{root}", &p.root)
 }
 
 /// Runs `cmd` with stdout and stderr into `log` (or this console), adding
@@ -2038,6 +2040,7 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         cache: data.display().to_string(),
         jobs: std::thread::available_parallelism().map_or(1, |n| n.get().saturating_sub(1).max(1)).to_string(),
         press: press.display().to_string(),
+        root: root.display().to_string(),
     };
     let mut cmd = match starter(name, &root, &spec, &program) {
         Ok(c) => c,

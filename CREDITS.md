@@ -16,6 +16,7 @@ i95 is a launcher around other people's work. Each vendored tree under `vendor/`
 | `vendor/dexnom` | [VIctory](https://github.com/DexNom/VIctory) | DexNom | GPL-3.0 | 64bd58f |
 | `vendor/flamingo` | [Flamingo](https://github.com/realblastex/flamingo) | realblastex and the VIctory contributors | GPL-3.0 | `fe12291d37636b9cf5bc47a6a8c9fbd44a4dd069` |
 | `vendor/ka1qux` | [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) | ka1qux | GPL-3.0 | 05e4d50 |
+| `vendor/kitty6` | [Kitty6](https://github.com/kitty-core/Kitty6) | kitty-core | GPL-3.0 | 8d01478 |
 | `vendor/karamelo` | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | badDevelopper | GPL-3.0 | 2711f62 |
 | `vendor/kelvaroq` | [kelvaroq](https://github.com/stellarr-studio/kelvaroq) | fablinoo | GPL-3.0 | e062a82 |
 | `vendor/klbf` | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | PastiiJay and the VIctory contributors | GPL-3.0 | `420e1e12485f0f652bfc2989723a273cab51669a` |

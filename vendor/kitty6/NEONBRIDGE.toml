@@ -1,0 +1,64 @@
+# Launcher spec for vendor/kitty6: kitty-core's Kitty6 (VIctory-7900XTX fork tuned for an RTX 4070 12 GB, 32 GB RAM).
+# Build, run and env are its README "Build" and scripts/play.ps1 (default: no switches, Series X, diag build, its mods on).
+name = "kitty6"
+fork = "VIctory-7900XTX"
+about = "Kitty6 8d01478 (GPL-3.0): 20.5 fps median in the opening scene on an RTX 4070 (Series S), ~5 min runs; not on the tracker; not yet run here"
+upstream = "https://github.com/kitty-core/Kitty6"
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:86
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/diag/victory.exe"   # play.ps1:118 (-Build diag default)
+diag_build = []
+run = ["run", "{game_exe}", "--execute", "--console", "series-x"]   # play.ps1:134,145
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_lean = ["--console=series-s", "VICTORY_TEXTURE_MIP_BIAS=1", "VICTORY_TEXTURE_ROOM_PERCENT=80", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1536", "VICTORY_CARD_WINDOWS_MB=1024", "VICTORY_PORT_CONSTANTS=1", "VICTORY_PORT_DESCRIPTORS=1", "VICTORY_PORT_CBV=1", "VICTORY_PORT_GUARD=1", "VICTORY_PORT_JOURNAL=1", "VICTORY_RT_RESOLVE=0", "VICTORY_AMBIENT=1", "VICTORY_RESIDENCY=1", "VICTORY_D3D12_DRED="]   # play.ps1 -Lean (its 20.5 fps figure)
+preset_series_s = ["--console=series-s"]   # play.ps1 -Console S
+preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing
+preset_1080p = ["VICTORY_OUTPUT=1920x1080"]   # play.ps1 -Output 1920x1080
+preset_no_mods = ["VICTORY_MODS="]   # play.ps1 -NoMods
+preset_8gb = ["--console=series-s", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_TEXTURE_MIP_BIAS=1"]   # ours
+preset_dred = ["VICTORY_D3D12_DRED=1"]
+
+[env]   # play.ps1:51-63,99-103 (no switches)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_XMA_REFILL = "1"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_MODS = "{root}\\mods\\kitty6.k6mod"   # play.ps1:99-103: the mods it ships
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+lb = "Q"
+rb = "E"
+lt = "Z"
+rt = "C"
+ls = "F"
+rs = "H"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"
