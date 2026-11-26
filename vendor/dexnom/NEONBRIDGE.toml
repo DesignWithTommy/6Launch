@@ -1,0 +1,39 @@
+# i95 launcher spec for DexNom/VIctory: what its own launcher runs (apps/victory/src/play_launcher.rs).
+name = "dexnom"
+fork = "VIctory"
+rank = 25   # #25 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+about = "DexNom RayTime 64bd58f (GPL-3.0): VIctory for AMD Radeon, ray tracing optional"
+upstream = "https://github.com/DexNom/VIctory"
+setup = [
+  "format-tables: powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1 [asks first: download]",   # README.md:36
+]
+build = ["cargo", "build", "--locked", "--release", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:36
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+run = ["run", "{game_exe}", "--execute", "--console", "series-x", "--unimplemented", "trap"]   # play_launcher.rs:266-274
+prewarm = ["warm", "{game}"]   # play_launcher.rs:310 (victory-warm.exe)
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+# Its shortcuts (Setup-DexNomRuntime.ps1:87-89): plain, --rt, and the FSR Quality 4K profile.
+preset_rt = ["VICTORY_RAY_TRACING=1"]
+
+[env]
+VICTORY_RAY_TRACING = "0"   # its default shortcut: no --rt
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+lb = "Q"
+rb = "E"
+lt = "Z"
+rt = "C"
+ls = "F"
+rs = "H"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"

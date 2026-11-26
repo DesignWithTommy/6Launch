@@ -38,3 +38,4 @@ All of the VIctory forks build on [VIctory](https://github.com/Marvisak/VIctory)
 Ranks come from [vuyp](https://github.com/vuyp)'s [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)), using its own ordering (src/build.py rank_key).
 - [ruff-lab](https://github.com/LoverCatys/ruff-lab) by LoverCatys, GPL-3.0 (vendor/rufflab)
 - [Vilocity](https://github.com/voidopcode/vilocity) by voidopcode, GPL-3.0-or-later per its Cargo.toml (vendor/vilocity)
+- [DexNom RayTime](https://github.com/DexNom/VIctory) by DexNom, GPL-3.0 (vendor/dexnom)
