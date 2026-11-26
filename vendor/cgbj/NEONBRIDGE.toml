@@ -3,7 +3,7 @@
 name = "cgbj"
 fork = "VIctory"
 rank = 14   # #14 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "CGBJ (cool_fox a96549d, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
+about = "CGBJ (cool_fox 8f34ba7, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:34
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -18,7 +18,7 @@ agility = false
 preset_4gb = ["--console=series-s", "VICTORY_UPLOAD_AHEAD=1", "VICTORY_AMBIENT=0.8", "VICTORY_CARD_BUFFERS_MB=256", "VICTORY_CARD_BUFFERS_MIN_KB=4096", "VICTORY_D3D12_BACKGROUND=0", "VICTORY_JOIN_PARTS=8", "VICTORY_TEXTURE_GUARD=", "VICTORY_THIN=1"]   # Play-VIctory-4GB.cmd
 preset_60fps = ["VICTORY_FRAME_INTERVAL_MS=16.667"]   # README.md:20 frame rate unlock
 preset_1080p = ["VICTORY_OUTPUT=1920x1080"]   # README.md:19
-preset_no_port = ["VICTORY_PORT_CONSTANTS=0", "VICTORY_PORT_CBV=0"]   # before 3277b15 these were off
+preset_port = ["VICTORY_PORT_CONSTANTS=1", "VICTORY_PORT_CBV=1"]   # renderer ports 1 and 5 (opt-in since 8f34ba7)
 
 [env]   # Play-VIctory.cmd
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
@@ -42,8 +42,10 @@ VICTORY_JOIN_PARTS = "0"
 VICTORY_UPLOAD_AHEAD = "1"
 VICTORY_LEVELS_ON_DEMAND = "1"
 VICTORY_CARD_BUFFERS_MIN_KB = "64"
-VICTORY_PORT_CONSTANTS = "1"   # Play-VIctory.cmd (3277b15)
-VICTORY_PORT_CBV = "1"
+VICTORY_PORT_CONSTANTS = "0"   # Play-VIctory.cmd (8f34ba7): opt-in again
+VICTORY_PORT_CBV = "0"
+VICTORY_LIBRARY_STORE_LATER = "1"   # Play-VIctory.cmd (8f34ba7)
+VICTORY_PIPELINE_WAIT_MS = "0"
 
 [controls]
 left_stick = "W A S D"

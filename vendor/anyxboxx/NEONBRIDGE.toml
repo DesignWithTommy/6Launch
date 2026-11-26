@@ -6,14 +6,14 @@
 name = "anyxboxx"
 fork = "Neptune"
 rank = 8   # #8 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "AnyXboxX 37d4686 (GPL-3.0): 'About 16–17 fps in the world' (median, Series X), RTX 4070 SUPER; not yet run here"
+about = "AnyXboxX 15024d5 (GPL-3.0): 'About 16–17 fps in the world' (median, Series X), RTX 4070 SUPER; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
 build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml"]   # crates/anyxboxx/src/run/steps.rs:71-73
 watch = ["third_party/victory/apps", "third_party/victory/crates", "third_party/victory/Cargo.toml", "third_party/victory/Cargo.lock"]
 exe = "third_party/victory/target/release/victory.exe"   # steps.rs:41-44
 diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--manifest-path", "third_party/victory/Cargo.toml"]   # steps.rs:67-69 (--diag; exe target/diag/victory.exe)
 run = ["run", "{game_exe}", "--execute"]   # steps.rs:107-113 (console defaults to series-x, apps/victory/src/main.rs:155)
-prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]   # steps.rs:87-102 (--precompile); main.rs:110-114
+prewarm = ["warm", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]   # steps.rs:85-100 precompile_command (15024d5)
 game_env = "VICTORY_GAME_DIR"   # settings.rs:84,116
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
@@ -25,29 +25,60 @@ options = [
 ]
 preset_quality = ["VICTORY_CARD_WINDOWS_MB=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_STAGE_MB=192"]   # settings.rs:78-82 (--quality): picture first
 preset_linux_amd = ["VICTORY_FETCH_CHECK=1", "VICTORY_PIPELINE_WAIT_MS=0", "VICTORY_PORT_CONSTANTS=1", "VKD3D_CONFIG=descriptor_heap"]   # settings.rs:36-47 (--profile linux-amd, Proton only)
-preset_defaults = ["VICTORY_TEXTURE_NO_WAIT=", "VICTORY_RELAY=", "VICTORY_WIDE_BACK=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_JOIN_COPIES=", "VICTORY_INDIRECT_WINDOW=", "VICTORY_RELAY_COPY=", "VICTORY_CARD_STEPS=", "VICTORY_INDIRECT_BATCH=", "VICTORY_MAP_THREADS=", "VICTORY_TITLE_PRIORITIES=", "VICTORY_CARD_AWAKE=", "VICTORY_SHOW_AFTER=", "VICTORY_AMBIENT=", "VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD="]   # settings.rs:121 (--profile defaults / --no-tuned-settings): VIctory's own defaults
+preset_defaults = ["VICTORY_CARD_WINDOWS_MB=", "VICTORY_BAKE_TEXTURES_MS=", "VICTORY_EARLY_TEXTURES_MS=", "VICTORY_WIDE_MERGE=", "VICTORY_RELAY_OWN_QUEUE=", "VICTORY_UNDER_WRITES_WORDS=", "VICTORY_UNDER_WRITES_RUNS=", "VICTORY_UNDER_WRITES_MASKS=", "VICTORY_RELAY=", "VICTORY_WIDE_REFRESH=", "VICTORY_ASK_ONCE=", "VICTORY_TEXTURE_NO_WAIT=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_JOIN_COPIES=", "VICTORY_D3D12_BACKGROUND=", "VICTORY_LATE_WAIT_LISTS=", "VICTORY_WINDOW_TAILS=", "VICTORY_TEXTURE_STAGE_MB=", "VICTORY_CARD_BUFFERS_MIN_KB=", "VICTORY_ASK_QUIET=", "VICTORY_COPY_CHANGED=", "VICTORY_QUIET_BACK=", "VICTORY_LIST_POOL_MOST=", "VICTORY_LIST_POOL_MB=", "VICTORY_WIDE_THREADS=", "VICTORY_UNDER_WRITES_MASKS_LEAST=", "VICTORY_INDIRECT_RAW=", "VICTORY_TEXTURE_HASH_EVERY=", "VICTORY_LEVELS_ON_DEMAND=", "VICTORY_WINDOW_KB=", "VICTORY_CARD_BUFFERS_MB=", "VICTORY_CARD_WINDOW_UPLOAD=", "VICTORY_DROP_DXIL=", "VICTORY_DESC_DATA=", "VICTORY_VRAM_IDLE_MS=", "VICTORY_PIPELINE_WAIT_MS=", "VICTORY_TEXTURE_ROOM_PERCENT=", "VICTORY_HEAP_PASS_DIRTY=", "VICTORY_COPY_COALESCE=", "VICTORY_WINDOW_SKIP_SAME=", "VICTORY_MERGE_SUBMISSIONS=", "VICTORY_PAGE_WRITES=", "VICTORY_STEP_INDEX=", "VICTORY_CARD_SYNC_BATCH=", "VICTORY_PARALLEL_REFRESH=", "VICTORY_HEAP_SCAN_ALT="]   # settings.rs:121 (--profile defaults / --no-tuned-settings): VIctory's own defaults
 preset_series_s = ["--console=series-s"]   # apps/victory/src/main.rs:155,179: Series S profile (less GPU memory)
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305); every var still read by this tree
 
-[env]   # settings.rs:14-32 TUNED (same as third_party/victory/scripts/play.ps1 without -Safe), in its order
+[env]   # crates/anyxboxx/src/run/settings.rs TUNED + ALWAYS (15024d5)
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
-VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_CARD_WINDOWS_MB = "1536"
+VICTORY_BAKE_TEXTURES_MS = "10000"
+VICTORY_EARLY_TEXTURES_MS = "40"
+VICTORY_WIDE_MERGE = "1"
+VICTORY_RELAY_OWN_QUEUE = "1"
+VICTORY_UNDER_WRITES_WORDS = "1"
+VICTORY_UNDER_WRITES_RUNS = "100000"
+VICTORY_UNDER_WRITES_MASKS = "1"
 VICTORY_RELAY = "2"
-VICTORY_WIDE_BACK = "1"
+VICTORY_WIDE_REFRESH = "1"
+VICTORY_ASK_ONCE = "1"
+VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_CARD_REHASH_RUNS = "1"
 VICTORY_JOIN_COPIES = "1"
-VICTORY_INDIRECT_WINDOW = "1"
-VICTORY_RELAY_COPY = "1"
-VICTORY_CARD_STEPS = "2"
-VICTORY_INDIRECT_BATCH = "2"
-VICTORY_MAP_THREADS = "1"
-VICTORY_TITLE_PRIORITIES = "0"
-VICTORY_CARD_AWAKE = "1"
-VICTORY_SHOW_AFTER = "1"
-VICTORY_AMBIENT = "0.8"
-VICTORY_THIN = "1"
-VICTORY_JOIN_PARTS = "8"
-VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_D3D12_BACKGROUND = "0"
+VICTORY_LATE_WAIT_LISTS = "1024"
+VICTORY_WINDOW_TAILS = "1"
+VICTORY_TEXTURE_STAGE_MB = "512"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_ASK_QUIET = "8"
+VICTORY_COPY_CHANGED = "1"
+VICTORY_QUIET_BACK = "1"
+VICTORY_LIST_POOL_MOST = "2048"
+VICTORY_LIST_POOL_MB = "512"
+VICTORY_WIDE_THREADS = "12"
+VICTORY_UNDER_WRITES_MASKS_LEAST = "1"
+VICTORY_INDIRECT_RAW = "2"
+VICTORY_TEXTURE_HASH_EVERY = "32"
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_WINDOW_KB = "1024"
+VICTORY_CARD_BUFFERS_MB = "1536"
+VICTORY_CARD_WINDOW_UPLOAD = "1"
+VICTORY_DROP_DXIL = "1"
+VICTORY_DESC_DATA = "1"
+VICTORY_VRAM_IDLE_MS = "8000,2000,1000"
+VICTORY_PIPELINE_WAIT_MS = "2500"
+VICTORY_TEXTURE_ROOM_PERCENT = "93"
+VICTORY_HEAP_PASS_DIRTY = "1"
+VICTORY_COPY_COALESCE = "256"
+VICTORY_WINDOW_SKIP_SAME = "1"
+VICTORY_MERGE_SUBMISSIONS = "1"
+VICTORY_PAGE_WRITES = "5"
+VICTORY_STEP_INDEX = "1"
+VICTORY_CARD_SYNC_BATCH = "1"
+VICTORY_PARALLEL_REFRESH = "1"
+VICTORY_HEAP_SCAN_ALT = "1"
+VICTORY_DISCORD = "0"
+VICTORY_OCEAN_READBACK = "1"
 
 [controls]   # third_party/victory/crates/victory-hle/src/modules/gameinput.rs:64-80,133-138 (mouse and Shift/Ctrl gone)
 left_stick = "W A S D"

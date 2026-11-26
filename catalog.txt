@@ -44,7 +44,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== anyxboxx 37d4686711bbb04c2cc3825f3f13bbff7c140fb0
+=== anyxboxx 15024d54e690743604a67287f0e3f3f30adbaba8
 # Neonbridge launcher spec for vendor/anyxboxx: LooperSalty's AnyXboxX. Its game runtime is the VIctory
 # copy in third_party/victory (combined base: avatarmanz/VIctory-7900XTX c9c932c + codec-d/cool_fox f4b48ad,
 # docs/running-gta6.md:11). The author's default is `anyxboxx run --game-dir <game>` (README.md:43), a Rust
@@ -53,14 +53,14 @@ menu = "Esc"
 name = "anyxboxx"
 fork = "Neptune"
 rank = 8   # #8 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "AnyXboxX 37d4686 (GPL-3.0): 'About 16–17 fps in the world' (median, Series X), RTX 4070 SUPER; not yet run here"
+about = "AnyXboxX 15024d5 (GPL-3.0): 'About 16–17 fps in the world' (median, Series X), RTX 4070 SUPER; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
 build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml"]   # crates/anyxboxx/src/run/steps.rs:71-73
 watch = ["third_party/victory/apps", "third_party/victory/crates", "third_party/victory/Cargo.toml", "third_party/victory/Cargo.lock"]
 exe = "third_party/victory/target/release/victory.exe"   # steps.rs:41-44
 diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--manifest-path", "third_party/victory/Cargo.toml"]   # steps.rs:67-69 (--diag; exe target/diag/victory.exe)
 run = ["run", "{game_exe}", "--execute"]   # steps.rs:107-113 (console defaults to series-x, apps/victory/src/main.rs:155)
-prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]   # steps.rs:87-102 (--precompile); main.rs:110-114
+prewarm = ["warm", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]   # steps.rs:85-100 precompile_command (15024d5)
 game_env = "VICTORY_GAME_DIR"   # settings.rs:84,116
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
@@ -72,29 +72,60 @@ options = [
 ]
 preset_quality = ["VICTORY_CARD_WINDOWS_MB=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_STAGE_MB=192"]   # settings.rs:78-82 (--quality): picture first
 preset_linux_amd = ["VICTORY_FETCH_CHECK=1", "VICTORY_PIPELINE_WAIT_MS=0", "VICTORY_PORT_CONSTANTS=1", "VKD3D_CONFIG=descriptor_heap"]   # settings.rs:36-47 (--profile linux-amd, Proton only)
-preset_defaults = ["VICTORY_TEXTURE_NO_WAIT=", "VICTORY_RELAY=", "VICTORY_WIDE_BACK=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_JOIN_COPIES=", "VICTORY_INDIRECT_WINDOW=", "VICTORY_RELAY_COPY=", "VICTORY_CARD_STEPS=", "VICTORY_INDIRECT_BATCH=", "VICTORY_MAP_THREADS=", "VICTORY_TITLE_PRIORITIES=", "VICTORY_CARD_AWAKE=", "VICTORY_SHOW_AFTER=", "VICTORY_AMBIENT=", "VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD="]   # settings.rs:121 (--profile defaults / --no-tuned-settings): VIctory's own defaults
+preset_defaults = ["VICTORY_CARD_WINDOWS_MB=", "VICTORY_BAKE_TEXTURES_MS=", "VICTORY_EARLY_TEXTURES_MS=", "VICTORY_WIDE_MERGE=", "VICTORY_RELAY_OWN_QUEUE=", "VICTORY_UNDER_WRITES_WORDS=", "VICTORY_UNDER_WRITES_RUNS=", "VICTORY_UNDER_WRITES_MASKS=", "VICTORY_RELAY=", "VICTORY_WIDE_REFRESH=", "VICTORY_ASK_ONCE=", "VICTORY_TEXTURE_NO_WAIT=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_JOIN_COPIES=", "VICTORY_D3D12_BACKGROUND=", "VICTORY_LATE_WAIT_LISTS=", "VICTORY_WINDOW_TAILS=", "VICTORY_TEXTURE_STAGE_MB=", "VICTORY_CARD_BUFFERS_MIN_KB=", "VICTORY_ASK_QUIET=", "VICTORY_COPY_CHANGED=", "VICTORY_QUIET_BACK=", "VICTORY_LIST_POOL_MOST=", "VICTORY_LIST_POOL_MB=", "VICTORY_WIDE_THREADS=", "VICTORY_UNDER_WRITES_MASKS_LEAST=", "VICTORY_INDIRECT_RAW=", "VICTORY_TEXTURE_HASH_EVERY=", "VICTORY_LEVELS_ON_DEMAND=", "VICTORY_WINDOW_KB=", "VICTORY_CARD_BUFFERS_MB=", "VICTORY_CARD_WINDOW_UPLOAD=", "VICTORY_DROP_DXIL=", "VICTORY_DESC_DATA=", "VICTORY_VRAM_IDLE_MS=", "VICTORY_PIPELINE_WAIT_MS=", "VICTORY_TEXTURE_ROOM_PERCENT=", "VICTORY_HEAP_PASS_DIRTY=", "VICTORY_COPY_COALESCE=", "VICTORY_WINDOW_SKIP_SAME=", "VICTORY_MERGE_SUBMISSIONS=", "VICTORY_PAGE_WRITES=", "VICTORY_STEP_INDEX=", "VICTORY_CARD_SYNC_BATCH=", "VICTORY_PARALLEL_REFRESH=", "VICTORY_HEAP_SCAN_ALT="]   # settings.rs:121 (--profile defaults / --no-tuned-settings): VIctory's own defaults
 preset_series_s = ["--console=series-s"]   # apps/victory/src/main.rs:155,179: Series S profile (less GPU memory)
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305); every var still read by this tree
 
-[env]   # settings.rs:14-32 TUNED (same as third_party/victory/scripts/play.ps1 without -Safe), in its order
+[env]   # crates/anyxboxx/src/run/settings.rs TUNED + ALWAYS (15024d5)
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
-VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_CARD_WINDOWS_MB = "1536"
+VICTORY_BAKE_TEXTURES_MS = "10000"
+VICTORY_EARLY_TEXTURES_MS = "40"
+VICTORY_WIDE_MERGE = "1"
+VICTORY_RELAY_OWN_QUEUE = "1"
+VICTORY_UNDER_WRITES_WORDS = "1"
+VICTORY_UNDER_WRITES_RUNS = "100000"
+VICTORY_UNDER_WRITES_MASKS = "1"
 VICTORY_RELAY = "2"
-VICTORY_WIDE_BACK = "1"
+VICTORY_WIDE_REFRESH = "1"
+VICTORY_ASK_ONCE = "1"
+VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_CARD_REHASH_RUNS = "1"
 VICTORY_JOIN_COPIES = "1"
-VICTORY_INDIRECT_WINDOW = "1"
-VICTORY_RELAY_COPY = "1"
-VICTORY_CARD_STEPS = "2"
-VICTORY_INDIRECT_BATCH = "2"
-VICTORY_MAP_THREADS = "1"
-VICTORY_TITLE_PRIORITIES = "0"
-VICTORY_CARD_AWAKE = "1"
-VICTORY_SHOW_AFTER = "1"
-VICTORY_AMBIENT = "0.8"
-VICTORY_THIN = "1"
-VICTORY_JOIN_PARTS = "8"
-VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_D3D12_BACKGROUND = "0"
+VICTORY_LATE_WAIT_LISTS = "1024"
+VICTORY_WINDOW_TAILS = "1"
+VICTORY_TEXTURE_STAGE_MB = "512"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_ASK_QUIET = "8"
+VICTORY_COPY_CHANGED = "1"
+VICTORY_QUIET_BACK = "1"
+VICTORY_LIST_POOL_MOST = "2048"
+VICTORY_LIST_POOL_MB = "512"
+VICTORY_WIDE_THREADS = "12"
+VICTORY_UNDER_WRITES_MASKS_LEAST = "1"
+VICTORY_INDIRECT_RAW = "2"
+VICTORY_TEXTURE_HASH_EVERY = "32"
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_WINDOW_KB = "1024"
+VICTORY_CARD_BUFFERS_MB = "1536"
+VICTORY_CARD_WINDOW_UPLOAD = "1"
+VICTORY_DROP_DXIL = "1"
+VICTORY_DESC_DATA = "1"
+VICTORY_VRAM_IDLE_MS = "8000,2000,1000"
+VICTORY_PIPELINE_WAIT_MS = "2500"
+VICTORY_TEXTURE_ROOM_PERCENT = "93"
+VICTORY_HEAP_PASS_DIRTY = "1"
+VICTORY_COPY_COALESCE = "256"
+VICTORY_WINDOW_SKIP_SAME = "1"
+VICTORY_MERGE_SUBMISSIONS = "1"
+VICTORY_PAGE_WRITES = "5"
+VICTORY_STEP_INDEX = "1"
+VICTORY_CARD_SYNC_BATCH = "1"
+VICTORY_PARALLEL_REFRESH = "1"
+VICTORY_HEAP_SCAN_ALT = "1"
+VICTORY_DISCORD = "0"
+VICTORY_OCEAN_READBACK = "1"
 
 [controls]   # third_party/victory/crates/victory-hle/src/modules/gameinput.rs:64-80,133-138 (mouse and Shift/Ctrl gone)
 left_stick = "W A S D"
@@ -223,13 +254,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== cgbj a96549d3ef4a2533dd0af0ac42957f81a7f0d005
+=== cgbj 8f34ba7bc7db83e05944f6396ba9ed4c3dc70cff
 # Neonbridge launcher spec for vendor/cgbj: DoubleGhosty's cool_fox, a continuation of CGBJ (codec-d/cool_fox, no longer on GitHub).
 # Build, run and env are its README and Play-VIctory.cmd (VICTORY_LOG=warn left out: the loader reads the info-level fps line).
 name = "cgbj"
 fork = "VIctory"
 rank = 14   # #14 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "CGBJ (cool_fox a96549d, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
+about = "CGBJ (cool_fox 8f34ba7, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:34
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -244,7 +275,7 @@ agility = false
 preset_4gb = ["--console=series-s", "VICTORY_UPLOAD_AHEAD=1", "VICTORY_AMBIENT=0.8", "VICTORY_CARD_BUFFERS_MB=256", "VICTORY_CARD_BUFFERS_MIN_KB=4096", "VICTORY_D3D12_BACKGROUND=0", "VICTORY_JOIN_PARTS=8", "VICTORY_TEXTURE_GUARD=", "VICTORY_THIN=1"]   # Play-VIctory-4GB.cmd
 preset_60fps = ["VICTORY_FRAME_INTERVAL_MS=16.667"]   # README.md:20 frame rate unlock
 preset_1080p = ["VICTORY_OUTPUT=1920x1080"]   # README.md:19
-preset_no_port = ["VICTORY_PORT_CONSTANTS=0", "VICTORY_PORT_CBV=0"]   # before 3277b15 these were off
+preset_port = ["VICTORY_PORT_CONSTANTS=1", "VICTORY_PORT_CBV=1"]   # renderer ports 1 and 5 (opt-in since 8f34ba7)
 
 [env]   # Play-VIctory.cmd
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
@@ -268,8 +299,10 @@ VICTORY_JOIN_PARTS = "0"
 VICTORY_UPLOAD_AHEAD = "1"
 VICTORY_LEVELS_ON_DEMAND = "1"
 VICTORY_CARD_BUFFERS_MIN_KB = "64"
-VICTORY_PORT_CONSTANTS = "1"   # Play-VIctory.cmd (3277b15)
-VICTORY_PORT_CBV = "1"
+VICTORY_PORT_CONSTANTS = "0"   # Play-VIctory.cmd (8f34ba7): opt-in again
+VICTORY_PORT_CBV = "0"
+VICTORY_LIBRARY_STORE_LATER = "1"   # Play-VIctory.cmd (8f34ba7)
+VICTORY_PIPELINE_WAIT_MS = "0"
 
 [controls]
 left_stick = "W A S D"
@@ -1017,12 +1050,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== rufflab 4b5856a18668d7e2e3568e0276427fc38e2ee9df
+=== rufflab 6156dd7e61a95ef07312485e046c326e4fe0e188
 # i95 launcher spec for LoverCatys/ruff-lab: author build and run from its README.
 name = "rufflab"
 fork = "klbf-lab"
 rank = 17   # #17 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ruff-lab 4b5856a (GPL-3.0): Built for 8 GB cards and 16 GB RAM. 6 to 10 fps in the world (6.1 in heavy prison scenes), RX 6600 XT"
+about = "ruff-lab 6156dd7 (GPL-3.0): Built for 8 GB cards and 16 GB RAM. 6 to 10 fps in the world (6.1 in heavy prison scenes), RX 6600 XT"
 upstream = "https://github.com/LoverCatys/ruff-lab"
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:65
 exe = "target/release/victory.exe"
@@ -1063,14 +1096,14 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== scarlettport 4866673a6788b72a53af2107b0e55625e49a6111
+=== scarlettport 5d539e9b244d635305bea56199a977054ca40cec
 # ScarlettPort's victory runtime (engine). Its second runtime, runtime/xcl, is a distinct
 # playable path (scripts/setup.ps1:15 `cargo build --release` in runtime\xcl -> runtime\xcl\target\release\xcl.exe,
 # scripts/play.ps1:34 `xcl run <game>` with XCL_DXC_THREADS=4, XCL_NO_WATCHDOG=1, XCL_PRESS_FILE); not modelled here.
 name = "scarlettport"
 fork = "victory-fork"
 rank = 25   # #25 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ScarlettPort 4866673 (victory runtime), GPL-3.0"
+about = "ScarlettPort 5d539e9 (victory runtime), GPL-3.0"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 # scripts/setup-scarlett.ps1:18,21 (run in engine; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "engine/Cargo.toml", "--release", "-p", "scarlett", "--bin", "scarlett", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]
@@ -1655,13 +1688,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vicetay 4aaa7a3a8c6d6befba279dce5a3f54edb0f91c71
+=== vicetay cc4a5db938cb0e9e603dbd8000224cc7cb3f1d07
 # Neonbridge launcher spec for vendor/vicetay: TaynanGT's Vice-Tay. Build and run are its README "How to run it"
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
 fork = "VIctory"
 rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vice-Tay 4aaa7a3 (GPL-3.0): The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet; not yet run here"
+about = "Vice-Tay cc4a5db (GPL-3.0): The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet; not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
@@ -1787,12 +1820,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vilocity 4e0c5e48a7876020c76ccba9931dd95f2eaf709b
+=== vilocity 768a468e56a72a9c8f8cddfdaf6e06c06ae39286
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
 rank = 22   # #22 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vilocity 4e0c5e4 (GPL-3.0): 'Not playable yet.' About 11 fps on the Series S profile, RTX 5080; runs end about 7 min in"
+about = "Vilocity 768a468 (GPL-3.0): 'Not playable yet.' About 11 fps on the Series S profile, RTX 5080; runs end about 7 min in"
 upstream = "https://github.com/voidopcode/vilocity"
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"
@@ -1842,12 +1875,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vinividivici 0f09e67ce6160e8f7626004bcc6b5c592f8120c5
+=== vinividivici 297cf6e6b5cc8aab03838c0fd362a4a582fbe029
 # i95 launcher spec for KomanderDG88/VIniVIdiVIci: author build and run from its README.
 name = "vinividivici"
 fork = "VIctory"
 rank = 20   # #20 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIniVIdiVIci 0f09e67 (GPL-3.0): 6.6 fps median in a 280 s scripted first-room run, RTX 4060 Ti"
+about = "VIniVIdiVIci 297cf6e (GPL-3.0): 6.6 fps median in a 280 s scripted first-room run, RTX 4060 Ti"
 upstream = "https://github.com/KomanderDG88/VIniVIdiVIci"
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:79
 exe = "target/release/victory.exe"
@@ -2133,13 +2166,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== xtx 2de998014dc85ad68cd6422a250400c7084ace57
+=== xtx 126acb35b509bdbe097d607f198d7a2736de5202
 # Neonbridge launcher spec for vendor/xtx: avatarmanz's VIctory-7900XTX (RDNA 3 speed fork).
 # Build, run and env are its README "How to run it" and scripts/play.ps1 (default: diag build, not -Safe).
 name = "xtx"
 fork = "VIctory"
 rank = 4   # #4 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-7900XTX 2de9980 (GPL-3.0): Series X at 1440p: 20 fps with ray tracing off, 10 fps with it on, RX 7900 XTX; not yet run here"
+about = "VIctory-7900XTX 126acb3 (GPL-3.0): Series X at 1440p: 20 fps with ray tracing off, 10 fps with it on, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/avatarmanz/VIctory-7900XTX"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:49
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
