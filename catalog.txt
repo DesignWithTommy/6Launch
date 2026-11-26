@@ -223,7 +223,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== cgbj 3277b1565118e209dfcb395267c31e11d7e1d436
+=== cgbj 754cafc9f0660fcb032d21744b78e1fcd9d74423
 # Neonbridge launcher spec for vendor/cgbj: DoubleGhosty's cool_fox, a continuation of CGBJ (codec-d/cool_fox, no longer on GitHub).
 # Build, run and env are its README and Play-VIctory.cmd (VICTORY_LOG=warn left out: the loader reads the info-level fps line).
 name = "cgbj"
@@ -433,7 +433,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== flamingo 39bb53a11a8707815b3afcb8b19e816e4a300120
+=== flamingo 89e131c5bca563c165319ebc21504657e9b770f7
 # Neonbridge launcher spec for vendor/flamingo: realblastex's Flamingo, a victory
 # fork vendored clean. Build, run and env are its README.md "Building and running"
 # (README.md:98-114). Its claim (README.md status table): about 14 fps facing the
@@ -712,7 +712,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== kitty6 8d01478fbbf35ce539c4e982a2e2736073fd0d44
+=== kitty6 def1eff88e57c94808d5d3873e30b8ada9086d96
 # Launcher spec for vendor/kitty6: kitty-core's Kitty6 (VIctory-7900XTX fork tuned for an RTX 4070 12 GB, 32 GB RAM).
 # Build, run and env are its README "Build" and scripts/play.ps1 (default: no switches, Series X, diag build, its mods on).
 name = "kitty6"
@@ -1063,7 +1063,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== scarlettport 424fc91900d83bb013160669201b2eab15f80a3b
+=== scarlettport 2f8cffad5686e969f00644163eec4685e8ab09d5
 # ScarlettPort's victory runtime (runtime/victory). Its second runtime, runtime/xcl, is a distinct
 # playable path (scripts/setup.ps1:15 `cargo build --release` in runtime\xcl -> runtime\xcl\target\release\xcl.exe,
 # scripts/play.ps1:34 `xcl run <game>` with XCL_DXC_THREADS=4, XCL_NO_WATCHDOG=1, XCL_PRESS_FILE); not modelled here.
@@ -1403,7 +1403,7 @@ rs = "C / Middle mouse"
 dpad = "Arrows / Wheel up-down"
 view = "Tab"
 menu = "P"
-=== unified d5b5fca6cf3c325634f90eb897aa43d0eb665847
+=== unified 243e1f6e1e8ab0d8cb62d8f4829fc947f1fc6dfa
 # Neonbridge launcher spec for vendor/unified: Itsbatt's victory-unified, fxceless victory-fork
 # 0b0074e plus Belobug (ambient, quad reads, hoisted clamps), DexNom/VIctory (shader, cubemap,
 # PSO, range-lock streaming) and its own descriptor-lifetime fix. Build and run are its README.md
@@ -1588,7 +1588,7 @@ rs = "C / Middle mouse / H"
 dpad = "Arrows / 1 2 3 4 (E right)"
 view = "V"
 menu = "Esc / P"
-=== vibrport 1f9d6f7918425b87761dac5228724490153e13c6
+=== vibrport ab9ae781f9b7809c0abe5c89f13d5b745db11d75
 # Neonbridge launcher spec for vendor/vibrport: edsuuu's VI-BR-PORT, a victory-fork fork for
 # 8 GB NVIDIA cards (its author's RTX 4060 Ti 8 GB). Default launch is scripts/play.ps1.
 name = "vibrport"
@@ -1652,7 +1652,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vicetay e2d158a33316a79ed8eb65ede6563416391b86db
+=== vicetay a8573332b11dd066602c4dabb8050e3e3af84503
 # Neonbridge launcher spec for vendor/vicetay: TaynanGT's Vice-Tay. Build and run are its README "How to run it"
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
@@ -1781,7 +1781,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vilocity 3cc4b67ff31a3ad18988f8d65fee1006958e5b05
+=== vilocity 6804c160c76dc977d0100f37a5764c764e81ec1e
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
