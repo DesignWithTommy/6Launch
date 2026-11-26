@@ -11,7 +11,7 @@ i95 is a Windows launcher for the projects trying to run the Xbox Series version
 ## What it does
 
 - **One list of runtimes**, ranked like the race tracker, each with its author's own default launch settings.
-- **Stays current without an update**: at start it reads the runtime list from [catalog.txt](catalog.txt) here. An update loop here moves each runtime to its author's newest commit every hour, and any commit that changes the author's launch settings is checked by hand before it goes in. Every launcher picks up the list on its next start. No new release is needed. Offline it uses the list it shipped with.
+- **Stays current without an update**: at start it reads the runtime list from [catalog.txt](catalog.txt) here. Every hour each runtime is moved to its author's newest commit (scripts/bump-upstreams.sh, run by hand, no bot), and any commit that changes the author's launch settings is checked by hand before it goes in. Every launcher picks up the list on its next start. No new release is needed. Offline it uses the list it shipped with.
 - **Builds and rebuilds** a runtime only when its source changed, and keeps each runtime's shader cache when it does.
 - **Prepares shaders** before the game starts, with a loading screen that shows real progress.
 - **Checks your PC first**: graphics card features (D3D12, Shader Model 6.6, mesh shaders), RAM and free disk, and names what's missing.

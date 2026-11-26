@@ -1,6 +1,6 @@
 # Credits
 
-i95 is a launcher around other people's work. Each runtime under `vendor/` is built unchanged from its upstream at the commit in its `UPSTREAM` file. The update loop moves that commit to the author's newest, so [catalog.txt](catalog.txt) has the current one. Each keeps its own licence, and all credit for it goes to its authors. Authors are listed as their upstream history names them.
+i95 is a launcher around other people's work. Each runtime under `vendor/` is built unchanged from its upstream at the commit in its `UPSTREAM` file. An hourly update moves that commit to the author's newest, so [catalog.txt](catalog.txt) has the current one. Each keeps its own licence, and all credit for it goes to its authors. Authors are listed as their upstream history names them.
 
 ## Vendored runtimes
 

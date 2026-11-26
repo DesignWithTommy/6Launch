@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The update loop's step: each vendor/<name> pinned to a GitHub repo moves to that
+# The update loop (run by hand or by Claude, no bot): each vendor/<name> pinned to a GitHub repo moves to that
 # repo's newest default-branch commit (UPSTREAM and catalog.txt). The settings in
 # each NEONBRIDGE.toml are re-checked by hand: a commit touching launch files is held.
 set -u
@@ -24,7 +24,7 @@ for d in vendor/*/; do
   changed+=("$n ${new:0:7}")
 done
 # catalog.txt rebuilt from the tomls and pins (same layout as i95 --catalog).
-python3 - <<'P'
+python - <<'P'
 import pathlib
 out = ["# i95 runtime catalog: `=== <name> <upstream commit>` then that runtime's NEONBRIDGE.toml. Made by i95 --catalog."]
 for d in sorted(pathlib.Path("vendor").iterdir()):
@@ -34,8 +34,8 @@ for d in sorted(pathlib.Path("vendor").iterdir()):
     c = u.read_text().splitlines()[0].strip()
     if len(c) != 40:
         continue
-    out += [f"=== {d.name} {c}", t.read_text().replace("\r\n", "\n").rstrip()]
-pathlib.Path("catalog.txt").write_text("\n".join(out) + "\n")
+    out += [f"=== {d.name} {c}", t.read_text(encoding="utf-8").replace("\r\n", "\n").rstrip()]
+pathlib.Path("catalog.txt").write_text("\n".join(out) + "\n", encoding="utf-8", newline="\n")
 P
-printf '%s\n' "${changed[@]:-}" | sed '/^$/d' > /tmp/bumped.txt
-cat /tmp/bumped.txt
+printf '%s\n' "${changed[@]:-}" | sed '/^$/d' > "${TMPDIR:-/tmp}/bumped.txt"
+cat "${TMPDIR:-/tmp}/bumped.txt"
