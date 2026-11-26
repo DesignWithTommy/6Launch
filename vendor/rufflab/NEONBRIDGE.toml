@@ -1,0 +1,40 @@
+# i95 launcher spec for LoverCatys/ruff-lab: author build and run from its README.
+name = "rufflab"
+fork = "klbf-lab"
+rank = 12   # #12 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+about = "ruff-lab d37ba20 (GPL-3.0): klbf-lab for 8 GB cards, 16 GB RAM and hard disks"
+upstream = "https://github.com/LoverCatys/ruff-lab"
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:65
+exe = "target/release/victory.exe"
+run = ["run", "--console", "series-s", "{game_exe}", "--execute"]   # README.md:87
+prewarm = ["translate", "--cache", "--pipelines", "--jobs", "{jobs}", "{game}/shaders.rpf"]   # README.md:73
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+[env]
+VICTORY_SHADER_OPT = "0"   # README.md:79-85, its run settings
+VICTORY_SKIP_PIPELINES = "39f0e9aeb156a61c"   # docs/klbf/skip-amd.txt
+VICTORY_LATE_WAIT = "1"
+VICTORY_WIDE_BACK = "1"
+VICTORY_PIPELINE_WAIT_MS = "24"
+VICTORY_RELAY_COPY_QUEUE = "0"
+VICTORY_DSTORAGE_WORKERS = "3"
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+lb = "Q"
+rb = "E"
+lt = "Z"
+rt = "C"
+ls = "F"
+rs = "H"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"
