@@ -76,7 +76,7 @@ preset_defaults = ["VICTORY_TEXTURE_NO_WAIT=", "VICTORY_RELAY=", "VICTORY_WIDE_B
 preset_series_s = ["--console=series-s"]   # apps/victory/src/main.rs:155,179: Series S profile (less GPU memory)
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305); every var still read by this tree
 
-[env]   # settings.rs:14-32 TUNED (= third_party/victory/scripts/play.ps1 without -Safe), in its order
+[env]   # settings.rs:14-32 TUNED (same as third_party/victory/scripts/play.ps1 without -Safe), in its order
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_RELAY = "2"
