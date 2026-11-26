@@ -11,14 +11,14 @@ i95 is a Windows launcher for the projects trying to run the Xbox Series version
 ## What it does
 
 - **One list of runtimes**, ranked like the race tracker, each with its author's own default launch settings.
-- **Stays current without an update**: at start it reads the runtime list from [catalog.txt](catalog.txt) here. When a runtime's author ships a new commit or changes their recommended settings, i95's list is updated to match, and every launcher picks it up on its next start. No new release is needed. Offline it uses the list it shipped with.
+- **Stays current without an update**: at start it reads the runtime list from [catalog.txt](catalog.txt) here. An update loop here moves each runtime to its author's newest commit every hour, and any commit that changes the author's launch settings is checked by hand before it goes in. Every launcher picks up the list on its next start. No new release is needed. Offline it uses the list it shipped with.
 - **Builds and rebuilds** a runtime only when its source changed, and keeps each runtime's shader cache when it does.
 - **Prepares shaders** before the game starts, with a loading screen that shows real progress.
 - **Checks your PC first**: graphics card features (D3D12, Shader Model 6.6, mesh shaders), RAM and free disk, and names what's missing.
 - **Presets** per runtime, such as Series S, 8 GB cards and crash diagnostics, plus any extra setting a runtime reads.
 - **In game**: an fps and frame-time overlay, a controls overlay, and the display kept awake.
 - **After a run**: explains why it ended by reading the log, writes a short timeline, and can file an issue report.
-- **Asks before going online**, for example before fetching a runtime's source or an optional download.
+- **Asks before downloading** a runtime's source or an optional extra. The one thing it fetches without asking is the small runtime list, catalog.txt.
 
 **None of these runtimes is playable yet.** The tracker's bar for playable is 20 fps and 30 minutes without a crash, and nobody has cleared it.
 

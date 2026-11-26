@@ -20,8 +20,22 @@ for d in vendor/*/; do
     continue
   fi
   printf '%s\n' "$new" > "$d/UPSTREAM"
-  sed -i "s/^=== $n $old\$/=== $n $new/" catalog.txt
+  sed -i "/^about/s/${old:0:7}/${new:0:7}/" "$t"
   changed+=("$n ${new:0:7}")
 done
+# catalog.txt rebuilt from the tomls and pins (same layout as i95 --catalog).
+python3 - <<'P'
+import pathlib
+out = ["# i95 runtime catalog: `=== <name> <upstream commit>` then that runtime's NEONBRIDGE.toml. Made by i95 --catalog."]
+for d in sorted(pathlib.Path("vendor").iterdir()):
+    t, u = d / "NEONBRIDGE.toml", d / "UPSTREAM"
+    if not (t.is_file() and u.is_file()):
+        continue
+    c = u.read_text().splitlines()[0].strip()
+    if len(c) != 40:
+        continue
+    out += [f"=== {d.name} {c}", t.read_text().replace("\r\n", "\n").rstrip()]
+pathlib.Path("catalog.txt").write_text("\n".join(out) + "\n")
+P
 printf '%s\n' "${changed[@]:-}" | sed '/^$/d' > /tmp/bumped.txt
 cat /tmp/bumped.txt

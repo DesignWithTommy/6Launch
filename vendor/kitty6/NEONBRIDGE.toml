@@ -2,7 +2,7 @@
 # Build, run and env are its README "Build" and scripts/play.ps1 (default: no switches, Series X, diag build, its mods on).
 name = "kitty6"
 fork = "VIctory-7900XTX"
-about = "Kitty6 def1eff (GPL-3.0): 20.5 fps median in the opening scene on an RTX 4070 (Series S), ~5 min runs; not on the tracker; not yet run here"
+about = "Kitty6 9a20551 (GPL-3.0): 20.5 fps median in the opening scene on an RTX 4070 (Series S), ~5 min runs; not on the tracker; not yet run here"
 upstream = "https://github.com/kitty-core/Kitty6"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:86
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
