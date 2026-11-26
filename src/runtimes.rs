@@ -2195,6 +2195,9 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         crate::controls::show(name, &program, crate::controls::rows(|k| spec.str(&format!("controls.{k}")).map(str::to_owned)));
     }
     println!("[launch] {name} > {} {}", program.display(), args.join(" "));
+    if matches!(task, Task::Run) {
+        crate::crash::mark_run_start();
+    }
     let result = supervised(name, cmd, log.as_deref(), timeout, echo, matches!(task, Task::Run));
     let mut why = None;
     if matches!(task, Task::Run) && let Some(l) = &log {

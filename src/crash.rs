@@ -136,6 +136,13 @@ pub fn after_run(name: &str, cache: &std::path::Path, lines: &[String]) -> Optio
 }
 
 /// The tail of the newest `crashes.log` in the family save folder, if written in the last 10 min.
+/// When the current run started: a crashes.log older than this is an earlier run's.
+static RUN_START: std::sync::Mutex<Option<std::time::SystemTime>> = std::sync::Mutex::new(None);
+
+pub fn mark_run_start() {
+    *RUN_START.lock().unwrap_or_else(|e| e.into_inner()) = Some(std::time::SystemTime::now());
+}
+
 fn recent_crashes_log() -> Option<String> {
     let save = crate::runtimes::pack_dir().join("save");
     let newest = std::fs::read_dir(save).ok()?.flatten()
@@ -143,6 +150,9 @@ fn recent_crashes_log() -> Option<String> {
         .filter_map(|p| Some((p.metadata().ok()?.modified().ok()?, p)))
         .max()?;
     if newest.0.elapsed().ok()? > std::time::Duration::from_secs(600) {
+        return None;
+    }
+    if RUN_START.lock().unwrap_or_else(|e| e.into_inner()).is_some_and(|start| newest.0 < start) {
         return None;
     }
     let text = std::fs::read_to_string(&newest.1).ok()?;
