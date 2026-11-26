@@ -3,7 +3,7 @@
 # tools/lancer_victory.ps1 (README "~12 fps in the world", RTX 4070 SUPER, 4K, Series X).
 name = "anyxboxx"
 fork = "Neptune"
-rank = 1   # launcher list order (Master): 2nd on the gta6-pc-race tracker; runs here 10 min without a crash
+rank = 2   # launcher list order: 2nd on the gta6-pc-race tracker
 about = "AnyXboxX fd9463b (GPL-3.0): ~12 fps in the world (median 12.5, peaks 30) on its author's RTX 4070 SUPER, no crash; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
 build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml", "--locked"]   # lancer_victory.ps1:102,114 (+--locked)

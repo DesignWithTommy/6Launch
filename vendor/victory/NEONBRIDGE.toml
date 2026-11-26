@@ -4,7 +4,7 @@
 # stay off unless set in the environment, which passes them on.
 name = "victory"
 fork = "victory-fork"
-rank = 5   # launcher list order (Master)
+rank = 6   # launcher list order: 6th on the gta6-pc-race tracker
 about = "VIctory-fxceless d827419 (GPL-3.0), the emulator victory"
 upstream = "https://github.com/fxceless/victory-fork"
 # fxceless's victory has no Agility opt-in (no D3D12SDKVersion/D3D12SDKPath

@@ -1,7 +1,8 @@
 # Neonbridge launcher spec for vendor/vertex: proneonn's Vertex. Build, run and prewarm are its start.ps1.
 name = "vertex"
 fork = "VIctory"
-rank = 9   # launcher list order (Master): 10th on the gta6-pc-race tracker
+archived = true   # outside the race top 10, kept for comparison (listed under Archived)
+rank = 11   # launcher list order: 11th on the gta6-pc-race tracker
 about = "Vertex c9caaf3 (GPL-3.0): no crash in 16 of 18 sessions, longest 25 min; not yet run here"
 upstream = "https://github.com/proneonn/Vertex"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # start.ps1:132

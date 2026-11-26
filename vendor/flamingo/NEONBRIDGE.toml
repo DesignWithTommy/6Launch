@@ -4,7 +4,7 @@
 # window and 9-12 fps in the room on an RTX 4070; shadowed areas dark.
 name = "flamingo"
 fork = "victory-fork"
-rank = 10   # launcher list order (Master): moved last, regressed here (crashes on device slot 0x330 since fe12291)
+rank = 5   # launcher list order: 5th on the gta6-pc-race tracker
 about = "Flamingo fe12291 (GPL-3.0): claims 9-14 fps in the first scene; verified here: first mission at 5-7 fps, scene black"
 upstream = "https://github.com/realblastex/flamingo"
 build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--locked"]
