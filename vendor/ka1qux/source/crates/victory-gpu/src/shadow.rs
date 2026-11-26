@@ -77,6 +77,10 @@ pub(crate) struct Shadow {
     /// Asks for the copy that gave no length (root views: they read from
     /// their address to the copy's end, whatever lies there).
     unsized_asks: AtomicU64,
+    /// What those asks were (`RootKind` bits: a root constant buffer view, a
+    /// root shader resource view, a root unordered access view), for the
+    /// memory line.
+    ask_kinds: std::sync::atomic::AtomicU8,
     /// A number no other copy has had. Its address is no name for a copy:
     /// one let go and another made may share it.
     id: u64,
@@ -104,6 +108,10 @@ pub(crate) struct Shadow {
     /// In place through a view of ours (`crate::inplace`'s stretches): the
     /// view, unmapped after `place`'s heap goes (fields drop in order).
     own_view: Option<crate::inplace::OwnView>,
+    /// Made in place by `crate::unified` (bit 0: over physical pages, bit
+    /// 1: over private memory, bit 2: it reaches the end of its title
+    /// memory, so a root view with no length may be given it).
+    unified: u8,
 }
 
 /// What a copy in the card's memory ([`cards`]) has beside the buffer
@@ -2547,6 +2555,7 @@ pub(crate) fn windows() -> [u64; 3] {
         let loose = LOOSE.read().unwrap_or_else(|e| e.into_inner());
         loose
             .values()
+            .filter(|s| s.place.is_none())
             .map(|s| {
                 let low = s.asked[0].load(Ordering::Relaxed);
                 let high = s.asked[1].load(Ordering::Relaxed);
@@ -2569,7 +2578,8 @@ pub(crate) fn windows() -> [u64; 3] {
 pub(crate) fn window_use() -> [u64; 8] {
     let mut out = [0u64; 8];
     let loose = LOOSE.read().unwrap_or_else(|e| e.into_inner());
-    for s in loose.values() {
+    // The copies only: a window in place holds no host memory.
+    for s in loose.values().filter(|s| s.place.is_none()) {
         let copied = s.copied.lock().unwrap_or_else(|e| e.into_inner());
         let pages = copied.iter().filter(|&&at| at != 0).count() as u64;
         out[0] += (pages * PAGE as u64).min(s.len);
@@ -2588,6 +2598,68 @@ pub(crate) fn window_use() -> [u64; 8] {
     }
     out[7] = window();
     out
+}
+
+/// For the memory line, of the windows alive that were asked for without a
+/// length, by who asked: root constant buffer views only, those and root
+/// shader resource or unordered access views, those only, and asks that
+/// named no kind. Each as the windows, their bytes and the bytes of their
+/// pages ever copied.
+#[cfg(feature = "diagnostics")]
+pub(crate) fn window_root_kinds() -> [[u64; 3]; 4] {
+    let mut out = [[0u64; 3]; 4];
+    let loose = LOOSE.read().unwrap_or_else(|e| e.into_inner());
+    for s in loose.values() {
+        if s.place.is_some() || s.unsized_asks.load(Ordering::Relaxed) == 0 {
+            continue;
+        }
+        let kinds = s.ask_kinds.load(Ordering::Relaxed);
+        let group = match (kinds & 1 != 0, kinds & 6 != 0) {
+            (true, false) => 0,
+            (true, true) => 1,
+            (false, true) => 2,
+            (false, false) => 3,
+        };
+        let copied = s.copied.lock().unwrap_or_else(|e| e.into_inner());
+        let pages = copied.iter().filter(|&&at| at != 0).count() as u64;
+        out[group][0] += 1;
+        out[group][1] += s.len;
+        out[group][2] += (pages * PAGE as u64).min(s.len);
+    }
+    out
+}
+
+/// For `crate::unified`'s line: the windows alive that it placed, over
+/// physical pages and over private memory, as (windows, bytes) each.
+pub(crate) fn unified_alive() -> [[u64; 2]; 2] {
+    let mut out = [[0u64; 2]; 2];
+    let loose = LOOSE.read().unwrap_or_else(|e| e.into_inner());
+    for s in loose.values() {
+        let kind = match s.unified & 3 {
+            1 => 0,
+            2 => 1,
+            _ => continue,
+        };
+        out[kind][0] += 1;
+        out[kind][1] += s.len;
+    }
+    out
+}
+
+/// For `crate::unified`'s census: the windows alive that are copies, as
+/// (start, bytes, lowest and highest title address asked in them, whether
+/// any ask had no length).
+#[cfg(feature = "diagnostics")]
+pub(crate) fn copy_windows() -> Vec<(u64, u64, u64, u64, bool)> {
+    let loose = LOOSE.read().unwrap_or_else(|e| e.into_inner());
+    loose
+        .iter()
+        .filter(|(_, s)| s.place.is_none())
+        .map(|(key, s)| {
+            let (lo, hi) = (s.asked[0].load(Ordering::Relaxed), s.asked[1].load(Ordering::Relaxed));
+            (key.0, s.len, lo.min(hi), hi, s.unsized_asks.load(Ordering::Relaxed) > 0)
+        })
+        .collect()
 }
 
 /// Lets go of the copies of windows outside buffers that nothing names any
@@ -2649,9 +2721,10 @@ pub(crate) fn memory() -> [u64; 6] {
         let loose = LOOSE.read().unwrap_or_else(|e| e.into_inner());
         // Each copy once: a window may stand under several keys.
         let mut seen = std::collections::HashSet::new();
+        // The copies only: a window in place holds no host memory.
         let bytes: u64 = loose
             .values()
-            .filter(|s| seen.insert(Arc::as_ptr(s) as usize))
+            .filter(|s| s.place.is_none() && seen.insert(Arc::as_ptr(s) as usize))
             .map(|s| s.len)
             .sum();
         (seen.len() as u64, bytes)
@@ -2718,6 +2791,13 @@ impl Shadow {
         self.id
     }
 
+    /// For `crate::unified`'s tests: whether it is in place, its
+    /// `unified` bits, whether through a view of ours, and its span.
+    #[cfg(test)]
+    pub(crate) fn in_place_facts(&self) -> (bool, u8, bool, u64, u64) {
+        (self.place.is_some(), self.unified, self.own_view.is_some(), self.start, self.len)
+    }
+
     /// Offset of a title address from the buffer's start.
     pub(crate) fn offset(&self, address: u64) -> u64 {
         address - self.start + self.place.as_ref().map_or(0, |place| place.1)
@@ -2768,6 +2848,7 @@ impl Shadow {
             used: AtomicU64::new(crate::host::moment()),
             asked: [AtomicU64::new(u64::MAX), AtomicU64::new(0)],
             unsized_asks: AtomicU64::new(0),
+            ask_kinds: std::sync::atomic::AtomicU8::new(0),
             id: {
                 static NEXT: AtomicU64 = AtomicU64::new(1);
                 NEXT.fetch_add(1, Ordering::Relaxed)
@@ -2780,6 +2861,7 @@ impl Shadow {
             marked: Mutex::default(),
             fallback: Mutex::default(),
             own_view: None,
+            unified: 0,
         }
     }
 
@@ -2846,13 +2928,16 @@ impl Shadow {
     /// address) as written through views of this copy: in the parts of the
     /// page the submission armed, the bytes that differ from `before` (the
     /// page's 64 KiB before the submission) are the shaders' and go into
-    /// title memory, and the copy takes the title's others. Returns the
+    /// title memory, and the copy takes the title's others. Only the runs of
+    /// bytes whose value differs from the title's are written (the stretch
+    /// from the first to the last with `VICTORY_MARKED_RUNS=0`). Returns the
     /// bytes written.
     pub(crate) fn copy_back_marked(&self, page: usize, before: &[u8]) -> usize {
         let marked = self.marked.lock().unwrap_or_else(|e| e.into_inner()).clone();
         let (start, end) = (self.start as usize, (self.start + self.len) as usize);
         let mut written = 0;
         let mut title = Vec::new();
+        let mut runs: Vec<(usize, usize)> = Vec::new();
         for (a, e) in marked {
             let (from, to) = (a.max(page).max(start), e.min(page + PAGE).min(end));
             if from >= to {
@@ -2874,18 +2959,40 @@ impl Shadow {
             if !crate::host::read_into(from as *const u8, &mut title) {
                 continue;
             }
+            #[cfg(test)]
+            if let Some((thread, hook)) = AFTER_TITLE_READ.lock().unwrap_or_else(|e| e.into_inner()).as_mut()
+                && *thread == std::thread::current().id()
+            {
+                hook();
+            }
             // The card's byte where the copy changed, else the title's.
+            // The runs of bytes the card's value changed in title memory:
+            // only those go back, so a title write made after the read above,
+            // anywhere the card changed nothing, is not put back to the
+            // bytes read (after upstream VIctory #2918).
             let mut differs = 0u8;
-            for ((t, h), o) in title.iter_mut().zip(host.iter_mut()).zip(old) {
+            runs.clear();
+            for (i, ((t, h), o)) in title.iter_mut().zip(host.iter_mut()).zip(old).enumerate() {
                 let gpu = if *h != *o { 0xffu8 } else { 0 };
                 let merged = (*t & !gpu) | (*h & gpu);
                 differs |= merged ^ *t;
+                if merged != *t {
+                    match runs.last_mut() {
+                        Some(last) if last.0 + last.1 == i => last.1 += 1,
+                        _ => runs.push((i, 1)),
+                    }
+                }
                 *t = merged;
                 *h = merged;
             }
             if differs != 0 {
-                crate::host::write_mapped(from as *mut u8, title.as_ptr(), n);
-                written += n;
+                if marked_runs() {
+                    self.put_back(from, &title[..n], Some(&runs));
+                    written += runs.iter().map(|&(_, len)| len).sum::<usize>();
+                } else {
+                    self.put_back(from, &title[..n], None);
+                    written += n;
+                }
             }
             // A snapshot of a declared range over the same bytes (one that
             // kept its snapshot, or with `VICTORY_VIEW_MARKS=check`) takes
@@ -2991,7 +3098,10 @@ impl Shadow {
             // Through a view of ours on the title's section: declared all
             // the same, so that when the submission is done the guards are
             // told ([`Shadow::copy_back_with`]).
-            if self.own_view.is_some() {
+            // Declared too for windows `crate::unified` placed over private
+            // memory: the submission rules (`blocked_by`) know shader
+            // writes by their declarations only.
+            if self.own_view.is_some() || self.unified != 0 {
                 let len = len.min(self.left(address));
                 list.defer_gpu_write(self, address as usize, len as usize, false);
             }
@@ -3156,7 +3266,7 @@ impl Shadow {
             // view of ours no guard saw it, so the guards are told now,
             // the submission done (every other copy of those pages takes
             // them again).
-            if self.own_view.is_some() {
+            if self.own_view.is_some() || self.unified != 0 {
                 let (from, to) = self.inside(address, len);
                 crate::watch::gpu_wrote(self.start as usize + from, to - from);
             }
@@ -3214,7 +3324,7 @@ impl Shadow {
                 // there since stays.
                 // Under one hold of the stretch's guards
                 // (`VICTORY_BACK_RUNS_HELD`).
-                crate::host::write_mapped_runs(start + at, title.as_ptr(), &runs);
+                self.put_back(start + at, &title[..], Some(&runs));
                 written += runs.iter().map(|&(_, len)| len).sum::<usize>();
             }
             // Our write shows as a title write at the copy's next refresh,
@@ -3309,8 +3419,148 @@ impl Shadow {
             return n;
         }
         merge_race(as_read.as_deref(), (self.start, self.len), start + at, &title[..], "pc relay");
-        crate::host::write_mapped((start + at) as *mut u8, title.as_ptr(), n);
+        self.put_back(start + at, &title[..], None);
         n
+    }
+
+    /// What a copy-back made of title memory `[at, at + bytes.len())`
+    /// goes in: the `runs` of it (offsets, lengths; `None`: all of it), the
+    /// rest of the stretch being the title's as read.
+    ///
+    /// With `crate::lazy` on (`VICTORY_LAZY_BACK=1`), the whole pages of
+    /// private memory inside this copy's title buffer are kept there
+    /// instead (title memory made no-access until something needs them),
+    /// and only the rest is written. Kept pages are told as written to
+    /// every other copy of them (`crate::watch::wrote_own`); this copy,
+    /// which holds the same bytes, notes itself current there if it was
+    /// before, so that its next refresh does not take the page again (the
+    /// census of victory-fork #1169: nearly all a copy-back writes is read
+    /// again only by that refresh). Textures placed there are told.
+    fn put_back(&self, at: usize, bytes: &[u8], runs: Option<&[(usize, usize)]>) {
+        let n = bytes.len();
+        let write = |runs: Option<&[(usize, usize)]>| {
+            if !self.write_quietly(at, bytes, runs) {
+                match runs {
+                    Some(runs) => crate::host::write_mapped_runs(at, bytes.as_ptr(), runs),
+                    None => crate::host::write_mapped(at as *mut u8, bytes.as_ptr(), n),
+                }
+            }
+        };
+        // Windows outside buffers may hold anything; view memory shows the
+        // same pages elsewhere; in place there is nothing to put back.
+        if !crate::lazy::on() || self.window || self.place.is_some() || self.own_view.is_some() || self.guarded() {
+            write(runs);
+            return;
+        }
+        let start = self.start as usize;
+        let deferred = crate::lazy::defer(at, bytes, runs, (start, start + self.len as usize));
+        if deferred.kept > 0 {
+            self.told_written(at, n, !crate::lazy::retake());
+        }
+        // The rest as before, a hold of its guards for each group of runs
+        // with no kept page between them (a hold puts the pending pages
+        // under it back first).
+        let left = &deferred.left;
+        let mut from = 0;
+        for i in 1..=left.len() {
+            let split = i == left.len() || {
+                let (gap, end) = (left[i - 1].0 + left[i - 1].1, left[i].0);
+                crate::lazy::touches(at + gap, end - gap)
+            };
+            if split {
+                write(Some(&left[from..i]));
+                from = i;
+            }
+        }
+    }
+
+    /// Bytes of `[at, at + n)` this copy made went into title memory with
+    /// no write the write watch sees (kept pending by `crate::lazy`, or
+    /// written with the watch's bits reset after, [`Shadow::write_quietly`]):
+    /// what such a write would have told, told. The journal takes the pages
+    /// as written (every other copy of them takes them again), and this
+    /// copy, which holds the same bytes, notes itself current there if it
+    /// was before and `current`. Textures placed there are told.
+    fn told_written(&self, at: usize, n: usize, current: bool) {
+        // A placed texture there changed with no descriptor written.
+        crate::descriptor::host::remapped(at, n);
+        let base = self.start as usize / PAGE;
+        for page in at / PAGE..(at + n).div_ceil(PAGE) {
+            let (before, now) = crate::watch::wrote_own(page, &[]);
+            if !current {
+                continue;
+            }
+            let mut copied = self.copied.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(taken) = page.checked_sub(base).and_then(|i| copied.get_mut(i))
+                && *taken != 0
+                && *taken >= before
+            {
+                *taken = (*taken).max(now);
+            }
+        }
+    }
+
+    /// With `VICTORY_BACK_QUIET=1` (off by default; after victory-fork pull
+    /// request #1188 by Yorivel, for the census of #1169): a copy-back
+    /// written into private, write-watched title memory as before, then
+    /// the kernel's write-watch bits of its pages reset, so the write does
+    /// not read as the title's at the next asking; the journal is told
+    /// instead ([`Shadow::told_written`]), so every other copy takes the
+    /// pages again and this one, which made the bytes, notes itself
+    /// current rather than taking its own output in again (most of what
+    /// the layer re-reads of copied-back pages, by the census). False with
+    /// nothing written if the switch is off, the copy is in place, the
+    /// memory is not write-watched (view memory: the asking fails), or the
+    /// title wrote one of the pages since the last asking (its bit would be
+    /// reset too): the caller writes as before.
+    ///
+    /// shortcut: a title write to one of the pages between our write and
+    /// the reset is lost to the write watch (the copies keep the bytes from
+    /// before it until the page is written again).
+    fn write_quietly(&self, at: usize, bytes: &[u8], runs: Option<&[(usize, usize)]>) -> bool {
+        use windows_sys::Win32::System::Memory::{GetWriteWatch, ResetWriteWatch};
+        /// Since the start: stretches written quietly, their bytes,
+        /// stretches written the old way.
+        static QUIET: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
+        if !quiet_back() || self.place.is_some() || bytes.is_empty() {
+            return false;
+        }
+        let (lo, hi) = match runs {
+            Some([]) => return false,
+            Some(runs) => (runs[0].0, runs.iter().map(|&(off, len)| off + len).max().unwrap_or(0)),
+            None => (0, bytes.len()),
+        };
+        let kernel = 4096;
+        let first = (at + lo) & !(kernel - 1);
+        let end = (at + hi).next_multiple_of(kernel);
+        let mut found = [std::ptr::null_mut::<std::ffi::c_void>(); 32];
+        let mut count = found.len();
+        let mut granularity = 0u32;
+        // SAFETY: a question about title memory, answered into arrays of
+        // ours; no bit is reset.
+        let failed = unsafe { GetWriteWatch(0, first as _, end - first, found.as_mut_ptr(), &mut count, &mut granularity) } != 0;
+        if failed || count != 0 {
+            QUIET[2].fetch_add(1, Ordering::Relaxed);
+            return false;
+        }
+        match runs {
+            Some(runs) => crate::host::write_mapped_runs(at, bytes.as_ptr(), runs),
+            None => crate::host::write_mapped(at as *mut u8, bytes.as_ptr(), bytes.len()),
+        }
+        // SAFETY: the same write-watched pages.
+        unsafe { ResetWriteWatch(first as _, end - first) };
+        self.told_written(at + lo, hi - lo, true);
+        QUIET[1].fetch_add((hi - lo) as u64, Ordering::Relaxed);
+        let n = QUIET[0].fetch_add(1, Ordering::Relaxed) + 1;
+        if n.is_multiple_of(16384) {
+            tracing::info!(
+                "copy-backs written quietly (VICTORY_BACK_QUIET=1) since the start: {n} stretches, {} MB; written the old way \
+                 (not write-watched, or the title had written there): {}",
+                QUIET[1].load(Ordering::Relaxed) >> 20,
+                QUIET[2].load(Ordering::Relaxed)
+            );
+        }
+        true
     }
 
     /// With `crate::inplace::back_own` (`VICTORY_BACK_OWN_VIEW=1`): stores
@@ -4262,7 +4512,7 @@ impl Shadow {
             if differs != 0 {
                 crate::host::shaders_write(start + at, &title[..]);
                 merge_race(as_read.as_deref(), (self.start, self.len), start + at, &title[..], "card");
-                crate::host::write_mapped((start + at) as *mut u8, title.as_ptr(), n);
+                self.put_back(start + at, &title[..], None);
                 written = n;
             }
         } else {
@@ -4344,7 +4594,7 @@ impl Shadow {
             return n;
         }
         merge_race(as_read.as_deref(), (self.start, self.len), start + at, &title[..], "card relay");
-        crate::host::write_mapped((start + at) as *mut u8, title.as_ptr(), n);
+        self.put_back(start + at, &title[..], None);
         n
     }
 }
@@ -4421,15 +4671,29 @@ pub(crate) fn in_place_let_go(at: u64, len: u64) -> u64 {
     let end = at.saturating_add(len);
     let mut gone: Vec<Arc<Shadow>> = Vec::new();
     {
-        let mut map = LOOSE.write().unwrap_or_else(|e| e.into_inner());
-        let keys: Vec<(u64, u64)> = map
-            .range((at.saturating_sub(WINDOW), 0)..(end, 0))
-            .filter(|(key, shadow)| shadow.place.is_some() && key.0 + key.1 > at)
+        // Looked for under the shared lock: the runtime calls this for every
+        // page it remaps, and almost always nothing is in place there.
+        // Windows in place by `crate::unified` may be longer than a cell, and
+        // one that ends where the title's memory ended goes too when more
+        // is mapped right after it (a root view may read on into it).
+        let lower = (at.saturating_sub(crate::unified::EXTENT_MOST.max(WINDOW)), 0);
+        let hit = |key: &(u64, u64), shadow: &Arc<Shadow>| {
+            shadow.place.is_some() && (key.0 + key.1 > at || (shadow.unified & 4 != 0 && key.0 + key.1 == at))
+        };
+        let keys: Vec<(u64, u64)> = LOOSE
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .range(lower..(end, 0))
+            .filter(|(key, shadow)| hit(key, shadow))
             .map(|(key, _)| *key)
             .collect();
-        gone.extend(keys.into_iter().filter_map(|key| map.remove(&key)));
+        if !keys.is_empty() {
+            let mut map = LOOSE.write().unwrap_or_else(|e| e.into_inner());
+            gone.extend(keys.into_iter().filter_map(|key| map.remove(&key)));
+        }
     }
-    {
+    // Title buffers in place (`VICTORY_INPLACE=2`) only.
+    if crate::inplace::buffers_in_place() > 0 {
         // As `lookup` finds a buffer: among the 256 that start below.
         let mut map = buffers();
         for (_, entry) in map.range_mut(..(end, 0)).rev().take(256) {
@@ -4464,7 +4728,80 @@ pub(crate) fn spans() -> Vec<(u64, u64, bool)> {
 /// len)`, made on first use. A `len` of 0 or 1 is an ask without a length
 /// (a root view: the caller reads on to the copy's end).
 pub(crate) fn find(address: u64, len: u64) -> Option<Arc<Shadow>> {
-    lookup(address, len, false)
+    lookup(address, len, false, false)
+}
+
+/// What a root view of the title is (it has an address and no size).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum RootKind {
+    /// A constant buffer view: at most [`CBV_MOST`] bytes are read.
+    Cbv,
+    /// A shader resource view: it may read on to the end of its memory.
+    Srv,
+    /// An unordered access view: likewise.
+    Uav,
+}
+
+impl RootKind {
+    fn bit(self) -> u8 {
+        match self {
+            RootKind::Cbv => 1,
+            RootKind::Srv => 2,
+            RootKind::Uav => 4,
+        }
+    }
+}
+
+/// The copy of the memory a root view of `kind` at `address` reads: as
+/// [`find`] with no length, except that a constant buffer view outside any
+/// buffer object gets a window of its own size ([`cbv_windows`]) and not
+/// the 4 MiB cell its address is in.
+pub(crate) fn find_root(address: u64, kind: RootKind) -> Option<Arc<Shadow>> {
+    let shadow = lookup(address, 1, false, kind == RootKind::Cbv && cbv_windows())?;
+    shadow.ask_kinds.fetch_or(kind.bit(), Ordering::Relaxed);
+    Some(shadow)
+}
+
+/// The most a constant buffer view reads (Direct3D 12's limit, 4,096
+/// vectors of 16 bytes).
+const CBV_MOST: u64 = 64 << 10;
+
+/// The grid the windows of root constant buffer views are cut on.
+const CBV_GRID: u64 = 64 << 10;
+
+/// How many such small windows a 4 MiB cell holds before the next ask in it
+/// takes the cell's own window, which holds them all ([`cbv_pick`]).
+const CBV_CELL_MANY: usize = 8;
+
+/// Whether a root constant buffer view outside title buffers gets a window
+/// of 64 to 128 KiB, enough for the 64 KiB it can read, in place of the
+/// whole 4 MiB cell its address is in (`VICTORY_CBV_WINDOW=0`: the cell, as
+/// before). Such a view can never read past 64 KiB, but with no size of its
+/// own it was given the window of a root view without a length, which
+/// reaches to the end of its cell: 4 MiB of host memory, committed whole,
+/// for the 64 KiB read.
+///
+/// shortcut: a window made this way is another copy than the cell's, so the
+/// same memory may be in two windows (each brought up to date on its own);
+/// an existing window that holds the 64 KiB is taken in preference, and a
+/// cell with [`CBV_CELL_MANY`] small windows already takes its own.
+fn cbv_windows() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("VICTORY_CBV_WINDOW").is_none_or(|v| v != "0"))
+}
+
+/// The window (start, bytes) a root constant buffer view at `address` takes
+/// among `map`'s: one that holds the 64 KiB it can read if there is one,
+/// else a window of its own on the 64 KiB grid, or the 4 MiB cell's when
+/// the cell holds many small ones already.
+fn cbv_pick<V>(map: &BTreeMap<(u64, u64), V>, address: u64) -> (u64, u64) {
+    let end = address.saturating_add(CBV_MOST);
+    if let Some((&key, _)) = map.range(..=(address, u64::MAX)).rev().take(16).find(|(k, _)| k.0 + k.1 >= end) {
+        return key;
+    }
+    let cell = address & !(WINDOW - 1);
+    let small = map.range((cell, 0)..(cell + WINDOW, 0)).filter(|(k, _)| k.1 < WINDOW).take(CBV_CELL_MANY).count();
+    window_of(address, end, if small >= CBV_CELL_MANY { WINDOW } else { CBV_GRID })
 }
 
 /// As [`find`], for an ask that is done with the copy when its list has
@@ -4489,22 +4826,155 @@ pub(crate) fn find_any(address: u64, len: u64) -> Option<Arc<Shadow>> {
     if !fine() {
         return find(address, len);
     }
-    lookup(address, len, true)
+    lookup(address, len, true, false)
 }
 
-fn lookup(address: u64, len: u64, any: bool) -> Option<Arc<Shadow>> {
+/// Whether [`lookup`] remembers, per recording thread, the copies it
+/// answered asks with, and answers a repeat from there while the title's
+/// buffers have not changed (`VICTORY_SHADOW_CACHE=1`; off by default: every
+/// ask looks in the table under its shared lock, as before).
+///
+/// Every view of every draw asks, on every recording thread: the table's
+/// lock is shared, but taking it is a write to one cache line all the
+/// threads own in turn, and the search of the table is a walk of a tree.
+/// (From fxceless/victory-fork pull request #1224, Steenax6/VIctory-NVID
+/// 2e21055, where the table's lock cost the recording threads 32 ms a frame.)
+fn lookup_cache() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| {
+        let on = std::env::var_os("VICTORY_SHADOW_CACHE").is_some_and(|v| v == "1");
+        if on {
+            tracing::info!(
+                "each recording thread remembers the host copy an address range was answered with, while the title's                  buffers stand as they were (VICTORY_SHADOW_CACHE=1)"
+            );
+        }
+        on
+    })
+}
+
+/// An answer [`lookup`] gave from a buffer's copy: the ask, the
+/// [`buffer_generation`] it was given at, and the copy (weak: a remembered
+/// answer holds nothing, so a copy goes when it went before).
+struct Answer {
+    address: u64,
+    end: u64,
+    generation: u64,
+    shadow: std::sync::Weak<Shadow>,
+}
+
+/// Answers remembered per thread, by ask.
+const ANSWERS: usize = 512;
+
+thread_local! {
+    static ANSWERED: std::cell::RefCell<Vec<Option<Answer>>> = const { std::cell::RefCell::new(Vec::new()) };
+    /// Asks this thread answered from its memory, and asks it took to the
+    /// table, since it last added them to [`ANSWER_STATS`] (counted here, not
+    /// on a counter all threads share, which is what the memory is there to
+    /// spare them).
+    static COUNTED: [std::cell::Cell<u64>; 2] = const { [std::cell::Cell::new(0), std::cell::Cell::new(0)] };
+}
+
+/// Asks answered from a thread's memory, and asks that went to the table
+/// (each added in steps of [`HIT_STEP`] per thread), since the last frame
+/// line.
+static ANSWER_STATS: [AtomicU64; 2] = [const { AtomicU64::new(0) }; 2];
+const HIT_STEP: u64 = 4096;
+
+/// Counts an ask ([`ANSWER_STATS`]): `which` 0 answered from the memory, 1
+/// taken to the table.
+fn count_ask(which: usize) {
+    COUNTED.with(|c| {
+        let n = c[which].get() + 1;
+        if n >= HIT_STEP {
+            ANSWER_STATS[which].fetch_add(n, Ordering::Relaxed);
+            c[which].set(0);
+        } else {
+            c[which].set(n);
+        }
+    });
+}
+
+/// Where an ask is remembered.
+fn answer_slot(address: u64, end: u64) -> usize {
+    let h = (address ^ end.rotate_left(29)).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    (h >> 40) as usize % ANSWERS
+}
+
+/// The copy [`lookup`] answered `[address, end)` with on this thread, if the
+/// title's buffers are as they were at `generation` and the copy is still
+/// there. It is then the answer the table gives: what the table answers
+/// depends on the buffers in it and on which have a copy, and only what bumps
+/// [`BUFFER_GENERATION`] takes a copy away or changes which buffer an ask
+/// takes.
+fn answered(address: u64, end: u64, generation: u64) -> Option<Arc<Shadow>> {
+    let shadow = ANSWERED.with(|a| {
+        let a = a.borrow();
+        let hit = a.get(answer_slot(address, end))?.as_ref()?;
+        (hit.generation == generation && hit.address == address && hit.end == end).then(|| hit.shadow.upgrade()).flatten()
+    })?;
+    count_ask(0);
+    Some(shadow)
+}
+
+/// Remembers that `shadow` answered `[address, end)` at `generation`, read
+/// before the table was looked in: a change since makes the answer old at
+/// once, never new.
+fn remember(address: u64, end: u64, generation: u64, shadow: &Arc<Shadow>) {
+    ANSWERED.with(|a| {
+        let mut a = a.borrow_mut();
+        if a.is_empty() {
+            a.resize_with(ANSWERS, || None);
+        }
+        a[answer_slot(address, end)] = Some(Answer { address, end, generation, shadow: Arc::downgrade(shadow) });
+    });
+}
+
+/// For the frame line: how the memory of answers did (`VICTORY_SHADOW_CACHE=1`).
+pub(crate) fn lookup_line(frames: f64) {
+    if !lookup_cache() {
+        return;
+    }
+    let [hits, misses] = [0, 1].map(|i| ANSWER_STATS[i].swap(0, Ordering::Relaxed) as f64 / frames);
+    tracing::info!(
+        "asks for a title buffer's host copy per frame (VICTORY_SHADOW_CACHE=1): {hits:.0} answered from a recording          thread's memory (counted in steps of {HIT_STEP} per thread), {misses:.0} went to the table"
+    );
+}
+
+fn lookup(address: u64, len: u64, any: bool, cbv: bool) -> Option<Arc<Shadow>> {
+    // A root constant buffer view's ask may be answered with a small window
+    // of its own (`cbv`); such asks neither use nor fill the memory of
+    // answers, so another kind of ask is never handed a window cut for one.
+    lookup_as(address, len, any, cbv, !cbv && lookup_cache())
+}
+
+/// [`lookup`], with the memory of answers ([`lookup_cache`]) or without.
+fn lookup_as(address: u64, len: u64, any: bool, cbv: bool, cache: bool) -> Option<Arc<Shadow>> {
     let end = address.checked_add(len.max(1))?;
+    // Read before the table is: a change that comes between makes what is
+    // remembered below old at once.
+    let generation = buffer_generation();
+    if cache {
+        if let Some(shadow) = answered(address, end, generation) {
+            return Some(shadow);
+        }
+        count_ask(1);
+    }
     // The copy is there for nearly every ask: found under the shared lock.
     {
         let map = buffers_shared();
         let found = map.range(..=(address, usize::MAX)).rev().take(64).find(|(_, e)| e.end >= end);
         match found {
-            Some((_, Entry { shadow: Some(shadow), .. })) => return Some(shadow.clone()),
+            Some((_, Entry { shadow: Some(shadow), .. })) => {
+                if cache {
+                    remember(address, end, generation, shadow);
+                }
+                return Some(shadow.clone());
+            }
             // To be made: below, alone.
             Some(_) => {}
             None => {
                 drop(map);
-                return loose(address, end, len <= 1, any);
+                return loose(address, end, len <= 1, any, cbv);
             }
         }
     }
@@ -4517,7 +4987,7 @@ fn lookup(address: u64, len: u64, any: bool) -> Option<Arc<Shadow>> {
         .map(|(k, _)| *k);
     let Some(key) = key else {
         drop(map);
-        return loose(address, end, len <= 1, any);
+        return loose(address, end, len <= 1, any, cbv);
     };
     let entry = map.get_mut(&key)?;
     if entry.shadow.is_none() {
@@ -4591,7 +5061,7 @@ fn lookup(address: u64, len: u64, any: bool) -> Option<Arc<Shadow>> {
 /// shortcut: a window is 4 MiB however little of it is read (the memory
 /// line says how much was ever asked for, and how much was ever copied);
 /// [`window`] cuts the windows of asks that give a length on a finer grid.
-const WINDOW: u64 = 4 << 20;
+pub(crate) const WINDOW: u64 = 4 << 20;
 
 /// The grid the windows of asks with a length are cut on, in bytes: 4 MiB
 /// unless `VICTORY_WINDOW_KB` names a smaller power of two (64 at least).
@@ -4626,6 +5096,27 @@ fn grid(kb: Option<u64>) -> u64 {
 fn window_of(address: u64, end: u64, grid: u64) -> (u64, u64) {
     let start = address & !(grid - 1);
     (start, end.next_multiple_of(grid) - start)
+}
+
+/// Whether a marked copy-back ([`Shadow::copy_back_marked`]) writes only the
+/// runs of bytes the card changed (`VICTORY_MARKED_RUNS=0`: the stretch from
+/// the first to the last changed byte, with the title's bytes read between
+/// them, as before).
+fn marked_runs() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("VICTORY_MARKED_RUNS").is_none_or(|v| v != "0"))
+}
+
+/// Tests only: run between a marked copy-back's read of title memory and its
+/// write, where a title write can land.
+#[cfg(test)]
+static AFTER_TITLE_READ: std::sync::Mutex<Option<(std::thread::ThreadId, Box<dyn FnMut() + Send>)>> =
+    std::sync::Mutex::new(None);
+
+/// `VICTORY_BACK_QUIET=1`: see [`Shadow::write_quietly`]. Off by default.
+fn quiet_back() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("VICTORY_BACK_QUIET").is_some_and(|v| v == "1"))
 }
 
 /// Whether the window of an ask without a length begins at the ask instead
@@ -4687,7 +5178,7 @@ fn fine() -> bool {
 #[cfg(feature = "diagnostics")]
 pub(crate) fn window_cover() -> u64 {
     let loose = LOOSE.read().unwrap_or_else(|e| e.into_inner());
-    cover(loose.keys().copied())
+    cover(loose.iter().filter(|(_, s)| s.place.is_none()).map(|(key, _)| *key))
 }
 
 /// The bytes `windows` (start, bytes; in order of start) lie over, each
@@ -4720,12 +5211,29 @@ fn longest_tail(windows: impl Iterator<Item = (u64, u64)>, address: u64, end: u6
 /// Read shared by the asks that find their window there, as [`BUFFERS`] is.
 static LOOSE: RwLock<BTreeMap<(u64, u64), Arc<Shadow>>> = RwLock::new(BTreeMap::new());
 
-fn loose(address: u64, end: u64, unsized_ask: bool, any: bool) -> Option<Arc<Shadow>> {
+/// Of `map`'s windows, the one in place that holds what an ask needs: from
+/// `address` to `need_end`, and for a root view with no length (`reach`)
+/// to its cell's end, or as far as the title's memory goes
+/// (`crate::unified`).
+fn in_place_holder(map: &BTreeMap<(u64, u64), Arc<Shadow>>, address: u64, need_end: u64, reach: bool) -> Option<&Arc<Shadow>> {
+    let cell_end = (address | (WINDOW - 1)) + 1;
+    map.range(..=(address, u64::MAX))
+        .rev()
+        .take(32)
+        .find(|((start, len), s)| {
+            s.place.is_some() && start + len >= need_end && (!reach || s.unified & 4 != 0 || start + len >= cell_end)
+        })
+        .map(|(_, s)| s)
+}
+
+fn loose(address: u64, end: u64, unsized_ask: bool, any: bool, cbv: bool) -> Option<Arc<Shadow>> {
     let (cell, _) = window_of(address, end, WINDOW);
     let named = window_of(address, end, if unsized_ask { WINDOW } else { window() });
     // The window the ask takes, among those `map` holds.
     let pick = |map: &BTreeMap<(u64, u64), Arc<Shadow>>| {
-        if unsized_ask && tails() {
+        if cbv {
+            cbv_pick(map, address)
+        } else if unsized_ask && tails() {
             let there = map.range((cell, 0)..=(address, u64::MAX)).map(|(key, _)| *key);
             longest_tail(there, address, end).unwrap_or_else(|| tail_of(address, end))
         } else if any && fine() && !unsized_ask {
@@ -4747,24 +5255,60 @@ fn loose(address: u64, end: u64, unsized_ask: bool, any: bool) -> Option<Arc<Sha
             shadow.unsized_asks.fetch_add(1, Ordering::Relaxed);
         }
     };
+    // What the ask needs a window to hold: a constant buffer view reads 64
+    // KiB at most; a root view with no length reads to its window's end,
+    // which a window in place must reach too.
+    let unified = crate::unified::on();
+    let (need_end, need_reach) = if cbv { (address.saturating_add(CBV_MOST), false) } else { (end, unsized_ask) };
     // A window that is there (nearly every ask): under the shared lock.
     {
         let map = LOOSE.read().unwrap_or_else(|e| e.into_inner());
-        if let Some(shadow) = map.get(&pick(&map)) {
+        let held = if unified { in_place_holder(&map, address, need_end, need_reach) } else { None };
+        if let Some(shadow) = held.or_else(|| map.get(&pick(&map))) {
             note(shadow);
             return Some(shadow.clone());
         }
     }
+    // In place, made before the lock is taken (the host calls take a
+    // while); dropped if another thread made a window meanwhile.
+    let made = if unified { crate::unified::make(address, need_end, need_reach) } else { None };
     let mut map = LOOSE.write().unwrap_or_else(|e| e.into_inner());
     // Chosen again: another thread may have made one meanwhile.
     let (start, len) = pick(&map);
-    if let Some(shadow) = map.get(&(start, len)) {
+    let held = if unified { in_place_holder(&map, address, need_end, need_reach) } else { None };
+    if let Some(shadow) = held.or_else(|| map.get(&(start, len))) {
         note(shadow);
         return Some(shadow.clone());
     }
+    if let Some(made) = made {
+        use std::collections::btree_map::Entry;
+        // The same window made already (the nearest keys the holder looks
+        // at may have been crowded by small copies): that one.
+        match map.entry((made.start, made.len)) {
+            Entry::Occupied(held) => {
+                if held.get().place.is_some() {
+                    let shadow = held.get().clone();
+                    note(&shadow);
+                    return Some(shadow);
+                }
+            }
+            Entry::Vacant(slot) => {
+                crate::inplace::count_window(made.len);
+                let mut shadow = Shadow::placed(made.placed, made.start, made.len, true);
+                shadow.unified = made.bits;
+                let shadow = Arc::new(shadow);
+                note(&shadow);
+                slot.insert(shadow.clone());
+                return Some(shadow);
+            }
+        }
+    }
     // In place, if asked for and the window's memory can be opened: the
     // window is the title's own memory, with nothing to copy.
-    if let Some(placed) = crate::inplace::place_for(start, len, true) {
+    // (Not the small window of a constant buffer view: a heap for 64 KiB.)
+    if (!cbv || len >= WINDOW)
+        && let Some(placed) = crate::inplace::place_for(start, len, true)
+    {
         let shadow = Arc::new(Shadow::placed(placed, start, len, true));
         note(&shadow);
         map.insert((start, len), shadow.clone());
@@ -5040,6 +5584,56 @@ mod marked_tests {
         drop(memory);
     }
 
+    /// The title writes between where the card changed two bytes of a marked
+    /// page, after the copy-back read title memory there: only the card's
+    /// bytes go back, so the title's write stays (the stretch from the first
+    /// to the last changed byte, written with the bytes read, put the old
+    /// byte back over it). After upstream VIctory #2918.
+    #[test]
+    fn a_marked_copy_back_leaves_a_title_write_made_between_the_cards_bytes() {
+        if crate::host::host().is_none() {
+            return; // no host device to make buffers on
+        }
+        if !super::marked_runs() {
+            return; // turned off for this run
+        }
+        let memory = vec![0u8; 3 * PAGE];
+        let page = (memory.as_ptr() as usize).next_multiple_of(PAGE);
+        let title = |at: usize| (page + at) as *mut u8;
+        let copy = exact(page as u64, 2 * PAGE as u64).unwrap();
+        assert!(copy.update(page, 2 * PAGE) > 0);
+        let before = vec![0u8; PAGE];
+        copy.marked.lock().unwrap().push((page, page + PAGE));
+        // The card changes bytes 10, 11 and 4000; the title writes byte 2000
+        // once the copy-back has read the title's bytes.
+        // SAFETY: the copy's mapping, 2 pages.
+        unsafe {
+            copy.data.add(10).write(0xaa);
+            copy.data.add(11).write(0xab);
+            copy.data.add(4000).write(0xbb);
+        }
+        let address = title(2000) as usize;
+        *super::AFTER_TITLE_READ.lock().unwrap() = Some((
+            std::thread::current().id(),
+            // SAFETY: a byte of our memory, alive for the test.
+            Box::new(move || unsafe { (address as *mut u8).write(0x77) }),
+        ));
+        let written = copy.copy_back_marked(page, &before);
+        *super::AFTER_TITLE_READ.lock().unwrap() = None;
+        assert_eq!(written, 3, "the card's three bytes, in two runs");
+        // SAFETY: bytes of our memory.
+        let read = |at: usize| unsafe { title(at).read() };
+        assert_eq!(
+            (read(10), read(11), read(2000), read(4000)),
+            (0xaa, 0xab, 0x77, 0xbb),
+            "the card's bytes, and the title's write between them"
+        );
+        copy.marked.lock().unwrap().clear();
+        drop(copy);
+        super::EXACT.lock().unwrap().map.remove(&(page as u64, 2 * PAGE as u64));
+        drop(memory);
+    }
+
     /// A marked copy-back takes the title's bytes into the copy; the
     /// snapshot of a declared range over the same page takes them too, so
     /// that range's copy-back, which runs next, finds nothing new there and
@@ -5137,7 +5731,78 @@ mod exact_tests {
 
 #[cfg(test)]
 mod window_tests {
-    use super::{WINDOW, cover, grid, holder, longest_tail, tail_of, window_of};
+    use super::{Arc, CBV_CELL_MANY, CBV_GRID, CBV_MOST, WINDOW, cbv_pick, cover, grid, holder, longest_tail, tail_of, window_of};
+    use std::collections::BTreeMap;
+
+    /// A root constant buffer view reads 64 KiB at most: its window is the
+    /// 64 KiB cells that hold them (64 or 128 KiB), an existing window that
+    /// holds them is taken instead, and a cell with many small windows
+    /// already takes its own 4 MiB window.
+    #[test]
+    fn a_constant_buffer_view_takes_a_window_as_big_as_what_it_reads() {
+        let cell = 0xd_1200_0000u64;
+        let mut map: BTreeMap<(u64, u64), ()> = BTreeMap::new();
+        // Nothing there: 64 KiB cells, enough for the 64 KiB from the ask.
+        let ask = cell + 0x12_3100;
+        let (start, len) = cbv_pick(&map, ask);
+        assert_eq!((start, len), (cell + 0x12_0000, 2 * CBV_GRID));
+        assert!(start <= ask && start + len >= ask + CBV_MOST);
+        // On the grid itself it needs one cell only.
+        assert_eq!(cbv_pick(&map, cell + 0x3_0000), (cell + 0x3_0000, CBV_GRID));
+        // A window that holds the range is taken, whatever its size.
+        map.insert((cell + 0x10_0000, 0x10_0000), ());
+        assert_eq!(cbv_pick(&map, ask), (cell + 0x10_0000, 0x10_0000));
+        // One that holds a part only is not.
+        map.clear();
+        map.insert((cell + 0x12_0000, CBV_GRID), ());
+        assert_eq!(cbv_pick(&map, ask), (cell + 0x12_0000, 2 * CBV_GRID));
+        // With many small windows in the cell, the cell's own.
+        map.clear();
+        for i in 0..CBV_CELL_MANY as u64 {
+            map.insert((cell + 4 * i * CBV_GRID, 2 * CBV_GRID), ());
+        }
+        assert_eq!(cbv_pick(&map, cell + 0x3e_0000 + 0x100), (cell, WINDOW));
+        // Small windows of other cells do not count.
+        let elsewhere = cell + 2 * WINDOW;
+        assert_eq!(cbv_pick(&map, elsewhere + 0x100), (elsewhere, 2 * CBV_GRID));
+        // The window always holds the 64 KiB asked from the address.
+        for ask in [cell + 0x1_0000, cell + 0x3f_ff00, cell + 0x30_1234] {
+            map.clear();
+            let (start, len) = cbv_pick(&map, ask);
+            assert!(start <= ask && start + len >= ask + CBV_MOST, "{ask:#x}");
+        }
+    }
+
+    /// On a host device: a root constant buffer view outside buffers is a
+    /// window of its own size, a root shader resource view the 4 MiB cell,
+    /// and the view that asks for what a window holds takes that window.
+    #[test]
+    fn a_root_constant_buffer_view_has_a_small_window_and_a_root_srv_the_cell() {
+        use super::{RootKind, find_root};
+        use windows_sys::Win32::System::Memory::{MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE, VirtualAlloc};
+        if crate::host::host().is_none() || std::env::var_os("VICTORY_CBV_WINDOW").is_some_and(|v| v == "0") {
+            eprintln!("window_tests: skipped, no host device or VICTORY_CBV_WINDOW=0");
+            return;
+        }
+        // SAFETY: a plain allocation of our own, never freed here.
+        let base = unsafe { VirtualAlloc(std::ptr::null(), 3 * WINDOW as usize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE) } as u64;
+        assert_ne!(base, 0);
+        let cell = (base + WINDOW - 1) & !(WINDOW - 1);
+        let cbv = find_root(cell + 0x12_3100, RootKind::Cbv).expect("a window");
+        assert!(cbv.window);
+        assert_eq!((cbv.start, cbv.len), (cell + 0x12_0000, 2 * CBV_GRID));
+        assert!(cbv.left(cell + 0x12_3100) >= CBV_MOST);
+        // The same memory asked for again takes the same window.
+        let again = find_root(cell + 0x12_3200, RootKind::Cbv).expect("a window");
+        assert!(Arc::ptr_eq(&cbv, &again));
+        // A root shader resource view in another cell reads to the cell's end.
+        let srv = find_root(cell + WINDOW + 0x4_1100, RootKind::Srv).expect("a window");
+        assert_eq!((srv.start, srv.len), (cell + WINDOW, WINDOW));
+        // Its cell holds the 64 KiB a constant buffer view asks for there.
+        let held = find_root(cell + WINDOW + 0x8_0100, RootKind::Cbv).expect("a window");
+        assert!(Arc::ptr_eq(&srv, &held));
+        assert_eq!(held.ask_kinds.load(std::sync::atomic::Ordering::Relaxed), 3);
+    }
 
     /// An ask that may take any window takes the longest that holds all of
     /// it, and none that holds only a part.
@@ -5443,4 +6108,46 @@ pub(crate) fn stale_report() -> String {
         STALE[1].load(Ordering::Relaxed),
         STALE[2].load(Ordering::Relaxed),
     )
+}
+
+#[cfg(test)]
+mod lookup_tests {
+    use super::{lookup_as, register, unregister};
+    use std::sync::Arc;
+
+    /// The answers a thread remembers (`VICTORY_SHADOW_CACHE=1`) are the
+    /// table's: the same copy while the table stands, the inner buffer once
+    /// one is added, the outer one again when it goes, and not the copy of a
+    /// buffer taken out. (After fxceless/victory-fork pull request #1224.)
+    #[test]
+    fn remembered_answers_follow_the_table() {
+        use windows_sys::Win32::System::Memory::{
+            MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_READWRITE, VirtualAlloc, VirtualFree,
+        };
+        if crate::host::host().is_none() {
+            return; // no host GPU
+        }
+        let find = |address: u64, len: u64| lookup_as(address, len, false, false, true);
+        const LEN: usize = 1 << 16;
+        // SAFETY: a plain allocation of our own.
+        let memory = unsafe { VirtualAlloc(std::ptr::null(), LEN, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE) };
+        assert!(!memory.is_null());
+        let at = memory as u64;
+        let (outer, inner) = (0x71_0001usize, 0x71_0002usize);
+        register(outer, at, LEN as u64);
+        let one = find(at + 0x100, 0x40).expect("a host copy");
+        for _ in 0..3 {
+            assert!(Arc::ptr_eq(&find(at + 0x100, 0x40).unwrap(), &one));
+        }
+        register(inner, at + 0x100, 0x100);
+        let two = find(at + 0x100, 0x40).expect("the inner buffer's copy");
+        assert!(!Arc::ptr_eq(&two, &one), "the inner buffer, added since");
+        assert!(Arc::ptr_eq(&find(at + 0x100, 0x40).unwrap(), &two));
+        unregister(inner, at + 0x100);
+        assert!(Arc::ptr_eq(&find(at + 0x100, 0x40).unwrap(), &one), "the outer again");
+        unregister(outer, at);
+        assert!(find(at + 0x100, 0x40).is_none_or(|s| !Arc::ptr_eq(&s, &one)), "not the copy of a buffer gone");
+        // SAFETY: this allocation belongs to the test.
+        unsafe { VirtualFree(memory, 0, MEM_RELEASE) };
+    }
 }

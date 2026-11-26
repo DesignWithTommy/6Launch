@@ -105,7 +105,7 @@ pub(crate) struct Spill {
     first: u32,
     titles: u32,
     /// The table shaders read: one dword per title slot from `first` to
-    /// `VIEW_REMAP_END`, the host slot or `u32::MAX` (mapped, written here).
+    /// `VIEW_REMAP_END`, the host slot or 0 (mapped, written here).
     table: (ID3D12Resource, usize, u64),
     /// The title slots shaders found without one (`VIEW_FAULTS` dwords, 0 a sink).
     faults: (ID3D12Resource, usize, u64),
@@ -145,7 +145,7 @@ pub(crate) fn spill_fallback() -> (u64, u64) {
         let (faults, sink) = host.shared_buffer(u64::from(VIEW_FAULTS) * 4)?;
         // SAFETY: fresh mappings of those sizes.
         unsafe {
-            std::ptr::write_bytes(data, 0xFF, VIEW_REMAP_END as usize * 4);
+            std::ptr::write_bytes(data, 0, VIEW_REMAP_END as usize * 4);
             std::ptr::write_bytes(sink, 0, VIEW_FAULTS as usize * 4);
         }
         Some((table, faults))
@@ -1059,7 +1059,7 @@ impl HostHeap {
                     };
                     Some((buffer, data as usize, gpu))
                 };
-                let table = make(VIEW_REMAP_END - count, 0xFF, "table")?;
+                let table = make(VIEW_REMAP_END - count, 0, "table")?;
                 let faults = make(VIEW_FAULTS, 0, "faults")?;
                 // The block's last slot (the one below the null slot) views the notes.
                 let first_slot = count + DYNAMIC - reserved;
@@ -1299,6 +1299,12 @@ impl HostHeap {
                 }
             }
         }
+        static READ: [std::sync::atomic::AtomicU64; 2] = [const { std::sync::atomic::AtomicU64::new(0) }; 2];
+        let calls = READ[0].fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+        let total = READ[1].fetch_add(noted.len() as u64, std::sync::atomic::Ordering::Relaxed) + noted.len() as u64;
+        if calls.is_power_of_two() && calls >= 64 {
+            tracing::info!(calls, notes = total, "spilled view slots: notes read so far");
+        }
         let mut state = spill.state.lock().unwrap_or_else(|e| e.into_inner());
         // Slots given back three frames ago or more are free again.
         while state.resting.front().is_some_and(|&(f, _)| f + 3 <= frame) {
@@ -1321,7 +1327,7 @@ impl HostHeap {
                 let Some(old) = state.order.pop_front() else { break };
                 if let Some(slot) = state.slots.remove(&old) {
                     // SAFETY: inside the table's mapping (`old` is past `first`).
-                    unsafe { table.add((old - spill.first) as usize).write_volatile(u32::MAX) };
+                    unsafe { table.add((old - spill.first) as usize).write_volatile(0) };
                     state.resting.push_back((frame, slot));
                     state.taken_back += 1;
                 }

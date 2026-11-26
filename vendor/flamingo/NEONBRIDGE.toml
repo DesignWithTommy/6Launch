@@ -5,7 +5,7 @@
 name = "flamingo"
 fork = "victory-fork"
 rank = 5   # #5 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Flamingo bc06faf (GPL-3.0): claims 9-14 fps in the first scene; verified here: first mission at 5-7 fps, scene black"
+about = "Flamingo bd552a5 (GPL-3.0): claims 9-14 fps in the first scene; verified here: first mission at 5-7 fps, scene black"
 upstream = "https://github.com/realblastex/flamingo"
 build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--locked"]
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -33,6 +33,8 @@ preset_visible = ["VICTORY_AMBIENT_STUB=1", "VICTORY_SHADOWMASK_STUB=1"]
 
 preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
 
+preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads
+
 [env]
 VICTORY_WIDE_TEXTURES = "1"   # flamingo-log.cmd:49-51
 VICTORY_VIEW_GUARD = "0"
@@ -44,10 +46,9 @@ VICTORY_RELAY = "1"
 VICTORY_LATE_WAIT = "3"
 VICTORY_CARD_BUFFERS_MIN_MB = "1"
 VICTORY_CARD_BUFFERS_MB = "1024"
-VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_INDIRECT_WINDOW = "0"   # README.md settings, off since bd552a5
 VICTORY_SHADER_OPT = "0"
 VICTORY_WIDE_MERGE = "1"
-FLAMINGO_OSD = "1"
 FLAMINGO_DISCORD = "0"   # Neonbridge: no presence sent out unless the user turns it on
 VICTORY_PRESS_FILE = "{press}"
 

@@ -186,6 +186,12 @@ pub(crate) fn place_stretch(device: &ID3D12Device, start: u64, len: u64, section
         STRETCHES[2].fetch_add(1, Ordering::Relaxed);
         return Err(None);
     }
+    place_run(device, start, len, section, offset)
+}
+
+/// [`place_stretch`] for a stretch of any length (`crate::unified` has its
+/// own least length).
+pub(crate) fn place_run(device: &ID3D12Device, start: u64, len: u64, section: usize, offset: u64) -> Result<Placed, Option<windows::core::Error>> {
     let at = start & !(K64 as u64 - 1);
     let bias = start - at;
     let bytes = (start + len).next_multiple_of(K64 as u64) - at;
@@ -341,6 +347,7 @@ pub fn title_memory_freeing(at: usize, len: usize) {
     }
     let gone = crate::shadow::in_place_let_go(at as u64, len as u64);
     STATS[7].fetch_add(gone, Ordering::Relaxed);
+    crate::unified::let_go_for_remap(gone);
 }
 
 /// With [`stretch_on`]: the line of the stretches, with [`say`]'s.
@@ -402,6 +409,20 @@ pub(crate) enum From {
 
 /// Opens a heap on memory the process has.
 pub(crate) fn open(device: &ID3D12Device, from: From) -> windows::core::Result<ID3D12Heap> {
+    // The card reads that memory itself from now on: copy-back pages left
+    // pending there (`crate::lazy`) go into it first, and no more are made.
+    match from {
+        From::Region(at) => crate::lazy::in_place_allocation(at),
+        From::Part(at, bytes) => crate::lazy::in_place(at, bytes),
+        From::Section(_) => {}
+    }
+    // A heap opened from a section's handle keeps the whole section
+    // committed until the PC is restarted (measured on this class of PC,
+    // `unified_probe::unified_leak_probe`): only the probe asked for with
+    // `VICTORY_INPLACE_PROBE`, and the tests, ever do it.
+    if matches!(from, From::Section(_)) && !cfg!(test) && probe_level() == 0 {
+        return Err(windows::core::Error::from(windows::Win32::Foundation::E_ACCESSDENIED));
+    }
     // SAFETY: the calls take an address or a handle and check both
     // themselves; a refusal is an error code.
     unsafe {
@@ -577,6 +598,79 @@ pub(crate) fn pages_of(page: usize) -> Vec<usize> {
         return Vec::new();
     }
     v.pages.get(&(section, offset + within as u64)).cloned().unwrap_or_default()
+}
+
+/// A run of consecutive pages of one section that the title's views show
+/// at consecutive addresses ([`run_around`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Run {
+    /// Where it starts and ends in the title's address space.
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    /// The section's handle and the offset in it of `start`.
+    pub(crate) section: usize,
+    pub(crate) offset: u64,
+}
+
+/// The run of one section the view that holds `address` belongs to, found
+/// from the view and cut to `[lo, hi)`; `None` if no view holds `address`.
+/// Views that go on from one another at consecutive offsets of one section
+/// are one run.
+pub(crate) fn run_around(address: usize, lo: usize, hi: usize) -> Option<Run> {
+    let v = views();
+    let (&base, &(len, section, offset)) = v.views.range(..=address).next_back().filter(|(base, view)| **base + view.0 > address)?;
+    let (mut start, mut first) = (base, offset);
+    while start > lo {
+        let Some((&b, &(l, s, o))) = v.views.range(..start).next_back() else {
+            break;
+        };
+        if b + l != start || s != section || o + l as u64 != first {
+            break;
+        }
+        (start, first) = (b, o);
+    }
+    let (mut end, mut next) = (base + len, offset + len as u64);
+    while end < hi {
+        let Some(&(l, s, o)) = v.views.get(&end) else {
+            break;
+        };
+        if s != section || o != next {
+            break;
+        }
+        end += l;
+        next += l as u64;
+    }
+    let cut = start.max(lo);
+    Some(Run { start: cut, end: end.min(hi), section, offset: first + (cut - start) as u64 })
+}
+
+/// How far the title's views go on from `address` with no gap, of any
+/// sections, up to `hi`; `address` itself if no view holds it.
+pub(crate) fn mapped_end(address: usize, hi: usize) -> usize {
+    let v = views();
+    let Some((&base, &(len, _, _))) = v.views.range(..=address).next_back().filter(|(base, view)| **base + view.0 > address) else {
+        return address;
+    };
+    let mut end = base + len;
+    while end < hi {
+        let Some(&(l, _, _)) = v.views.get(&end) else {
+            break;
+        };
+        end += l;
+    }
+    end.min(hi)
+}
+
+/// Title buffers in place now (`VICTORY_INPLACE=2`).
+pub(crate) fn buffers_in_place() -> u64 {
+    STATS[2].load(Ordering::Relaxed)
+}
+
+/// Counts a window placed by `crate::unified` with the others
+/// ([`gone`] takes it off).
+pub(crate) fn count_window(len: u64) {
+    STATS[0].fetch_add(1, Ordering::Relaxed);
+    STATS[1].fetch_add(len, Ordering::Relaxed);
 }
 
 /// The title views that show any of the physical bytes `[offset, offset +
@@ -1430,6 +1524,7 @@ pub(crate) fn tick() {
     if level() > 0 || stretch_on() {
         say();
     }
+    crate::unified::tick();
     if probe_level() == 0 {
         return;
     }

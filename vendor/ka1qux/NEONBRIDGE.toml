@@ -2,7 +2,7 @@
 name = "ka1qux"
 fork = "VIctory"
 rank = 19   # #19 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "BRVIctory-ka1qux d70ff7b (GPL-3.0): victory-fork tuned on an AMD Radeon"
+about = "BRVIctory-ka1qux 6a7e871 (GPL-3.0): victory-fork tuned on an AMD Radeon"
 upstream = "https://github.com/ka1qux/BRVIctory-ka1qux"
 build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # README.md:297
 exe = "target/diag/victory.exe"
@@ -16,6 +16,10 @@ agility = false
 preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log (diagnostics build: host.rs reads it only there)
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (slow; diagnostics build only, host.rs cfg!(feature = "diagnostics"))
+preset_fsr = ["VICTORY_FSR=performance"]   # README.md: host FidelityFX upscaling (quality|balanced|performance|ultra-performance)
+preset_frame_gen = ["NEONBRIDGE_DIAG=1", "VICTORY_FSR=performance", "VICTORY_FRAME_GEN=1"]   # README.md: AMD frame generation, diagnostics builds
+
+preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads
 
 [env]
 VICTORY_INDIRECT_CLAMP = "0"   # README.md:310-315, the switches its state was measured with

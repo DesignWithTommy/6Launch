@@ -5250,6 +5250,21 @@ impl<'a> Lower<'a> {
         (self.s.m.select(c, any, at, first), any)
     }
 
+    /// `v_readfirstlane_b32`'s result `first` of `own` in a pixel shader: a helper lane takes
+    /// its own value instead (VIctory 06019553, Vax). On the console, whole-quad mode puts
+    /// helper lanes in EXEC, so a waterfall loop serves them too; on the host, wave operations
+    /// leave them out, and once only helper lanes are left in such a loop it runs to the
+    /// iteration limit in each of them (draws of 0.3 to 1.3 s, then DEVICE_HUNG). What a
+    /// helper lane computes only feeds derivatives, and its stores are dropped.
+    fn helper_reads_own(&mut self, own: V, first: V) -> V {
+        if !self.s.pixel {
+            return first;
+        }
+        let c = self.cur;
+        let helper = self.s.op(c, "isHelperLane.i1", Attr::ReadOnly, self.s.t.i1, 221, &[]);
+        self.s.m.select(c, helper, own, first)
+    }
+
     fn read_lane(&mut self, x: V, lane: V) -> V {
         self.s.op(
             self.cur,
@@ -8629,6 +8644,7 @@ impl<'a> Lower<'a> {
                 } else {
                     mine
                 };
+                let r = self.helper_reads_own(a, r);
                 int(self, r)
             }
             _ => {

@@ -12,8 +12,8 @@
 //! descriptor heaps, [`root`] root signatures, [`query`] query heaps,
 //! [`signature`] command signatures, [`pipeline`] pipeline states,
 //! [`frame`] frame pacing, [`object`] what all console graphics objects
-//! share, [`console`] which console model the title sees. Planned:
-//! `present` (swap chain).
+//! share, [`console`] which console model the title sees, `external` host
+//! libraries recording into title lists. Planned: `present` (swap chain).
 
 #[cfg(all(windows, feature = "diagnostics"))]
 mod bake_probe;
@@ -23,6 +23,8 @@ mod capture;
 mod renderdoc;
 #[cfg(windows)]
 mod cardmeter;
+#[cfg(windows)]
+mod compose;
 pub mod console;
 #[cfg(all(windows, feature = "diagnostics"))]
 mod copystat;
@@ -30,6 +32,8 @@ pub mod descriptor;
 pub mod device;
 #[cfg(windows)]
 mod ambient;
+#[cfg(windows)]
+mod awake;
 #[cfg(windows)]
 mod drvwatch;
 #[cfg(windows)]
@@ -39,16 +43,24 @@ mod spread;
 #[cfg(windows)]
 mod draw;
 pub mod dxgi;
+#[cfg(windows)]
+pub mod external;
 pub mod fence;
 pub mod frame;
 #[cfg(windows)]
 pub mod framelog;
+#[cfg(all(windows, feature = "diagnostics"))]
+mod framegen;
 #[cfg(windows)]
 mod host;
 #[cfg(windows)]
 mod indirect;
 #[cfg(windows)]
+mod lazy;
+#[cfg(windows)]
 mod inplace;
+#[cfg(windows)]
+mod unified;
 #[cfg(windows)]
 mod material_demand;
 pub mod list;
@@ -97,6 +109,10 @@ pub use bake_probe::{
 };
 #[cfg(windows)]
 pub use inplace::{title_memory_freeing, title_memory_section, title_memory_view};
+#[cfg(windows)]
+pub use unified::{in_place_on, title_memory_change};
+#[cfg(windows)]
+pub use lazy::{kernel_will_read, lazy_back_on, title_memory_commit, title_memory_release, title_memory_reserved};
 #[cfg(windows)]
 pub use watch::{
     Writing, title_memory_reading, title_memory_reading_now, title_memory_reading_range,

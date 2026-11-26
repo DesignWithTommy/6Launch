@@ -2,7 +2,7 @@
 name = "vertex"
 fork = "VIctory"
 rank = 11   # #11 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vertex 4c687ec (GPL-3.0): no crash in 16 of 18 sessions, longest 25 min; not yet run here"
+about = "Vertex 33f26c4 (GPL-3.0): no crash in 16 of 18 sessions, longest 25 min; not yet run here"
 upstream = "https://github.com/proneonn/Vertex"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # start.ps1:132
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -18,6 +18,7 @@ options = ["VICTORY_BVH_BUILDER=1: ray tracing, about 4 fps (README.md:123)"]
 preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log (diagnostics build: host.rs reads it only there)
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (slow; diagnostics build only, host.rs cfg!(feature = "diagnostics"))
+preset_tuned = ["VICTORY_LATE_WAIT=3", "VICTORY_WIDE_BACK=1"]   # start.ps1 -Tuned
 
 [env]
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family

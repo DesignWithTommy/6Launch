@@ -60,7 +60,7 @@ pub const SLOT_FAULTS: u8 = 253;
 /// Flamingo: on a capped host, title view slots past the ones mirrored in place
 /// ([`view_host_flag`]) get one of the host's slots when a shader asks for them. The root SRV
 /// `t<SLOT_VIEW_REMAP>` in [`ROOT_CBV_SPACE`] holds one dword per title slot from the first
-/// spilled one up to [`VIEW_REMAP_END`]: the host slot, or `u32::MAX` while it has none. A
+/// spilled one up to [`VIEW_REMAP_END`]: the host slot, or 0 while it has none. A
 /// shader that finds none reads the null slot and writes the title slot into the root UAV
 /// `u<SLOT_VIEW_FAULTS>` ([`VIEW_FAULTS`] dwords, dword 0 a sink); the host gives those slots
 /// a host slot for the frames to come.
@@ -546,13 +546,15 @@ impl Shader {
         let loaded = self.op(block, "rawBufferLoad.f32", Attr::ReadOnly, res, 139, &[table, byte, iu, mask, align]);
         let f = self.m.extract(block, loaded, 0);
         let spilled = self.m.cast(block, super::bitcode::Cast::Bitcast, f, i32t);
-        let slot = self.op(block, "binary.i32", Attr::ReadNone, i32t, 40, &[spilled, null]);
+        // 0: no host slot yet (spilled slots are dynamic ones, never 0): the null slot.
+        let some = self.op(block, "binary.i32", Attr::ReadNone, i32t, 40, &[spilled, one]);
+        let absent = self.m.bin(block, Bin::Sub, one, some);
+        let to_null = self.m.bin(block, Bin::Mul, absent, null);
+        let slot = self.m.bin(block, Bin::Add, spilled, to_null);
+        let slot = self.op(block, "binary.i32", Attr::ReadNone, i32t, 40, &[slot, null]);
         let to_slot = self.m.bin(block, Bin::Sub, slot, index);
         let shift = self.m.bin(block, Bin::Mul, over, to_slot);
         let titled = self.m.bin(block, Bin::Add, index, shift);
-        // None there yet: the title slot is noted (at the sink, dword 0, otherwise).
-        let k31 = k(self, 31);
-        let absent = self.m.bin(block, Bin::LShr, spilled, k31);
         let not_host = self.m.bin(block, Bin::Sub, one, host);
         let noted = self.m.bin(block, Bin::Mul, over, absent);
         let noted = self.m.bin(block, Bin::Mul, noted, not_host);
@@ -563,8 +565,9 @@ impl Shader {
         // The notes are a view of their buffer at the host slot below the null one
         // ([`view_faults_slot`]); a lane with nothing to note writes 1 GiB past the view's
         // end, which the card drops (no branch, no traffic). Vertex and geometry stages
-        // write views only with a flag the host need not take: they note nothing.
-        if self.pixel || self.mesh.is_some() || self.threads.is_some() {
+        // write it too: a view picked from the heap needs no flag for it (shader model 6.6
+        // hosts take views in every stage, and the validator counts only declared ones).
+        {
             let away = k(self, 1 << 30);
             let quiet = self.m.bin(block, Bin::Sub, one, noted);
             let off = self.m.bin(block, Bin::Mul, quiet, away);
@@ -1134,9 +1137,10 @@ mod title_index_tests {
         let over = (index.max(title - 1) - (title - 1)).min(1);
         let rel = index.wrapping_sub(title);
         let _entry = rel.min(VIEW_REMAP_END - title - 1);
-        let slot = spilled.min(null);
+        let absent = 1 - spilled.min(1);
+        let slot = spilled.wrapping_add(absent * null).min(null);
         let titled = index.wrapping_add(over.wrapping_mul(slot.wrapping_sub(index)));
-        let noted = over * (spilled >> 31) * (1 - host);
+        let noted = over * absent * (1 - host);
         let place = ((rel % (VIEW_FAULTS - 1)) + 1).wrapping_shl(2).wrapping_mul(noted);
         let own = index.wrapping_sub(HOST_INDEX);
         (titled.wrapping_add(host.wrapping_mul(own.wrapping_sub(titled))).min(null), place)
@@ -1146,10 +1150,10 @@ mod title_index_tests {
     fn spilled_title_slots_read_their_host_slot_or_note_a_fault() {
         let (title, null) = (737_855, 999_999);
         assert_eq!(spill(900_000, title, null, 990_000), (990_000, 0), "a host slot: no note");
-        let (slot, place) = spill(900_000, title, null, u32::MAX);
+        let (slot, place) = spill(900_000, title, null, 0);
         assert_eq!(slot, null, "none yet: the null slot");
         assert!(place != 0 && place < 4 * super::VIEW_FAULTS, "and a note");
-        assert_eq!(spill(5, title, null, u32::MAX), (5, 0), "in place: no note whatever the entry");
-        assert_eq!(spill(HOST_INDEX + title + 9, title, null, u32::MAX), (title + 9, 0), "the host's own: no note");
+        assert_eq!(spill(5, title, null, 0), (5, 0), "in place: no note whatever the entry");
+        assert_eq!(spill(HOST_INDEX + title + 9, title, null, 0), (title + 9, 0), "the host's own: no note");
     }
 }

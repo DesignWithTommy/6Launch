@@ -9,6 +9,8 @@ mod inspect;
 mod prebuild;
 mod run;
 mod shader;
+#[cfg(windows)]
+mod title_profile;
 mod translate;
 
 use std::path::PathBuf;
@@ -230,6 +232,8 @@ fn show_config() -> Result<()> {
     println!("game_dir    : {}", status(&cfg.game_dir));
     println!("cache_dir   : {}", cfg.cache_dir.display());
     println!("data_dir    : {}", cfg.data_dir.display());
+    println!("fidelityfx  : {}", status(&cfg.fidelityfx_dir));
+    println!("fsr_profile : {}", status(&cfg.fsr_profile));
     for t in &cfg.test_titles {
         println!("test_title  : {}", status(&Some(t.clone())));
     }

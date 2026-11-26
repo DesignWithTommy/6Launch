@@ -293,6 +293,17 @@ fn committed() -> u64 {
     info.CommitTotal as u64 * info.PageSize as u64
 }
 
+/// This process's own commit charge, in bytes: what it alone holds
+/// committed, free of the other processes' noise in [`committed`].
+fn process_committed() -> u64 {
+    use windows_sys::Win32::System::ProcessStatus::{K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+    let mut info = PROCESS_MEMORY_COUNTERS { cb: size_of::<PROCESS_MEMORY_COUNTERS>() as u32, ..Default::default() };
+    // SAFETY: a writable structure of the size given.
+    unsafe { K32GetProcessMemoryInfo(GetCurrentProcess(), &mut info, info.cb) };
+    info.PagefileUsage as u64
+}
+
 /// A probe, run by hand: what the system keeps committed after a heap over
 /// memory the process has was opened, released, and the memory freed. One
 /// case at a time (`VICTORY_PROBE_MB` each): a committed section opened
@@ -862,6 +873,190 @@ fn unified_stretch_abandon_probe() {
         println!("stretch open: {}; ending the process", placed.is_ok());
         std::mem::forget(placed);
         std::mem::forget(gpu);
+        TerminateProcess(GetCurrentProcess(), 0);
+    }
+}
+
+/// Windows in place as `VICTORY_UNIFIED=1` makes them (`crate::unified::make`,
+/// on the host device the layer itself uses): one per 4 MiB cell of
+/// `VICTORY_PROBE_MB` of private memory, then of title-like view memory,
+/// each its own heap, buffer and (over views) view of ours. Opened with the
+/// switch in the environment, so that the code run is the layer's own.
+/// Prints the system's committed bytes at each step, the time a window
+/// takes, and what the host answers to a decommit under an open heap.
+#[test]
+#[ignore = "a probe of the host device, run by hand with VICTORY_UNIFIED=1"]
+fn unified_windows_probe() {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Memory::{
+        MEM_DECOMMIT, MEM_RELEASE, MEMORY_MAPPED_VIEW_ADDRESS, UnmapViewOfFile2, VirtualFree,
+    };
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+    const PAGE: usize = 64 << 10;
+    const CELL: usize = 4 << 20;
+    const MEM_WRITE_WATCH: u32 = 0x20_0000;
+    let mib = |v: i64| v / (1 << 20);
+    if !crate::unified::on() {
+        println!("run with VICTORY_UNIFIED=1: the probe makes the layer's own windows");
+        return;
+    }
+    let Some(host) = crate::host::host() else {
+        println!("no host device");
+        return;
+    };
+    println!("host device is the software adapter: {}", host.software());
+    let size = size();
+    // SAFETY: memory and views made here and released here; windows are
+    // dropped before the memory under them is released.
+    unsafe {
+        // Private memory: a committed arena, every page touched.
+        let total = size.max(96 << 20);
+        let c0 = committed() as i64;
+        let base = VirtualAlloc(std::ptr::null(), total, MEM_COMMIT | MEM_RESERVE | MEM_WRITE_WATCH, PAGE_READWRITE).cast::<u8>();
+        assert!(!base.is_null());
+        for at in (0..total).step_by(4096) {
+            base.add(at).write(1);
+        }
+        let c1 = committed() as i64;
+        let first = (base as usize).next_multiple_of(CELL);
+        let own1 = process_committed() as i64;
+        let started = std::time::Instant::now();
+        let mut planning = std::time::Duration::ZERO;
+        let mut made = Vec::new();
+        let mut at = first;
+        while at + CELL <= base as usize + size.min(total) {
+            let planned = std::time::Instant::now();
+            let _ = crate::unified::plan(at as u64 + 0x100, at as u64 + 0x101, true);
+            planning += planned.elapsed();
+            if let Some(m) = crate::unified::make(at as u64 + 0x100, at as u64 + 0x101, true) {
+                made.push(m);
+            }
+            at += CELL;
+        }
+        let took = started.elapsed().saturating_sub(planning);
+        let c2 = committed() as i64;
+        let own2 = process_committed() as i64;
+        let bytes: u64 = made.iter().map(|m| m.len).sum();
+        let refused = made.first().map(|m| VirtualFree(m.start as *mut _, PAGE, MEM_DECOMMIT) == 0);
+        println!(
+            "private memory, {} windows of {} MiB in all, {:.1} ms each (of which {:.1} ms working the plan out): +{} MiB when the memory was made and touched; {:+} MiB with the windows open; \
+             (this process alone: {:+} MiB); a decommit under an open window refused: {refused:?}",
+            made.len(),
+            bytes >> 20,
+            took.as_secs_f64() * 1000.0 / made.len().max(1) as f64,
+            planning.as_secs_f64() * 1000.0 / made.len().max(1) as f64,
+            mib(c1 - c0),
+            mib(c2 - c1),
+            mib(own2 - own1)
+        );
+        drop(made);
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let c3 = committed() as i64;
+        let decommit = VirtualFree(base.add(first - base as usize).cast(), PAGE, MEM_DECOMMIT) != 0;
+        VirtualFree(base.cast(), 0, MEM_RELEASE);
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let c4 = committed() as i64;
+        println!(
+            "  {:+} MiB after the windows were released; a decommit then works: {decommit}; left after the memory was freed: {:+} MiB",
+            mib(c3 - c2),
+            mib(c4 - c0)
+        );
+        // View memory: a reserved section shown 64 KiB a view, registered
+        // with the layer's view table as the runtime registers them.
+        let c0 = committed() as i64;
+        let (section, base) = title_views(size);
+        for k in 0..size / PAGE {
+            crate::inplace::title_memory_view(base as usize + k * PAGE, PAGE, section as usize, (k * PAGE) as u64);
+        }
+        let c1 = committed() as i64;
+        let first = (base as usize).next_multiple_of(CELL);
+        let own1 = process_committed() as i64;
+        let started = std::time::Instant::now();
+        let mut made = Vec::new();
+        let mut at = first;
+        while at + CELL <= base as usize + size {
+            if let Some(m) = crate::unified::make(at as u64 + 0x100, at as u64 + 0x101, true) {
+                made.push(m);
+            }
+            at += CELL;
+        }
+        let took = started.elapsed();
+        let c2 = committed() as i64;
+        let own2 = process_committed() as i64;
+        let bytes: u64 = made.iter().map(|m| m.len).sum();
+        println!(
+            "view memory, {} windows of {} MiB in all, {:.1} ms each: +{} MiB when the title's views were made; {:+} MiB with the windows open (this process alone: {:+} MiB)",
+            made.len(),
+            bytes >> 20,
+            took.as_secs_f64() * 1000.0 / made.len().max(1) as f64,
+            mib(c1 - c0),
+            mib(c2 - c1),
+            mib(own2 - own1)
+        );
+        drop(made);
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let c3 = committed() as i64;
+        crate::inplace::views_gone(base as usize, size);
+        let process = GetCurrentProcess();
+        for k in 0..size / PAGE {
+            UnmapViewOfFile2(process, MEMORY_MAPPED_VIEW_ADDRESS { Value: base.add(k * PAGE).cast() }, 0);
+        }
+        CloseHandle(section);
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let c4 = committed() as i64;
+        println!(
+            "  {:+} MiB after the windows were released; left after the title's views and the section went: {:+} MiB",
+            mib(c3 - c2),
+            mib(c4 - c0)
+        );
+    }
+}
+
+/// As [`unified_windows_probe`], and the process is ended (as `taskkill /F`
+/// ends it) with the windows still open. The caller compares the system's
+/// committed bytes before and after.
+#[test]
+#[ignore = "a probe of the host device, run by hand with VICTORY_UNIFIED=1; ends the process"]
+fn unified_windows_abandon_probe() {
+    use windows_sys::Win32::System::Threading::{GetCurrentProcess, TerminateProcess};
+    const PAGE: usize = 64 << 10;
+    const CELL: usize = 4 << 20;
+    const MEM_WRITE_WATCH: u32 = 0x20_0000;
+    if !crate::unified::on() {
+        println!("run with VICTORY_UNIFIED=1");
+        return;
+    }
+    // SAFETY: memory and views made here, never released.
+    unsafe {
+        let size = size();
+        let before = committed();
+        let total = size.max(96 << 20);
+        let base = VirtualAlloc(std::ptr::null(), total, MEM_COMMIT | MEM_RESERVE | MEM_WRITE_WATCH, PAGE_READWRITE).cast::<u8>();
+        for at in (0..total).step_by(4096) {
+            base.add(at).write(1);
+        }
+        let mut open = 0;
+        let mut at = (base as usize).next_multiple_of(CELL);
+        while at + CELL <= base as usize + size.min(total) {
+            if let Some(m) = crate::unified::make(at as u64 + 0x100, at as u64 + 0x101, true) {
+                std::mem::forget(m);
+                open += 1;
+            }
+            at += CELL;
+        }
+        let (section, views) = title_views(size);
+        for k in 0..size / PAGE {
+            crate::inplace::title_memory_view(views as usize + k * PAGE, PAGE, section as usize, (k * PAGE) as u64);
+        }
+        let mut at = (views as usize).next_multiple_of(CELL);
+        while at + CELL <= views as usize + size {
+            if let Some(m) = crate::unified::make(at as u64 + 0x100, at as u64 + 0x101, true) {
+                std::mem::forget(m);
+                open += 1;
+            }
+            at += CELL;
+        }
+        println!("{open} windows open; committed {} MiB above the start; ending the process", (committed() - before) >> 20);
         TerminateProcess(GetCurrentProcess(), 0);
     }
 }

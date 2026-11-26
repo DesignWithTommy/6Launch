@@ -64,9 +64,10 @@ The default launch is each runtime's own, the way its author starts it. Each run
 
 - **series_s**: runs as a Series S, which uses less GPU memory. Try it on 8 GB cards.
 - **dred**: writes D3D12 crash details to the log. Turn it on when the game crashes and you want to report it.
+- **8gb**: VItoriaBr's settings for 8 GB cards, on every runtime that reads them.
 - **warp**: draws on the CPU instead of the GPU. It's very slow, but it shows whether a crash comes from your graphics driver.
 
-dred and warp make the launcher use the runtime's diagnostics build, because those switches only exist there. Runtimes whose author ships no diagnostics build (AnyXboxx, Flamingo, KLBF, Unified) don't get them. Some runtimes add their own, like VItoriaBr's `8gb` or KLBF's `fsr`. **Advanced** takes any other `KEY=VALUE` setting, and **Options list** there shows what that runtime reads.
+dred and warp make the launcher use the runtime's diagnostics build, because those switches only exist there. Runtimes whose author ships no diagnostics build (AnyXboxx, Flamingo, KLBF, Unified) don't get them. Some runtimes add their own, like KLBF's `fsr`, Ka1qux's `fsr` and `frame_gen`, or Vertex's `tuned`. **Advanced** takes any other `KEY=VALUE` setting, and **Options list** there shows what that runtime reads.
 
 ## Screenshots
 

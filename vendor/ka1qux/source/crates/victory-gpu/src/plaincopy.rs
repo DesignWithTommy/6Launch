@@ -145,6 +145,14 @@ fn install() {
             return EXCEPTION_CONTINUE_SEARCH;
         }
         const READ: usize = 0;
+        // A copy-back page left pending (`crate::lazy`) since the copy
+        // looked: its bytes go in and the copy goes on.
+        if r.ExceptionCode == EXCEPTION_ACCESS_VIOLATION
+            && r.NumberParameters >= 2
+            && crate::lazy::fault(r.ExceptionInformation[1], r.ExceptionInformation[0] != READ)
+        {
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
         let read = r.NumberParameters >= 1 && r.ExceptionInformation[0] == READ;
         let gone = (r.ExceptionCode == EXCEPTION_ACCESS_VIOLATION || r.ExceptionCode == EXCEPTION_IN_PAGE_ERROR) && read;
         if gone || r.ExceptionCode == EXCEPTION_GUARD_PAGE {

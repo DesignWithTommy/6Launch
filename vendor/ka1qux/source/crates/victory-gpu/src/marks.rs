@@ -230,7 +230,7 @@ pub(crate) fn empty_table_gpu() -> Option<u64> {
 /// (their bytes from before unknown), ranges armed, ranges that kept a
 /// snapshot (not all clean), copies marked in submissions, and with
 /// [`check`] pages and bytes a shader changed that no bit names.
-static STATS: [AtomicU64; 9] = [const { AtomicU64::new(0) }; 9];
+static STATS: [AtomicU64; 11] = [const { AtomicU64::new(0) }; 11];
 pub(crate) const PAGES: usize = 0;
 pub(crate) const BYTES: usize = 1;
 pub(crate) const SAVED: usize = 2;
@@ -240,6 +240,10 @@ pub(crate) const FELL_BACK: usize = 5;
 const COPIES: usize = 6;
 pub(crate) const MISSED_PAGES: usize = 7;
 pub(crate) const MISSED_BYTES: usize = 8;
+/// With `VICTORY_MARKS_THREADS`: pages put back on several threads, and the
+/// threads that did it (the submitting one among them).
+const THREADED: usize = 9;
+const THREADS: usize = 10;
 
 pub(crate) fn count(what: usize, n: u64) {
     STATS[what].fetch_add(n, Ordering::Relaxed);
@@ -254,7 +258,7 @@ pub(crate) fn line(frames: f64) {
     tracing::info!(
         "write marks per frame: {:.0} copies marked in submissions, {:.0} ranges armed (no snapshot), {:.0} kept their snapshot \
          (not all guarded and clean); {:.0} marked pages compared, {:.2} MB written back; {:.1} pages the title wrote first \
-         (kept before its write), {:.1} left as the title has them (bytes from before unknown){}",
+         (kept before its write), {:.1} left as the title has them (bytes from before unknown){}{}",
         s[COPIES],
         s[ARMED],
         s[FELL_BACK],
@@ -262,6 +266,11 @@ pub(crate) fn line(frames: f64) {
         s[BYTES] / 1e6,
         s[SAVED],
         s[LOST],
+        if threads() > 1 {
+            format!("; {:.0} of the pages went back on several threads ({:.1} threads a frame of them, VICTORY_MARKS_THREADS)", s[THREADED], s[THREADS])
+        } else {
+            String::new()
+        },
         if check() {
             format!("; check: {:.1} pages, {:.0} bytes a shader changed that no bit names", s[MISSED_PAGES], s[MISSED_BYTES])
         } else {
@@ -373,35 +382,41 @@ pub(crate) fn copy_back(m: &Marking) {
         }
     }
     // Page by page, its bytes before the submission once however many
-    // copies hold it: what the title's first write kept, else title memory
-    // as it is now (none written since the copies took it), read into one
-    // buffer reused for every page; nothing for a page whose bytes from
-    // before are not known.
+    // copies hold it ([`put_page`]).
+    let groups: Vec<(usize, Vec<&Arc<Shadow>>)> = holders
+        .into_iter()
+        .filter_map(|(page, copies)| {
+            // Pages of ranges that kept their snapshots are compared there.
+            let copies: Vec<&Arc<Shadow>> =
+                copies.iter().map(|&at| &pages[at].0).filter(|c| c.marks_cover(page)).collect();
+            (!copies.is_empty()).then_some((page, copies))
+        })
+        .collect();
     let mut now = vec![0u8; PAGE];
-    for (page, copies) in holders {
-        // Pages of ranges that kept their snapshots are compared there.
-        let copies: Vec<&Arc<Shadow>> =
-            copies.iter().map(|&at| &pages[at].0).filter(|c| c.marks_cover(page)).collect();
-        if copies.is_empty() {
-            continue;
+    let most = threads();
+    if most < 2 {
+        for (page, copies) in &groups {
+            put_page(*page, copies, &mut now);
         }
-        let saved;
-        let bytes: &[u8] = match crate::watch::armed_take(page) {
-            Some(crate::watch::Armed::Untouched) if crate::host::read_into(page as *const u8, &mut now) => &now,
-            Some(crate::watch::Armed::Saved(bytes)) => {
-                count(SAVED, 1);
-                saved = bytes;
-                &saved
+    } else {
+        // A page that shows a physical page guarded with its other views
+        // (`crate::watch::aliased`) is put back with them, one after the
+        // other in the order of their addresses, on this thread: a write
+        // into one touches the guards of the others. The other pages of a
+        // submission are each their own.
+        let (apart, together): (Vec<_>, Vec<_>) = groups.iter().partition(|(page, _)| !crate::watch::aliased(*page));
+        let workers = (apart.len() / PAGES_PER_THREAD).min(most);
+        if workers < 2 {
+            for (page, copies) in &groups {
+                put_page(*page, copies, &mut now);
             }
-            _ => {
-                count(LOST, copies.len() as u64);
-                continue;
+        } else {
+            spread(&apart, workers, |(page, copies), now| put_page(*page, copies, now));
+            count(THREADED, apart.len() as u64);
+            count(THREADS, workers as u64);
+            for (page, copies) in together {
+                put_page(*page, copies, &mut now);
             }
-        };
-        for copy in copies {
-            let written = copy.copy_back_marked(page, bytes);
-            count(PAGES, 1);
-            count(BYTES, written as u64);
         }
     }
     #[cfg(feature = "diagnostics")]
@@ -412,6 +427,77 @@ pub(crate) fn copy_back(m: &Marking) {
             count(MISSED_PAGES, missed_pages);
             count(MISSED_BYTES, missed_bytes);
         }
+    }
+}
+
+/// Threads that put marked pages back, at most (`VICTORY_MARKS_THREADS`,
+/// 1 by default: all on the submitting thread, in the order of the pages'
+/// addresses). A page costs 55 to 80 microseconds (two reads, a compare,
+/// writes and a protection change) and a world frame marks 2,000. After
+/// upstream VIctory pull request #2914 (Machad3x/VIctory-nvidia-3080ti
+/// 7229f41), whose six threads are the limit here.
+fn threads() -> usize {
+    static N: OnceLock<usize> = OnceLock::new();
+    *N.get_or_init(|| {
+        let n = std::env::var("VICTORY_MARKS_THREADS").ok().and_then(|v| v.trim().parse::<usize>().ok()).unwrap_or(1);
+        let n = n.clamp(1, 6);
+        if n > 1 {
+            tracing::info!(
+                threads = n,
+                "marked pages go back to title memory on up to this many threads, pages that share a physical page with \
+                 another view on one (VICTORY_MARKS_THREADS)"
+            );
+        }
+        n
+    })
+}
+
+/// Marked pages worth a thread more: fewer go back on the submitting one.
+const PAGES_PER_THREAD: usize = 8;
+
+/// Runs `f` on every item, each once, on `workers` threads (this one among
+/// them, the others scoped to the call), the items taken in order as a
+/// thread is free; `f` is given a page-sized buffer of the thread's own.
+fn spread<T: Sync>(items: &[T], workers: usize, f: impl Fn(&T, &mut [u8]) + Sync) {
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let work = || {
+        let mut now = vec![0u8; PAGE];
+        while let Some(item) = items.get(next.fetch_add(1, Ordering::Relaxed)) {
+            f(item, &mut now);
+        }
+    };
+    std::thread::scope(|scope| {
+        for _ in 1..workers {
+            scope.spawn(work);
+        }
+        work();
+    });
+}
+
+/// The bytes of marked title page `page` before the submission: what the
+/// title's first write kept, else title memory as it is now (none written
+/// since the copies took it), read into `now`; nothing for a page whose
+/// bytes from before are not known. In what `copies` hold of it, the bytes
+/// that differ from them are the shaders' and go into title memory
+/// ([`Shadow::copy_back_marked`]), the copies in order.
+fn put_page(page: usize, copies: &[&Arc<Shadow>], now: &mut [u8]) {
+    let saved;
+    let bytes: &[u8] = match crate::watch::armed_take(page) {
+        Some(crate::watch::Armed::Untouched) if crate::host::read_into(page as *const u8, now) => now,
+        Some(crate::watch::Armed::Saved(bytes)) => {
+            count(SAVED, 1);
+            saved = bytes;
+            &saved
+        }
+        _ => {
+            count(LOST, copies.len() as u64);
+            return;
+        }
+    };
+    for copy in copies {
+        let written = copy.copy_back_marked(page, bytes);
+        count(PAGES, 1);
+        count(BYTES, written as u64);
     }
 }
 
@@ -429,8 +515,31 @@ pub(crate) fn end(m: Marking) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Runs, pages};
+    use super::{Runs, pages, spread};
     use std::collections::BTreeMap;
+
+    /// Every item is run once, on several threads when there are workers
+    /// for them, each with a buffer of its own.
+    #[test]
+    fn spread_runs_every_item_once_on_several_threads() {
+        use std::sync::Mutex;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let items: Vec<usize> = (0..200).collect();
+        let hits: Vec<AtomicUsize> = items.iter().map(|_| AtomicUsize::new(0)).collect();
+        let threads = Mutex::new(std::collections::HashSet::new());
+        spread(&items, 4, |&i, buffer| {
+            assert_eq!(buffer.len(), super::PAGE);
+            hits[i].fetch_add(1, Ordering::Relaxed);
+            threads.lock().unwrap().insert(std::thread::current().id());
+            // Long enough for the others to start.
+            std::thread::sleep(std::time::Duration::from_micros(200));
+        });
+        assert!(hits.iter().all(|h| h.load(Ordering::Relaxed) == 1), "every item once");
+        assert!(threads.lock().unwrap().len() > 1, "more than the calling thread worked");
+        // One worker is the calling thread alone.
+        let calling = std::thread::current().id();
+        spread(&items, 1, |_, _| assert_eq!(std::thread::current().id(), calling));
+    }
 
     /// Bits are handed out in runs past the reserved ones and come back
     /// joined.

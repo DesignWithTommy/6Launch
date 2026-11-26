@@ -820,6 +820,13 @@ pub(crate) fn armed_take(at: usize) -> Option<Armed> {
     guards().armed.remove(&(at / BLOCK))
 }
 
+/// Whether the 64 KiB block of title memory at `at` shows a physical page
+/// that is guarded together with its other views: a write into one opens
+/// them all ([`writing_held`]).
+pub(crate) fn aliased(at: usize) -> bool {
+    guards().aliased.contains(&(at / BLOCK))
+}
+
 /// The submission's copy-back is done: nothing is armed any more.
 pub(crate) fn disarm() {
     let mut g = guards();
@@ -1647,6 +1654,9 @@ pub(crate) fn probe_guard(ranges: &[(usize, usize)], bake: u64) -> usize {
             {
                 continue;
             }
+            // Copy-back pages left pending in the block (`crate::lazy`) go
+            // in first: their protection is about to be changed.
+            crate::lazy::changing(block * BLOCK, BLOCK);
             let mut old = 0;
             // SAFETY: title view memory; only its protection changes.
             if unsafe { VirtualProtect((block * BLOCK) as *const _, BLOCK, PAGE_READONLY, &mut old) } == 0 {
@@ -1744,6 +1754,8 @@ pub(crate) fn writing(at: usize, len: usize) {
 #[must_use = "the write is held only while this lives"]
 pub struct Writing {
     id: u64,
+    /// Its hold on pending copy-back pages (`crate::lazy::hold`).
+    lazy: u64,
 }
 
 /// `writing` for a write that runs on after the call, perhaps on another
@@ -1755,6 +1767,10 @@ pub fn writing_held(at: usize, len: usize) -> Writing {
     let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     // The length may be the title's (`fread`'s size times count, saturated).
     let end = at.saturating_add(len);
+    // Copy-back pages left pending there (`VICTORY_LAZY_BACK`) go into
+    // title memory first: the kernel's write would fail on them, and a
+    // write of ours would land before their bytes.
+    let lazy = crate::lazy::hold(at, end);
     {
         let mut g = guards();
         // Held first: the opening below must not be linked again between.
@@ -1762,7 +1778,7 @@ pub fn writing_held(at: usize, len: usize) -> Writing {
         open(&mut g, at, end, true);
     }
     crate::descriptor::host::remapped(at, len);
-    Writing { id }
+    Writing { id, lazy }
 }
 
 /// How long blocks stay open for an asynchronous kernel write
@@ -1792,6 +1808,7 @@ pub fn writing_async(at: usize, len: usize) {
     }
     let end = at.saturating_add(len);
     let until = std::time::Instant::now() + pin;
+    crate::lazy::pin_write(at, end, pin.as_millis() as u64);
     {
         let mut g = guards();
         let (first, last) = (at / BLOCK, end.div_ceil(BLOCK));
@@ -1818,6 +1835,7 @@ pub fn writing_async(at: usize, len: usize) {
 
 impl Drop for Writing {
     fn drop(&mut self) {
+        crate::lazy::unhold(self.lazy);
         let mut g = guards();
         g.held.retain(|&(_, _, id)| id != self.id);
         let Guards {
@@ -2090,6 +2108,8 @@ fn mapping_writer_pending_for_test(at: usize, len: usize) -> bool {
 /// shows is new and read-write, so it is no longer guarded (nor known
 /// unmapped).
 pub fn title_memory_remapped(at: usize, len: usize) {
+    // Copy-back pages left pending there show something else now: let go.
+    crate::lazy::gone(at, len, false);
     // The bake probe: the mapping is new (read-write); its blocks are no
     // longer guarded by the probe.
     #[cfg(feature = "diagnostics")]
@@ -2215,8 +2235,14 @@ fn read_only(at: usize) -> bool {
     n != 0 && info.State == MEM_COMMIT && info.Protect == PAGE_READONLY
 }
 
-/// Registers the handler that takes writes to guarded blocks, once, ahead
-/// of the crash reporter's.
+/// [`install`], for `crate::lazy` before it protects its first page.
+pub(crate) fn install_handler() {
+    install();
+}
+
+/// Registers the handler that takes writes to guarded blocks (and every
+/// access to a pending copy-back page, `crate::lazy`), once, ahead of the
+/// crash reporter's.
 fn install() {
     use windows_sys::Win32::Foundation::{EXCEPTION_ACCESS_VIOLATION, NTSTATUS};
     use windows_sys::Win32::System::Diagnostics::Debug::{
@@ -2227,10 +2253,15 @@ fn install() {
         // SAFETY: the system passes the exception being dispatched.
         let r = unsafe { &*(*info).ExceptionRecord };
         const WRITE: usize = 1;
-        if r.ExceptionCode != EXCEPTION_ACCESS_VIOLATION as NTSTATUS
-            || r.NumberParameters < 2
-            || r.ExceptionInformation[0] != WRITE
-        {
+        if r.ExceptionCode != EXCEPTION_ACCESS_VIOLATION as NTSTATUS || r.NumberParameters < 2 {
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+        // A read or a write of a copy-back page left pending
+        // (`crate::lazy`): its bytes go in, and the access goes on.
+        if crate::lazy::fault(r.ExceptionInformation[1], r.ExceptionInformation[0] == WRITE) {
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        if r.ExceptionInformation[0] != WRITE {
             return EXCEPTION_CONTINUE_SEARCH;
         }
         let at = r.ExceptionInformation[1];

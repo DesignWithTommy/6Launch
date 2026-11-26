@@ -15,7 +15,7 @@ a counter rather than against a screenshot.
 copy of the game. It is not affiliated with or endorsed by the game's developer
 or publisher.
 
-## State on the test machine (2026-11-25)
+## State on the test machine (2026-11-26)
 
 Windows 11, Intel Core i5-13600KF, AMD Radeon RX 7800 XT 16 GB (RDNA3, driver
 32.0.32029.2010), 32 GB RAM. Series X profile, diagnostics build.
@@ -27,10 +27,11 @@ Windows 11, Intel Core i5-13600KF, AMD Radeon RX 7800 XT 16 GB (RDNA3, driver
 | The world | ✅ | drawn from a save: rooms with walls, ceilings and textures, lit by their lamps and by the sun; characters with skin, hair and clothes; exteriors with buildings; HUD and prompts. Also the open world later in the story (a save converted from another console, below): a city of high-rise buildings, palms, pools, a beach and the sea with boats |
 | Light in shadow | 🟡 | the title's own ray-traced light runs, on by default (`VICTORY_RAYS=0` turns it off): its structures are built and traced, and shaded faces of buildings, trees and characters get bounced light, where without it they are near black. Four runs on the street, 5 to 11 minutes in the world, with no crash and no device removal; a frame costs about 0.05 to 0.1 s more |
 | Play | 🟡 | a 25-minute play session, from the first room on to the next objective, on an earlier build of this branch; a 17-minute session in the open world with victory-fork's speed defaults on, with no crash |
-| Frame rate | 🟡 | in the open world on a street with about 5,600 to 6,100 draws a frame, with ray-traced light: a median of 0.28 to 0.31 s a frame (about 3.2 to 3.6 frames a second), 0.24 s at best, with victory-fork's speed defaults and the switches below, picture right; 0.53 to 0.56 s without the speed defaults. The same street took 0.83 s before this build's fixes to the merge of victory-fork's newest main |
+| Frame rate | 🟡 | in the open world, with ray-traced light and the switches below: a median of 0.30 to 0.32 s a frame (about 3.1 to 3.3 frames a second) on a street with 5,800 to 7,300 draws a frame, 0.15 to 0.23 s at best; per draw about 51 to 55 µs, against 60 µs before this build's memory and submission changes. Preparing 76 ms and copying back 35 ms a frame, against 108 and 55. 0.53 to 0.56 s without victory-fork's speed defaults |
 | Stability | ✅ | no crash and no device removal in the last fifty runs (4 to 25 minutes each), four of them with ray tracing on |
-| Memory | ✅ | in the open world about 12.5 GB of the card's 16 in use, textures the card has no room for made at a lower resolution instead of not at all (below) |
-| Tests | ✅ | `cargo test --workspace` runs 811 tests and all pass on the test machine; the CI on `main` (clippy twice and the tests, on a machine with no card) passes |
+| Memory | 🟡 | the process takes about 31 GB of a 32 GB PC (it was 32.5): part of the title's memory is now read by the card in place instead of copied (1.9 GB in a street run), and root constant buffer views get 64 KiB copies instead of 4 MiB ones. The card holds about 12 to 12.7 GB of its 14 GB budget; textures it has no room for are made at a lower resolution or wait (below) |
+| Upscaling | ✅ | AMD's FSR 4.1.2 (FidelityFX SDK 2.4.0, DLLs supplied by the user) runs on the RX 7800 XT in place of the title's own upscaler: rendering at 1920x1080 for a 3840x2160 picture in a street run, picture sharp (below) |
+| Tests | ✅ | `cargo test --workspace` runs 873 tests and all pass on the test machine (one GPU test fails now and then when the whole suite runs in one thread; it passes alone) |
 
 Known problems:
 
@@ -56,16 +57,17 @@ Known problems:
   made without their largest mips (below); before, thousands waited and walls,
   cupboards and some objects showed black with light speckles. Such a texture
   stays at the lower resolution until it is let go.
-- With victory-fork's speed defaults the frame rate doubles, but baked hair
-  and skin come out too light (they came out black on an earlier build): the
-  bake reads data the card has not received yet while submissions run ahead.
-  They stay off in the recommended settings.
+- The frame is still bound by the processor, not the card: FSR at 1080p
+  draws as sharp a picture but did not shorten the frame on this machine. Of
+  a 0.3 s frame about 0.08 s is preparing, 0.035 s copying back, and the card
+  is busy about a quarter of the time; the rest is the title's thread waiting
+  on submissions.
+- With the card near its budget (12 to 12.7 GB of 14), 1,000 to 1,500 passes
+  a run find no room for a texture, and some far buildings show dark until
+  room comes back. `VICTORY_LEVELS_ON_DEMAND=1` frees 1.2 GB of the card but
+  still shows black facades on some buildings (fixes being ported).
 - Two of the title's compute programs do not translate, and the programs that
   only shade ray-tracing hits are left out on purpose.
-- About 2.4 frames a second on a busy street. Of a 0.42 s frame, about 0.17 s
-  is the card, 0.09 s preparing it, 0.17 s the pass over the descriptor heap
-  (most of it remaking the buffer views the title copies in as bytes, about
-  60,000 a frame) and 0.05 s copying title memory back.
 - Tested on one machine only. The switches under "Running it" are the ones the
   state above was measured with.
 
@@ -86,6 +88,70 @@ own library. [docs/architecture.md](docs/architecture.md) has the crates.
 ## What this fork adds to victory-fork
 
 Each change is explained in its commit message and in a comment where it is.
+
+**Title memory read in place, and leaner copies** (`VICTORY_UNIFIED=1`):
+
+- The card reads parts of the title's memory where they are, through heaps
+  opened with `OpenExistingHeapFromAddress1` over a view of this layer's own
+  (never over the section's handle, which on this machine keeps the section
+  committed until a reboot): runs of consecutive physical pages, and runs
+  inside the title's large private arenas, in windows of 256 KiB to 32 MiB,
+  within the host's shared GPU memory budget. In a street run 378 windows over
+  physical pages (813 MB) and 249 over private memory (1,060 MB) had no copy.
+  When the title frees or protects memory a window covers, the window is let
+  go first (the idea and the retry of upstream pull request #2921). Probes on
+  the card: nothing stays committed after a run, and opening a heap over
+  committed memory does not charge the commit again.
+- A root constant buffer view the title names without a length gets a 64 to
+  128 KiB copy instead of a 4 MiB one (a constant buffer reads at most 64 KiB;
+  found by avatarmanz/VIctory-7900XTX issue #38). `VICTORY_CBV_WINDOW=0` goes
+  back.
+
+**Frame-time switches** (off by default; the state above was measured with
+them on): `VICTORY_ASYNC_SUBMIT=1` (the title's thread hands submissions to a
+thread of ours instead of waiting on the submission lock), `VICTORY_CARD_AWAKE=1`
+(a small compute keeps the card's clock up between submissions; from
+avatarmanz/VIctory-7900XTX), `VICTORY_CARD_SYNC_BATCH=1` (victory-fork #1227),
+`VICTORY_CARD_REHASH_RUNS=1`, `VICTORY_REUSE_ROOT_CBV=1` (#1212),
+`VICTORY_FILL_HOT=1`, `VICTORY_STEP_INDEX=1` and `VICTORY_BURY_ASIDE=1` (#1224
+and victory-fork's main), `VICTORY_FILL_WORKERS` (upstream #2900) and
+`VICTORY_MARKS_THREADS` (upstream #2914).
+
+**Picture fixes from other projects**, on by default with a switch to go back:
+early depth for pixel shaders that ask for it (victory-fork #907, upstream
+#2085; `VICTORY_EARLY_DEPTH=0`), normalized integer codes to the nearest float
+(upstream `da82e444`: on AMD 125 of 256 8-bit codes came out one step low and
+picked the wrong material; `VICTORY_NORM_QUOTIENT=0`), anisotropic samplers
+with point mips (upstream #2031; `VICTORY_ANISO_POINT_MIP=0`), the size of a
+mip past the last reads 0 (`VICTORY_RESINFO_BEYOND=0`), fills wait for flights
+(victory-fork #1205, the blurred oval; `VICTORY_FILL_WAIT=0`), a slot picked by
+index reads as a constant buffer only if it holds one (victory-fork #1216, AMD
+page faults; `VICTORY_CONSTANT_MARKS=0`), a marked page's copy-back writes only
+the bytes shaders changed (upstream #2918; `VICTORY_MARKED_RUNS=0`), and the
+levels-on-demand fixes #1210 and #795.
+
+**Upscaling with AMD FidelityFX on the host:**
+
+- The console's FidelityFX loader is served by AMD's PC DLL: what the Series S
+  profile needs (its two present planes are also composed into one picture;
+  `VICTORY_PRESENT_PLANE=n` shows one).
+- Series X: `VICTORY_FSR=quality|balanced|performance|ultra-performance|off`
+  makes the title take its own FSR path and render at 1/1.5, 1/1.7, 1/2 or
+  1/3 of its output. The two places of the title's code that pick the
+  upscaler and its scale are changed in memory only (never in its files), at
+  patterns named by a profile file the user keeps (`VICTORY_FSR_PROFILE`; its
+  format is in `apps/victory/src/title_profile.rs`). No bytes, addresses or
+  names of the title are in this repository; each pattern must match exactly
+  once, or nothing is written and the title's own upscaler runs.
+- The DLLs are AMD's and are not shipped here: `amd_fidelityfx_upscaler_dx12.dll`
+  (and `amd_fidelityfx_framegeneration_dx12.dll` for frame generation) from
+  [GPUOpen-LibrariesAndSDKs/FidelityFX-SDK](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK),
+  tag v2.4.0, `Kits/FidelityFX/signedbin`, in `VICTORY_FIDELITYFX_DIR` or a
+  `fidelityfx` folder beside `victory.exe`. On the RX 7800 XT the provider
+  picked FSR 4.1.2. Without the DLLs the title's own path runs.
+- `VICTORY_FRAME_GEN=1` (diagnostics builds): AMD frame generation on the swap
+  chain, from upstream pull request #1917. Not measured here; the HUD is
+  interpolated with the scene.
 
 **Copies of title memory that went stale** (walls, ceilings and materials
 missing in some launches and not in others):
@@ -169,6 +235,56 @@ missing in some launches and not in others):
   title's files are not changed. Used here, with
   [LilBigJP/ztrx-ps5-save-import](https://github.com/LilBigJP/ztrx-ps5-save-import),
   to load a story save converted from another console and test the open world.
+
+**Upscaling and display** (all off unless you supply AMD's DLLs; nothing is
+downloaded, and none of them ships here)
+
+- The title's FidelityFX calls (the upscaler that Series S mode uses) can run on
+  your GPU through AMD's PC build instead of the console build.
+  Get the [FidelityFX SDK](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK)
+  (release v2.4.0 was current on 2026-11-25) and copy
+  `Kits/FidelityFX/signedbin/amd_fidelityfx_upscaler_dx12.dll` (the only file
+  loaded; the folder's other DLLs may go along) into a `fidelityfx` folder
+  beside `victory.exe`, or name the folder with
+  `VICTORY_FIDELITYFX_DIR` (or `[paths].fidelityfx_dir`; the SDK's root works).
+  Without the file, or if it offers no upscaler for the GPU, the log says so in
+  one line and the title's own DLLs run. AMD's documentation says FSR 4
+  requires an AMD 7000 series discrete GPU or an AMD 9000 series GPU or later
+  (SDK `docs/techniques/super-resolution-ml.md`, which lists the RX 7800 XT
+  under its INT8 model), so the Radeon this was measured on is covered.
+- `VICTORY_FSR=quality|balanced|performance|off`. Unset, the host serves
+  whatever FidelityFX calls the title makes when the DLL is there; `off` never
+  does. A preset also makes a Series X title that does not use FidelityFX on
+  its own pick it, rendering at AMD's named ratio of its output size (1.5x:
+  2560x1440 for 3840x2160; 1.7x: 2258x1270; 2x: 1920x1080), through a
+  *title profile* (`VICTORY_FSR_PROFILE`, or `[paths].fsr_profile`): a text
+  file you keep that says where in the title's code the upscaler is picked.
+  Nothing about a title is built into this program. The file has lines `key =
+  value` (`#` comments): `build` (optional, the executable's BLAKE3), `picker`
+  (a byte pattern, `??` for any byte, of the function that picks the upscaler:
+  replaced by `mov eax, 7; ret`), and, for the render scale, `scale` (a pattern
+  of the function), `scale.loads` (offsets in the match of its two
+  `vmovss xmm, [rip+disp32]` loads) and `scale.slot` (the offset of four `0xCC`
+  padding bytes that take the new scale), and any number of `scale.edit = <offset>
+  <bytes>` (`{mode}` standing for the preset's quality mode, 1 to 3, for code
+  that records it). Each pattern must match exactly once
+  in the executable sections or nothing is written; the patched copy is in
+  memory only. The idea is Marvisak/VIctory PR 1793's; the log's `fsr` lines say
+  what was done, and the first dispatch says whether the title renders at the
+  preset's size.
+- `VICTORY_FRAME_GEN=1` (diagnostics builds): AMD's frame generation, from
+  `amd_fidelityfx_framegeneration_dx12.dll` in the same folder as the upscaler.
+  The presenter's swap chain becomes AMD's proxy, and each frame the title
+  upscales on the host feeds it that upscale's depth and motion vectors
+  (FSR 3 frame generation, which needs no camera matrices; the title's HUD is
+  interpolated with the scene, and only an RGBA8 swap chain works). Ported from
+  Marvisak/VIctory pull request 1917 (AwkGrep256), whose generated frames in the
+  world were not confirmed on hardware either; the log's `FidelityFX frame
+  generation` lines say whether it ran and how many frames it made. Not run
+  here yet.
+- Series S mode presents the world and the interface as two planes; they are
+  blended into one 1080p image (from Linox-IDK/LNX-victory), or one plane is
+  shown alone with `VICTORY_PRESENT_PLANE=<n>`.
 
 **Frame time** (the street of the open world, ~6,100 draws a frame, 0.83 s a
 frame after the merge of victory-fork's main, 0.42 s with these):
@@ -313,6 +429,13 @@ $env:VICTORY_SKIP_MOVIES    = "1"
 $env:VICTORY_COMMIT_RESERVE_MB = "6144"  # stop filling the card with texture copies when the
                                          # PC has less than this left to commit (see above)
 $env:VICTORY_COPY_PLAIN = "1"; $env:VICTORY_JOIN_PARTS = "1"; $env:VICTORY_BACK_OWN_VIEW = "1"  # victory-fork's, off there
+$env:VICTORY_UNIFIED = "1"; $env:VICTORY_ASYNC_SUBMIT = "1"; $env:VICTORY_CARD_AWAKE = "1"
+$env:VICTORY_CARD_SYNC_BATCH = "1"; $env:VICTORY_CARD_REHASH_RUNS = "1"; $env:VICTORY_REUSE_ROOT_CBV = "1"
+$env:VICTORY_FILL_HOT = "1"; $env:VICTORY_STEP_INDEX = "1"; $env:VICTORY_BURY_ASIDE = "1"
+$env:VICTORY_CARD_WINDOWS_MB = "512"     # more of the card for textures
+# FSR (AMD's DLLs and your own title profile, above):
+# $env:VICTORY_FIDELITYFX_DIR = "<folder with amd_fidelityfx_upscaler_dx12.dll>"
+# $env:VICTORY_FSR_PROFILE = "<your profile file>"; $env:VICTORY_FSR = "performance"
 # $env:VICTORY_RAYS = "0"            # without the title's ray-traced light (on by default)
 # The slower, older settings (no submissions sent ahead of the card):
 # $env:VICTORY_RELAY = "0"; $env:VICTORY_WIDE_BACK = "0"
@@ -342,6 +465,12 @@ VIctory #2821; `VICTORY_HEAP_LOCKS=0` takes it every time): 0.345 → 0.303 s.
 The frame rate is drawn in the top left corner of the window
 (`VICTORY_FPS_COUNTER=0` turns it off; victory-fork's main).
 
+Fixes taken in this round, with thanks to their authors: avatarmanz/VIctory-7900XTX
+(the card kept awake, the 64 KiB constant windows' finding), Linox-IDK/LNX-victory
+(Series S planes), victory-fork pull requests #795, #907, #1205, #1210, #1212,
+#1216, #1224 and #1227, and upstream VIctory's #2031, #2085, #2900, #2914,
+#2918, #2921 and commit `da82e444`.
+
 Input: XInput pads; with none connected the keyboard is a pad while the
 title's window has focus. Commands, the full list of switches and debugging
 notes are in [docs/victory-fork-readme.md](docs/victory-fork-readme.md);
@@ -367,6 +496,13 @@ repository.
 - **[DexNom/VIctory](https://github.com/DexNom/VIctory)** and victory-fork's
   pull request #994 by PiloteCode: the ray-tracing work ported here, and the
   material-record texture order (off by default).
+- **[Marvisak/VIctory](https://github.com/Marvisak/VIctory)** pull request 1793
+  by AwkGrep256 (the idea of finding the title's upscaler picker by a pattern at
+  launch), **[Linox-IDK/LNX-victory](https://github.com/Linox-IDK/LNX-victory)**
+  (the Series S plane composition) and DexNom/VIctory (the host FidelityFX
+  module's context checks and input preparation); the module itself is
+  upstream's; the frame generation is Marvisak/VIctory pull request 1917's.
+  AMD's FidelityFX SDK (MIT) names the API's descriptions.
 - **[XCL](https://github.com/xcl-dev/xcl)**: a different project with the same
   aim, whose public notes on the console's formats and on driver behaviour
   pointed at several problems. No code of it is used here.

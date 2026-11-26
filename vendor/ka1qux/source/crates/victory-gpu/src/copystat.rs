@@ -884,6 +884,31 @@ fn log_memory() {
         mb(own[3]),
         own[7],
     );
+    // Who asked for the windows that were asked for without a length.
+    let kinds = crate::shadow::window_root_kinds();
+    tracing::info!(
+        "memory, windows asked for without a length, by who asked (VICTORY_CBV_WINDOW=0: root          constant buffer views take the 4 MiB cell too): root constant buffer views only: {} windows {:.0} MB,          {:.0} MB of their pages ever copied; those and root shader resource or unordered access          views: {} windows {:.0} MB, {:.0} MB copied; root shader resource or unordered access views          only: {} windows {:.0} MB, {:.0} MB copied; no kind named: {} windows {:.0} MB, {:.0} MB copied",
+        kinds[0][0],
+        mb(kinds[0][1]),
+        mb(kinds[0][2]),
+        kinds[1][0],
+        mb(kinds[1][1]),
+        mb(kinds[1][2]),
+        kinds[2][0],
+        mb(kinds[2][1]),
+        mb(kinds[2][2]),
+        kinds[3][0],
+        mb(kinds[3][1]),
+        mb(kinds[3][2]),
+    );
+    // Where the copies' windows lie: what VICTORY_UNIFIED=1 does with each
+    // (the same with the switch off), and what it has made (with it on).
+    for line in crate::unified::census() {
+        tracing::info!("memory, windows, {line}");
+    }
+    if crate::unified::on() {
+        crate::unified::say();
+    }
     // Round 2: what the view table still holds and what goes around it,
     // what host lists cost, the card's share that is the layer's own or
     // the title's no more, and which big blocks are ours.

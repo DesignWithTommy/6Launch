@@ -136,6 +136,12 @@ pub extern "system" fn XMemVirtualAlloc(
             kind |= MEM_WRITE_WATCH;
         }
     }
+    // A commit at an address changes the protection of pages committed
+    // there already: copy-back pages the GPU side left pending there go in
+    // first (`VICTORY_LAZY_BACK`).
+    if !base.is_null() && kind & MEM_COMMIT != 0 {
+        victory_gpu::title_memory_commit(base as usize, size);
+    }
     // SAFETY: the title's own arguments, cleaned of console bits; the
     // parameter points at `requirements`, which outlives the call.
     let at = unsafe {
@@ -155,6 +161,10 @@ pub extern "system" fn XMemVirtualAlloc(
     };
     if !at.is_null() && kind & MEM_COMMIT != 0 {
         victory_gpu::title_pages_changed(at as usize, size);
+    }
+    if base.is_null() && !at.is_null() {
+        // New memory: nothing kept for these addresses is of it.
+        victory_gpu::title_memory_reserved(at as usize, size);
     }
     if base.is_null() {
         tracing::debug!(
@@ -322,11 +332,16 @@ pub extern "system" fn XMemFreeDefault(address: *mut c_void, attributes: u64) {
     // whole reservation, or a header-prefixed block.
     unsafe {
         if attributes & ALLOC_32BIT != 0 {
-            VirtualFree(address, 0, MEM_RELEASE);
+            // Copy-back pages the GPU side left pending there go unwritten,
+            // and windows held in place over it (`VICTORY_UNIFIED=1`) go.
+            victory_gpu::title_memory_release(address as usize, 0);
+            victory_gpu::title_memory_change(address as usize, 0, || VirtualFree(address, 0, MEM_RELEASE));
             return;
         }
         let user = address.cast::<u8>();
         let [size, align] = user.sub(HEADER).cast::<[usize; 2]>().read();
+        // As above, for a block that stays mapped (its protection back).
+        victory_gpu::title_memory_release(user.sub(align) as usize, size);
         dealloc(
             user.sub(align),
             Layout::from_size_align_unchecked(size, align),
@@ -1210,25 +1225,72 @@ pub extern "system" fn XMemTransferMemory(kind: u32, size: usize) -> BOOL {
 /// The title's `VirtualAlloc`: the host's, and the GPU side is told of the
 /// commit (`victory_gpu::title_pages_changed`).
 extern "system" fn title_virtual_alloc(base: *const c_void, size: usize, kind: u32, protect: u32) -> *mut c_void {
+    // As in `XMemVirtualAlloc`.
+    if !base.is_null() && kind & MEM_COMMIT != 0 {
+        victory_gpu::title_memory_commit(base as usize, size);
+    }
     // SAFETY: the title's own arguments, passed through.
     let at = unsafe { VirtualAlloc(base, size, kind, protect) };
     if !at.is_null() && kind & MEM_COMMIT != 0 {
         victory_gpu::title_pages_changed(at as usize, size);
     }
+    if base.is_null() && !at.is_null() {
+        victory_gpu::title_memory_reserved(at as usize, size);
+    }
     at
 }
 
-/// The host memory call we stand in front of, only while the GPU side
+/// The title's own change of protection: copy-back pages the GPU side left
+/// pending there (`VICTORY_LAZY_BACK`, no-access until needed) go in
+/// first, or the new protection would show their older bytes.
+extern "system" fn title_virtual_protect(at: *const c_void, size: usize, protect: u32, old: *mut u32) -> BOOL {
+    victory_gpu::title_memory_commit(at as usize, size);
+    // Windows of the title's memory the host GPU holds in place
+    // (`VICTORY_UNIFIED=1`) lock their pages: they let go first.
+    // SAFETY: the title's own arguments, passed through.
+    victory_gpu::title_memory_change(at as usize, size, || unsafe {
+        windows_sys::Win32::System::Memory::VirtualProtect(at, size, protect, old)
+    })
+}
+
+/// The title's own free: copy-back pages the GPU side left pending there
+/// go unwritten, before the memory can become anything else.
+extern "system" fn title_virtual_free(at: *mut c_void, size: usize, kind: u32) -> BOOL {
+    let len = if kind & MEM_RELEASE != 0 { 0 } else { size };
+    victory_gpu::title_memory_release(at as usize, len);
+    // A heap the host GPU holds on the memory (`VICTORY_UNIFIED=1`) locks
+    // its pages and the host refuses the free: the windows go first.
+    // SAFETY: the title's own arguments, passed through.
+    victory_gpu::title_memory_change(at as usize, len, || unsafe { VirtualFree(at, size, kind) })
+}
+
+/// The host memory calls we stand in front of, only while the GPU side
 /// wants to be told of commits (`victory_gpu::title_pages_told`, with
-/// `VICTORY_GUARD_HOLES_FRAME=2`; after victory-fork pull request #987).
+/// `VICTORY_GUARD_HOLES_FRAME=2`; after victory-fork pull request #987),
+/// leaves copy-back pages pending (`victory_gpu::lazy_back_on`, with
+/// `VICTORY_LAZY_BACK=1`) or holds title memory in place for the host GPU
+/// (`victory_gpu::in_place_on`, with `VICTORY_UNIFIED=1`: a heap over memory
+/// locks it, and its free and protection fail until the windows are let go;
+/// after Marvisak/VIctory pull request 2921).
 pub(crate) fn host_memory_module() -> HleModule {
+    let mut exports = vec![HleExport {
+        name: "VirtualAlloc",
+        address: title_virtual_alloc as *const () as usize,
+    }];
+    if victory_gpu::lazy_back_on() || victory_gpu::in_place_on() {
+        exports.push(HleExport {
+            name: "VirtualProtect",
+            address: title_virtual_protect as *const () as usize,
+        });
+        exports.push(HleExport {
+            name: "VirtualFree",
+            address: title_virtual_free as *const () as usize,
+        });
+    }
     HleModule {
         name: "host memory",
         dlls: &["kernel32.dll", "kernelbase.dll", "api-ms-win-core-memory-*"],
-        exports: vec![HleExport {
-            name: "VirtualAlloc",
-            address: title_virtual_alloc as *const () as usize,
-        }],
+        exports,
     }
 }
 

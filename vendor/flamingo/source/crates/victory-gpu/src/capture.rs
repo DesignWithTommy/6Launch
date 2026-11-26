@@ -426,6 +426,57 @@ pub(crate) fn dump_args(frame: u64) {
 
 /// The view heaps' occupancy at listed frame `frame`'s present
 /// (`crate::descriptor::occupancy`), as `frame-<n>-heaps.txt`.
+/// Flamingo: the arguments each indirect command of a listed frame ran with: (frame, kind,
+/// title address of its record, the 16 bytes the card copied there, leaked: listed frames
+/// only).
+static DRAWN: std::sync::Mutex<Vec<(u64, u32, u64, usize)>> = std::sync::Mutex::new(Vec::new());
+
+/// After indirect command `kind` (its record at title address `at`) ran from `buffer` at
+/// `offset` (the clamped record, in `INDIRECT_ARGUMENT`): its 16 bytes copied on the card
+/// and read back when the list has run, if the frame is listed.
+pub(crate) fn note_drawn(list: &crate::host::HostList, kind: u32, at: u64, buffer: &ID3D12Resource, offset: u64) {
+    let frame = crate::queue::presented() + 1;
+    if !listed(frame) {
+        return;
+    }
+    let Some(back) = crate::host::host().and_then(|h| h.read_back_buffer(256)) else { return };
+    let slot: &'static mut [u8; 16] = Box::leak(Box::new([0u8; 16]));
+    use crate::host::transition;
+    // SAFETY: an open list; both buffers live (the list keeps the read-back buffer).
+    unsafe {
+        list.list.ResourceBarrier(&[transition(buffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_COPY_SOURCE)]);
+        list.list.CopyBufferRegion(&back, 0, buffer, offset, 16);
+        list.list.ResourceBarrier(&[transition(buffer, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT)]);
+    }
+    list.defer_read_back(back, slot.as_mut_ptr(), [16, 1, 16]);
+    DRAWN.lock().unwrap_or_else(|e| e.into_inner()).push((frame, kind, at, slot.as_ptr() as usize));
+}
+
+/// At every present (`frame`): the commands of listed frames four or more back, as
+/// `frame-<n>-drawn.txt` (their lists have run by then).
+pub(crate) fn dump_drawn(frame: u64) {
+    let Some(folder) = folder() else { return };
+    let done: Vec<(u64, u32, u64, usize)> = {
+        let mut drawn = DRAWN.lock().unwrap_or_else(|e| e.into_inner());
+        let (done, keep): (Vec<_>, Vec<_>) = drawn.drain(..).partition(|d| d.0 + 4 <= frame);
+        *drawn = keep;
+        done
+    };
+    let mut frames: Vec<u64> = done.iter().map(|d| d.0).collect();
+    frames.sort_unstable();
+    frames.dedup();
+    for f in frames {
+        let mut out = String::new();
+        for &(_, kind, at, slot) in done.iter().filter(|d| d.0 == f) {
+            // SAFETY: the leaked 16 bytes, written by the read-back.
+            let bytes = unsafe { std::slice::from_raw_parts(slot as *const u8, 16) };
+            let w: Vec<u32> = bytes.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
+            out += &format!("kind {kind} at {at:#x}: ran with {w:?}\n");
+        }
+        let _ = std::fs::write(folder.join(format!("frame-{f}-drawn.txt")), out);
+    }
+}
+
 pub(crate) fn dump_heaps(frame: u64) {
     let Some(folder) = folder() else { return };
     let _ = std::fs::write(folder.join(format!("frame-{frame}-heaps.txt")), crate::descriptor::occupancy());

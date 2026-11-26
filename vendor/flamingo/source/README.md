@@ -110,10 +110,9 @@ set VICTORY_RELAY=1
 set VICTORY_LATE_WAIT=3
 set VICTORY_CARD_BUFFERS_MIN_MB=1
 set VICTORY_CARD_BUFFERS_MB=1024
-set VICTORY_INDIRECT_WINDOW=1
+set VICTORY_INDIRECT_WINDOW=0
 set VICTORY_SHADER_OPT=0
 set VICTORY_WIDE_MERGE=1
-set FLAMINGO_OSD=1
 target\diag\victory.exe run <path to your dump>\<the title's executable> --execute --console series-x
 ```
 

@@ -1381,6 +1381,7 @@ fn present_now(this: This, planes: u32, plane_parameters: *const Plane) -> HRESU
     #[cfg(all(windows, feature = "diagnostics"))]
     {
         crate::capture::frame_drew(frame, crate::draw::drawn());
+        crate::capture::dump_drawn(frame);
         if crate::capture::listed(frame) {
             crate::capture::dump_targets(frame);
             crate::capture::dump_args(frame);

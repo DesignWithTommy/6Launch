@@ -18,6 +18,8 @@ pub mod dsp;
 #[cfg(windows)]
 pub mod dstorage;
 #[cfg(windows)]
+pub mod fidelityfx;
+#[cfg(windows)]
 pub mod files;
 pub mod gameinput;
 pub mod kernel;
@@ -70,10 +72,16 @@ pub(crate) fn all() -> Vec<HleModule> {
     #[cfg(windows)]
     all.push(xmem::module());
     #[cfg(windows)]
-    if victory_gpu::title_pages_told() {
+    if victory_gpu::title_pages_told() || victory_gpu::lazy_back_on() || victory_gpu::in_place_on() {
         all.push(xmem::host_memory_module());
     }
     #[cfg(windows)]
     all.push(xsystem::module());
+    // Held only while the host's FidelityFX serves; else the title's own
+    // loader runs.
+    #[cfg(windows)]
+    if fidelityfx::serving() {
+        all.push(fidelityfx::module());
+    }
     all
 }

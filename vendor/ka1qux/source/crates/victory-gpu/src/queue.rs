@@ -1330,7 +1330,9 @@ fn present_now(this: This, planes: u32, plane_parameters: *const Plane) -> HRESU
     // With `present_behind`: the frame is shown by our thread, behind what
     // the queue holds, and nothing is run or waited for here.
     #[cfg(windows)]
-    let sent_behind = present_behind() && send_behind(this, planes, plane_parameters);
+    let sent_behind = present_behind()
+        && !crate::compose::wanted(planes)
+        && send_behind(this, planes, plane_parameters);
     #[cfg(not(windows))]
     let _ = this;
     // Submissions sent to the card and not waited for are settled first,
@@ -1404,15 +1406,41 @@ fn present_now(this: This, planes: u32, plane_parameters: *const Plane) -> HRESU
         }
         crate::bake_probe::present(frame);
     }
+    // Series S presents the world and the UI as two planes: blended into one
+    // image (`compose`); `VICTORY_PRESENT_PLANE=n` shows plane `n` alone.
+    #[cfg(windows)]
+    let first_resource = |k: u32| -> Option<This> {
+        if plane_parameters.is_null() || k >= planes {
+            return None;
+        }
+        // SAFETY: the title passes `planes` plane descriptions, 0x48 bytes apart.
+        let plane = unsafe {
+            plane_parameters
+                .cast::<u8>()
+                .add(0x48 * k as usize)
+                .cast::<Plane>()
+                .as_ref()
+        }?;
+        // SAFETY: the plane lists `count` resources.
+        (plane.count > 0 && !plane.resources.is_null()).then(|| unsafe { *plane.resources })
+    };
+    #[cfg(windows)]
+    let composed = if !sent_behind
+        && crate::compose::wanted(planes)
+        && let (Some(world), Some(ui)) = (first_resource(0), first_resource(planes - 1))
+    {
+        crate::compose::present(world, ui, frame)
+    } else {
+        false
+    };
+    #[cfg(windows)]
+    let shown_plane = crate::compose::picked_plane()
+        .map_or(0, |k| k.min(planes.saturating_sub(1)));
     #[cfg(windows)]
     if !sent_behind
+        && !composed
         && planes > 0
-        // SAFETY: the title passes `planes` plane descriptions.
-        && let Some(plane) = unsafe { plane_parameters.as_ref() }
-        && plane.count > 0
-        && !plane.resources.is_null()
-        // SAFETY: the plane lists `count` resources.
-        && let resource = unsafe { *plane.resources }
+        && let Some(resource) = first_resource(shown_plane)
         && let Some(texture) = crate::resource::host_resource(resource)
         && let Some(host) = crate::host::host()
     {

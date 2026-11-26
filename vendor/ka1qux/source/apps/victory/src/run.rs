@@ -50,6 +50,63 @@ fn apply_byte_patches(prepared: &mut victory_loader::PreparedImage) -> Result<()
     Ok(())
 }
 
+/// `VICTORY_FSR=quality|balanced|performance` on a console model whose title
+/// does not pick FidelityFX itself (Series X): the title is made to, by the
+/// user's title profile (`crate::title_profile`). Series S titles pick it
+/// themselves, and the host serves them without a patch.
+#[cfg(windows)]
+fn select_fsr(
+    prepared: &mut victory_loader::PreparedImage,
+    cfg: &victory_core::Config,
+    request: victory_hle::modules::fidelityfx::Request,
+    console: Console,
+) -> Result<()> {
+    use victory_hle::modules::fidelityfx::{Request, serving};
+    let Request::Preset(preset) = request else {
+        return Ok(());
+    };
+    if !serving() {
+        println!(
+            "fsr            {}: no host upscaler (see the FidelityFX line of the log): the title's own upscaler runs",
+            preset.name()
+        );
+        return Ok(());
+    }
+    if matches!(console, Console::SeriesS) {
+        println!(
+            "fsr            Series S: the title picks FidelityFX itself, at its own render size; the preset changes nothing"
+        );
+        return Ok(());
+    }
+    let Some(path) = &cfg.fsr_profile else {
+        println!(
+            "fsr            {}: no title profile (VICTORY_FSR_PROFILE), so the title keeps its own upscaler",
+            preset.name()
+        );
+        return Ok(());
+    };
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("reading the title profile {}", path.display()))?;
+    let profile = crate::title_profile::Profile::parse(&text)
+        .with_context(|| format!("the title profile {}", path.display()))?;
+    match crate::title_profile::apply(prepared, &profile, preset.scale(), preset.quality_mode()) {
+        crate::title_profile::Outcome::Applied { scale } => println!(
+            "fsr            {}: the title picks FidelityFX{}",
+            preset.name(),
+            if scale {
+                format!(", rendering at 1/{} of its output size", preset.ratio())
+            } else {
+                ", at its own render size (the profile has no scale)".into()
+            }
+        ),
+        crate::title_profile::Outcome::Skipped(why) => println!(
+            "fsr            {}: not applied ({why}); the title's own upscaler runs",
+            preset.name()
+        ),
+    }
+    Ok(())
+}
+
 #[cfg(windows)]
 pub fn run(
     exe: &Path,
@@ -65,9 +122,17 @@ pub fn run(
     // A title that relaunched itself: the old process must be gone first.
     victory_hle::modules::lifecycle::wait_for_previous();
     let cfg = victory_core::Config::load()?;
+    // Before the import registry is first used: it holds the FidelityFX
+    // module only when the host's FidelityFX serves.
+    let fsr = victory_hle::modules::fidelityfx::Request::from_env().map_err(anyhow::Error::msg)?;
+    let beside = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(Path::to_path_buf));
+    victory_hle::modules::fidelityfx::use_host(cfg.fidelityfx_dir.as_deref(), beside.as_deref(), fsr);
     let original = std::fs::read(exe).with_context(|| format!("reading {}", exe.display()))?;
     let mut prepared = victory_loader::prepare(&original)?;
     apply_byte_patches(&mut prepared)?;
+    select_fsr(&mut prepared, &cfg, fsr, console)?;
     let hash = prepared.original_hash.to_hex();
     match victory_game::identify(&hash) {
         Some(build) => println!("build          {} ({hash})", build.label),
