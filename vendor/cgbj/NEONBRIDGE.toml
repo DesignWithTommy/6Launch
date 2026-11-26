@@ -3,7 +3,7 @@
 name = "cgbj"
 fork = "VIctory"
 rank = 14   # #14 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "CGBJ (cool_fox 754cafc, GPL-3.0): 25 fps average relayed by PortWatch on an NVIDIA card, unconfirmed; not yet run here"
+about = "CGBJ (cool_fox a96549d, GPL-3.0): 25 fps average relayed by PortWatch on an NVIDIA card, unconfirmed; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:34
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]

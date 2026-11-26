@@ -3,7 +3,7 @@
 name = "vibrport"
 fork = "victory-fork"
 rank = 3   # #3 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VI-BR-PORT ab9ae78 (GPL-3.0): before this update it did not run on our RTX 4060 (game stopped ~20 s in); 8 GB NVIDIA fork; ~5.6 fps Series X, ~14 fps Series S in the prison (its author's RTX 4060 Ti)"
+about = "VI-BR-PORT 2aa1895 (GPL-3.0): before this update it did not run on our RTX 4060 (game stopped ~20 s in); 8 GB NVIDIA fork; ~5.6 fps Series X, ~14 fps Series S in the prison (its author's RTX 4060 Ti)"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # play.ps1:5 (diag is its default; README.md:75 builds release)
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)
@@ -23,6 +23,7 @@ preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (sl
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads (VICTORY_FILL_WAIT is not)
 
 [env]   # play.ps1 default path
+VICTORY_PORT_CONSTANTS = "1"   # play.ps1 (2aa1895)
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"   # play.ps1:15-20 defaults
 VICTORY_RELAY = "2"

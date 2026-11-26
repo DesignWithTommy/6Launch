@@ -223,13 +223,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== cgbj 754cafc9f0660fcb032d21744b78e1fcd9d74423
+=== cgbj a96549d3ef4a2533dd0af0ac42957f81a7f0d005
 # Neonbridge launcher spec for vendor/cgbj: DoubleGhosty's cool_fox, a continuation of CGBJ (codec-d/cool_fox, no longer on GitHub).
 # Build, run and env are its README and Play-VIctory.cmd (VICTORY_LOG=warn left out: the loader reads the info-level fps line).
 name = "cgbj"
 fork = "VIctory"
 rank = 14   # #14 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "CGBJ (cool_fox 754cafc, GPL-3.0): 25 fps average relayed by PortWatch on an NVIDIA card, unconfirmed; not yet run here"
+about = "CGBJ (cool_fox a96549d, GPL-3.0): 25 fps average relayed by PortWatch on an NVIDIA card, unconfirmed; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:34
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -1017,12 +1017,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== rufflab 55455179d2e42d37da8e3647e082fdc157430f91
+=== rufflab 4b5856a18668d7e2e3568e0276427fc38e2ee9df
 # i95 launcher spec for LoverCatys/ruff-lab: author build and run from its README.
 name = "rufflab"
 fork = "klbf-lab"
 rank = 17   # #17 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ruff-lab 5545517 (GPL-3.0): klbf-lab for 8 GB cards, 16 GB RAM and hard disks"
+about = "ruff-lab 4b5856a (GPL-3.0): klbf-lab for 8 GB cards, 16 GB RAM and hard disks"
 upstream = "https://github.com/LoverCatys/ruff-lab"
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:65
 exe = "target/release/victory.exe"
@@ -1063,14 +1063,14 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== scarlettport 2f8cffad5686e969f00644163eec4685e8ab09d5
+=== scarlettport 4866673a6788b72a53af2107b0e55625e49a6111
 # ScarlettPort's victory runtime (engine). Its second runtime, runtime/xcl, is a distinct
 # playable path (scripts/setup.ps1:15 `cargo build --release` in runtime\xcl -> runtime\xcl\target\release\xcl.exe,
 # scripts/play.ps1:34 `xcl run <game>` with XCL_DXC_THREADS=4, XCL_NO_WATCHDOG=1, XCL_PRESS_FILE); not modelled here.
 name = "scarlettport"
 fork = "victory-fork"
 rank = 25   # #25 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ScarlettPort 2f8cffa (victory runtime), GPL-3.0"
+about = "ScarlettPort 4866673 (victory runtime), GPL-3.0"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 # scripts/setup-scarlett.ps1:18,21 (run in engine; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "engine/Cargo.toml", "--release", "-p", "scarlett", "--bin", "scarlett", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]
@@ -1080,12 +1080,7 @@ exe = "engine/target/release/scarlett.exe"   # scripts/play-scarlett.ps1:42
 diag_build = []   # its default build already has --features diagnostics (play-scarlett.ps1 build, as above): nothing else to switch
 cwd = "engine/target/release"
 run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play-scarlett.ps1:24,45,88
-prewarm = ["warm", "{game}", "--jobs", "{jobs}"]   # docs/RUNTIMES.md:81 (victory warm: translates every shader and makes the compute pipelines)
-# Second prewarm phase, as ScarlettPort launcher 0.3 runs it after warm (shaderbuild.rs:272, engine.rs:63-75):
-# repeat with {skip} = 0, 1000, 2000, ... until a run's summary line "precompile-graphics  <N> records: ..."
-# (engine.rs:145 parse_graphics_end) gives N < 1000. Each run saves the pipeline library when it ends.
-# NEONBRIDGE_PRECOMPILE_GRAPHICS=0 skips it. Needed because play runs set SCARLETT_PRECOMPILED_GRAPHICS=1 (engine.rs:22).
-prewarm_graphics = ["precompile-graphics", "{game}/shaders.rpf", "--jobs", "{jobs}", "--skip", "{skip}", "--limit", "1000"]
+prewarm = ["shaders", "{game}"]   # play-scarlett.ps1 (4866673): scarlett shaders <game>, then warm
 game_env = "SCARLETT_GAME_DIR"       # play-scarlett.ps1:50
 cache_env = "SCARLETT_CACHE_DIR"   # Neonbridge: this runtime's own %LOCALAPPDATA%\6ixpack\scarlettport\cache (translators differ)
 agility = true                      # setup-scarlett.ps1:27-38 (Agility 1.614.1 into <exe dir>\D3D12)
@@ -1364,28 +1359,30 @@ preset_fast = ["SCARLETT_OWN_UPSCALER=1", "SCARLETT_NO_WATCHDOG=1", "SCARLETT_RE
 preset_autoinput = ["SCARLETT_AUTO_INPUT=1"]
 preset_fastboot = ["SCARLETT_FAST_BOOT=1"]
 preset_series_x = ["--console=series-x"]
-[env]
+[env]   # scripts/play-scarlett.ps1 (4866673): its Stable preset (CAND4)
 SCARLETT_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
-SCARLETT_OWN_UPSCALER = "1"          # play-scarlett.ps1:51
-SCARLETT_NO_WATCHDOG = "1"           # play-scarlett.ps1:52
-SCARLETT_RELAY = "2"                 # play-scarlett.ps1:55
-SCARLETT_SYNC_PRECISE = "1"          # play-scarlett.ps1:56
-SCARLETT_READ_SETTLE_PRECISE = "1"   # play-scarlett.ps1:57
-SCARLETT_MEM_SUBPAGE = "1"           # play-scarlett.ps1:70 (fx-cand4)
-SCARLETT_COPY_NOQUERY = "1"          # play-scarlett.ps1:70
-SCARLETT_CARD_BUFFERS_MB = "4096"    # play-scarlett.ps1:70
-SCARLETT_FRIENDLY = "1"              # play-scarlett.ps1:72
-SCARLETT_PIPELINE_WAIT_MS = "0"      # play-scarlett.ps1:59
-SCARLETT_PRECOMPILED_GRAPHICS = "1" # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_READFIX = "1"             # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_COPY_BACK_ONLY_READBACK = "1" # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_NARROW_ROOT = "1"         # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_NARROW_VIEWS = "1"        # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_NARROW_BVH = "1"          # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_PREP_BARRIERS = "1"       # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_PREP_TABLES = "1"         # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_PREP_REUSE = "1"          # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_RAYTRACING = "0"            # launcher/src/engine.rs:80 world_env (Config.raytracing default false, main.rs:138): OPTIONS5 answers tier 0, the title takes its non-RT path
+SCARLETT_OWN_UPSCALER = "1"
+SCARLETT_NO_WATCHDOG = "1"
+SCARLETT_RELAY = "2"
+SCARLETT_PIPELINE_WAIT_MS = "0"
+SCARLETT_AMBIENT_AIR = "1.5"
+SCARLETT_TEXTURE_NO_WAIT = "1"
+SCARLETT_WIDE_BACK = "1"
+SCARLETT_CARD_REHASH_RUNS = "1"
+SCARLETT_JOIN_COPIES = "1"
+SCARLETT_INDIRECT_WINDOW = "1"
+SCARLETT_RELAY_COPY = "1"
+SCARLETT_CARD_STEPS = "2"
+SCARLETT_INDIRECT_BATCH = "2"
+SCARLETT_MAP_THREADS = "1"
+SCARLETT_CARD_AWAKE = "1"
+SCARLETT_SHOW_AFTER = "1"
+SCARLETT_AMBIENT = "0.8"
+SCARLETT_THIN = "1"
+SCARLETT_JOIN_PARTS = "8"
+SCARLETT_UPLOAD_AHEAD = "1"
+SCARLETT_LEVELS_ON_DEMAND = "1"
+SCARLETT_CARD_BUFFERS_MIN_KB = "64"
 SCARLETT_PRESS_FILE = "{press}"      # play-scarlett.ps1:63
 
 # Keyboard as the gamepad, shown by the controls overlay (F1). From
@@ -1407,7 +1404,7 @@ rs = "C / Middle mouse"
 dpad = "Arrows / Wheel up-down"
 view = "Tab"
 menu = "P"
-=== unified 243e1f6e1e8ab0d8cb62d8f4829fc947f1fc6dfa
+=== unified e20f64c8345d0aaf69aeddbd8476ab2a080fc712
 # Neonbridge launcher spec for vendor/unified: Itsbatt's victory-unified, fxceless victory-fork
 # 0b0074e plus Belobug (ambient, quad reads, hoisted clamps), DexNom/VIctory (shader, cubemap,
 # PSO, range-lock streaming) and its own descriptor-lifetime fix. Build and run are its README.md
@@ -1415,11 +1412,11 @@ menu = "P"
 name = "unified"
 fork = "Belobug"
 rank = 18   # #18 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "victory-unified 243e1f6 (GPL-3.0): 8 GB NVIDIA fork; ~58 min without a crash into the camp mission at 2-3 fps (its author's RTX 3070 8 GB); not yet run here"
+about = "victory-unified e20f64c (GPL-3.0): 8 GB NVIDIA fork; ~58 min without a crash into the camp mission at 2-3 fps (its author's RTX 3070 8 GB); not yet run here"
 upstream = "https://github.com/Itsbatt/victory-unified"
-build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md Quick Play (+--locked)
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md (e20f64c): the launcher defaults to the diag build
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
-exe = "target/release/victory.exe"   # scripts/play.ps1:10
+exe = "target/diag/victory.exe"   # scripts/play.ps1:12 (-Build diag default)
 diag_build = []   # its README names no diagnostics build
 run = ["run", "{game_exe}", "--execute"]   # scripts/play.ps1:47 (Series X profile)
 prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]   # its base victory-fork's warm (apps/victory/src/translate.rs:160)
@@ -1592,13 +1589,13 @@ rs = "C / Middle mouse / H"
 dpad = "Arrows / 1 2 3 4 (E right)"
 view = "V"
 menu = "Esc / P"
-=== vibrport ab9ae781f9b7809c0abe5c89f13d5b745db11d75
+=== vibrport 2aa1895d716472e9ec0d187c9f9c9183f316bfb4
 # Neonbridge launcher spec for vendor/vibrport: edsuuu's VI-BR-PORT, a victory-fork fork for
 # 8 GB NVIDIA cards (its author's RTX 4060 Ti 8 GB). Default launch is scripts/play.ps1.
 name = "vibrport"
 fork = "victory-fork"
 rank = 3   # #3 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VI-BR-PORT ab9ae78 (GPL-3.0): before this update it did not run on our RTX 4060 (game stopped ~20 s in); 8 GB NVIDIA fork; ~5.6 fps Series X, ~14 fps Series S in the prison (its author's RTX 4060 Ti)"
+about = "VI-BR-PORT 2aa1895 (GPL-3.0): before this update it did not run on our RTX 4060 (game stopped ~20 s in); 8 GB NVIDIA fork; ~5.6 fps Series X, ~14 fps Series S in the prison (its author's RTX 4060 Ti)"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # play.ps1:5 (diag is its default; README.md:75 builds release)
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)
@@ -1618,6 +1615,7 @@ preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (sl
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads (VICTORY_FILL_WAIT is not)
 
 [env]   # play.ps1 default path
+VICTORY_PORT_CONSTANTS = "1"   # play.ps1 (2aa1895)
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"   # play.ps1:15-20 defaults
 VICTORY_RELAY = "2"
@@ -1657,13 +1655,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vicetay a8573332b11dd066602c4dabb8050e3e3af84503
+=== vicetay 4aaa7a3a8c6d6befba279dce5a3f54edb0f91c71
 # Neonbridge launcher spec for vendor/vicetay: TaynanGT's Vice-Tay. Build and run are its README "How to run it"
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
 fork = "VIctory"
 rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vice-Tay a857333 (GPL-3.0): 14 fps in the world on Series X, 22.7 fps median in a 30 min Series S test on its author's RTX 4090; not yet run here"
+about = "Vice-Tay 4aaa7a3 (GPL-3.0): 14 fps in the world on Series X, 22.7 fps median in a 30 min Series S test on its author's RTX 4090; not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
@@ -1684,7 +1682,10 @@ preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # full D3D12 bread
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (slow; crates/victory-gpu/src/host.rs, diagnostics build)
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads (VICTORY_FILL_WAIT is not)
 
+preset_no_panel = ["VICTORY_PANEL="]   # play.ps1 -NoPanel
+
 [env]   # play.ps1 default path
+VICTORY_PANEL = "1"   # play.ps1 (4aaa7a3): on unless -NoPanel
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"   # play.ps1:21-26 defaults
 VICTORY_RELAY = "2"
@@ -1786,12 +1787,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vilocity 6804c160c76dc977d0100f37a5764c764e81ec1e
+=== vilocity 4e0c5e48a7876020c76ccba9931dd95f2eaf709b
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
 rank = 22   # #22 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vilocity 6804c16 (GPL-3.0): its own layer, native engine for GTA VI"
+about = "Vilocity 4e0c5e4 (GPL-3.0): its own layer, native engine for GTA VI"
 upstream = "https://github.com/voidopcode/vilocity"
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"
@@ -1805,6 +1806,7 @@ agility = false
 preset_series_s = ["VILOCITY_CONSOLE=series-s"]   # apps/vilocity/src/main.rs:133
 
 [env]
+VILOCITY_MAX_FPS = "0"   # play-gta6.ps1 (4e0c5e4): no limit
 VILOCITY_CONSOLE = "series-s"   # scripts/play-gta6.ps1, its measured set
 VILOCITY_ASYNC_SUBMIT = "1"
 VILOCITY_QUEUE2 = "1"

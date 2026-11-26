@@ -5,11 +5,11 @@
 name = "unified"
 fork = "Belobug"
 rank = 18   # #18 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "victory-unified 243e1f6 (GPL-3.0): 8 GB NVIDIA fork; ~58 min without a crash into the camp mission at 2-3 fps (its author's RTX 3070 8 GB); not yet run here"
+about = "victory-unified e20f64c (GPL-3.0): 8 GB NVIDIA fork; ~58 min without a crash into the camp mission at 2-3 fps (its author's RTX 3070 8 GB); not yet run here"
 upstream = "https://github.com/Itsbatt/victory-unified"
-build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md Quick Play (+--locked)
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md (e20f64c): the launcher defaults to the diag build
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
-exe = "target/release/victory.exe"   # scripts/play.ps1:10
+exe = "target/diag/victory.exe"   # scripts/play.ps1:12 (-Build diag default)
 diag_build = []   # its README names no diagnostics build
 run = ["run", "{game_exe}", "--execute"]   # scripts/play.ps1:47 (Series X profile)
 prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]   # its base victory-fork's warm (apps/victory/src/translate.rs:160)

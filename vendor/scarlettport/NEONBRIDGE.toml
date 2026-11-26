@@ -4,7 +4,7 @@
 name = "scarlettport"
 fork = "victory-fork"
 rank = 25   # #25 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ScarlettPort 2f8cffa (victory runtime), GPL-3.0"
+about = "ScarlettPort 4866673 (victory runtime), GPL-3.0"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 # scripts/setup-scarlett.ps1:18,21 (run in engine; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "engine/Cargo.toml", "--release", "-p", "scarlett", "--bin", "scarlett", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]
@@ -14,12 +14,7 @@ exe = "engine/target/release/scarlett.exe"   # scripts/play-scarlett.ps1:42
 diag_build = []   # its default build already has --features diagnostics (play-scarlett.ps1 build, as above): nothing else to switch
 cwd = "engine/target/release"
 run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play-scarlett.ps1:24,45,88
-prewarm = ["warm", "{game}", "--jobs", "{jobs}"]   # docs/RUNTIMES.md:81 (victory warm: translates every shader and makes the compute pipelines)
-# Second prewarm phase, as ScarlettPort launcher 0.3 runs it after warm (shaderbuild.rs:272, engine.rs:63-75):
-# repeat with {skip} = 0, 1000, 2000, ... until a run's summary line "precompile-graphics  <N> records: ..."
-# (engine.rs:145 parse_graphics_end) gives N < 1000. Each run saves the pipeline library when it ends.
-# NEONBRIDGE_PRECOMPILE_GRAPHICS=0 skips it. Needed because play runs set SCARLETT_PRECOMPILED_GRAPHICS=1 (engine.rs:22).
-prewarm_graphics = ["precompile-graphics", "{game}/shaders.rpf", "--jobs", "{jobs}", "--skip", "{skip}", "--limit", "1000"]
+prewarm = ["shaders", "{game}"]   # play-scarlett.ps1 (4866673): scarlett shaders <game>, then warm
 game_env = "SCARLETT_GAME_DIR"       # play-scarlett.ps1:50
 cache_env = "SCARLETT_CACHE_DIR"   # Neonbridge: this runtime's own %LOCALAPPDATA%\6ixpack\scarlettport\cache (translators differ)
 agility = true                      # setup-scarlett.ps1:27-38 (Agility 1.614.1 into <exe dir>\D3D12)
@@ -298,28 +293,30 @@ preset_fast = ["SCARLETT_OWN_UPSCALER=1", "SCARLETT_NO_WATCHDOG=1", "SCARLETT_RE
 preset_autoinput = ["SCARLETT_AUTO_INPUT=1"]
 preset_fastboot = ["SCARLETT_FAST_BOOT=1"]
 preset_series_x = ["--console=series-x"]
-[env]
+[env]   # scripts/play-scarlett.ps1 (4866673): its Stable preset (CAND4)
 SCARLETT_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
-SCARLETT_OWN_UPSCALER = "1"          # play-scarlett.ps1:51
-SCARLETT_NO_WATCHDOG = "1"           # play-scarlett.ps1:52
-SCARLETT_RELAY = "2"                 # play-scarlett.ps1:55
-SCARLETT_SYNC_PRECISE = "1"          # play-scarlett.ps1:56
-SCARLETT_READ_SETTLE_PRECISE = "1"   # play-scarlett.ps1:57
-SCARLETT_MEM_SUBPAGE = "1"           # play-scarlett.ps1:70 (fx-cand4)
-SCARLETT_COPY_NOQUERY = "1"          # play-scarlett.ps1:70
-SCARLETT_CARD_BUFFERS_MB = "4096"    # play-scarlett.ps1:70
-SCARLETT_FRIENDLY = "1"              # play-scarlett.ps1:72
-SCARLETT_PIPELINE_WAIT_MS = "0"      # play-scarlett.ps1:59
-SCARLETT_PRECOMPILED_GRAPHICS = "1" # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_READFIX = "1"             # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_COPY_BACK_ONLY_READBACK = "1" # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_NARROW_ROOT = "1"         # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_NARROW_VIEWS = "1"        # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_NARROW_BVH = "1"          # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_PREP_BARRIERS = "1"       # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_PREP_TABLES = "1"         # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_PREP_REUSE = "1"          # launcher/src/engine.rs:98-100 (0.3: PRECOMPILED_GRAPHICS and SPEED_SETTINGS, its verified defaults)
-SCARLETT_RAYTRACING = "0"            # launcher/src/engine.rs:80 world_env (Config.raytracing default false, main.rs:138): OPTIONS5 answers tier 0, the title takes its non-RT path
+SCARLETT_OWN_UPSCALER = "1"
+SCARLETT_NO_WATCHDOG = "1"
+SCARLETT_RELAY = "2"
+SCARLETT_PIPELINE_WAIT_MS = "0"
+SCARLETT_AMBIENT_AIR = "1.5"
+SCARLETT_TEXTURE_NO_WAIT = "1"
+SCARLETT_WIDE_BACK = "1"
+SCARLETT_CARD_REHASH_RUNS = "1"
+SCARLETT_JOIN_COPIES = "1"
+SCARLETT_INDIRECT_WINDOW = "1"
+SCARLETT_RELAY_COPY = "1"
+SCARLETT_CARD_STEPS = "2"
+SCARLETT_INDIRECT_BATCH = "2"
+SCARLETT_MAP_THREADS = "1"
+SCARLETT_CARD_AWAKE = "1"
+SCARLETT_SHOW_AFTER = "1"
+SCARLETT_AMBIENT = "0.8"
+SCARLETT_THIN = "1"
+SCARLETT_JOIN_PARTS = "8"
+SCARLETT_UPLOAD_AHEAD = "1"
+SCARLETT_LEVELS_ON_DEMAND = "1"
+SCARLETT_CARD_BUFFERS_MIN_KB = "64"
 SCARLETT_PRESS_FILE = "{press}"      # play-scarlett.ps1:63
 
 # Keyboard as the gamepad, shown by the controls overlay (F1). From
