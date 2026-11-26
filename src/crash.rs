@@ -97,6 +97,8 @@ pub fn explain(lines: &[String]) -> Option<String> {
     }
     if lines.iter().any(|l| l.contains("1455") && l.to_ascii_lowercase().contains("paging")) {
         out.push("Windows ran out of page file (error 1455): make the page file bigger.".into());
+    } else if lines.iter().any(|l| l.contains("Not enough memory resources") || l.contains("0x8007000E")) {
+        out.push("The graphics card ran out of memory (0x8007000E), then the device was lost. On an 8 GB card pick the series_s or 8gb preset.".into());
     } else if lines.iter().any(|l| l.contains("E_OUTOFMEMORY") || l.to_ascii_lowercase().contains("out of memory")) {
         out.push("Something ran out of memory (E_OUTOFMEMORY / out of memory in the log).".into());
     }

@@ -2210,7 +2210,11 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     // The failure box leads with the reason (its first lines; crashes.log stays in last-crash.txt).
     let result = match (result, why) {
         (Err(e), Some(w)) => {
-            let short: Vec<&str> = w.lines().take_while(|l| !l.starts_with("The runtime's crash report")).collect();
+            let mut short: Vec<&str> = w.lines().take_while(|l| !l.starts_with("The runtime's crash report")).collect();
+            // Nothing before the crash report: show the report's opening lines instead of an empty "Why:".
+            if short.iter().all(|l| l.trim().is_empty()) {
+                short = w.lines().take(8).collect();
+            }
             Err(format!("{}
 
 Why:
