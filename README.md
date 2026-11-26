@@ -79,6 +79,7 @@ How each runtime is built, prepared and started is in [DEVELOPERS.md](DEVELOPERS
 
 ## FAQ
 
+- **Does it work on Windows 10?** Not for every runtime. KLBF Lab needs Shader Model 6.6, and Windows 10's built-in DirectX 12 stops at 6.5; KLBF doesn't load Microsoft's newer DirectX 12 (the Agility SDK), so it crashes on Windows 10. AnyXboxX and Vilocity do load it.
 - **Can I play GTA 6 on PC with this?** Not yet. Every runtime here is still being worked on.
 - **Is this a download or a crack?** No. There are no game files, keys or protection bypasses.
 - **Whose work is this?** Mostly the people who make the runtimes. i95 is the launcher around them. See [CREDITS.md](CREDITS.md).
