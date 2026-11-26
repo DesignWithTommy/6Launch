@@ -1,7 +1,7 @@
 # i95 launcher spec for ka1qux/BRVIctory-ka1qux: author build and run from its README.
 name = "ka1qux"
 fork = "VIctory"
-rank = 19   # #19 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 21   # #21 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "BRVIctory-ka1qux 6a7e871 (GPL-3.0): victory-fork tuned on an AMD Radeon"
 upstream = "https://github.com/ka1qux/BRVIctory-ka1qux"
 build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # README.md:297

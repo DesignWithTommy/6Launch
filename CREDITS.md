@@ -39,3 +39,6 @@ Ranks come from [vuyp](https://github.com/vuyp)'s [GTA VI PC race tracker](https
 - [ruff-lab](https://github.com/LoverCatys/ruff-lab) by LoverCatys, GPL-3.0 (vendor/rufflab)
 - [Vilocity](https://github.com/voidopcode/vilocity) by voidopcode, GPL-3.0-or-later per its Cargo.toml (vendor/vilocity)
 - [DexNom RayTime](https://github.com/DexNom/VIctory) by DexNom, GPL-3.0 (vendor/dexnom)
+- [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) by trustno1-coder, GPL-3.0 (vendor/nvidia)
+- [Victory-United](https://github.com/Fayberr/Victory-United) by Fayberr, GPL-3.0 (vendor/united)
+- i95-Victory, our own fork of Kelvaroq with fixes from VI-BR-PORT, soldsawn/victory-nvidia-8gb and VItoriaBr, GPL-3.0 (vendor/i95-victory; credits in its source/CREDITS.md)
