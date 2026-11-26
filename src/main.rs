@@ -10,6 +10,7 @@
 //! `--restore` puts it back.
 
 mod fetch;
+mod shaderkey;
 mod autopress;
 mod verify;
 mod preflight;

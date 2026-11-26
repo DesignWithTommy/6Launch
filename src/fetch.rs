@@ -13,9 +13,10 @@ use std::path::{Path, PathBuf};
 pub const PACKAGED: &str = "PACKAGED";
 
 pub fn source(name: &str, vendor_dir: &Path, exes: &[&str]) -> PathBuf {
-    // A tree, a packaged runtime, or an exe built here before: stay with it
-    // (a rebuild elsewhere changes the exe, and with it the shader cache keys).
-    if vendored(vendor_dir) || vendor_dir.join(PACKAGED).is_file() || exes.iter().any(|e| vendor_dir.join(e).is_file()) {
+    // A tree or a packaged runtime. Shader keys no longer follow the exe
+    // (shaderkey.rs), so building from the download keeps the cache.
+    let _ = exes;
+    if vendored(vendor_dir) || vendor_dir.join(PACKAGED).is_file() {
         return vendor_dir.to_path_buf();
     }
     match pin(vendor_dir) {

@@ -878,6 +878,7 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
     prerequisite(root, spec).map_err(|e| format!("runtime {name} {e}"))?;
     println!("[launch] {name}: building ({})", cmd.join(" "));
     let applied = patch(name, root)?;
+    let (kept, shader_key) = crate::shaderkey::apply(root);
     crate::splash::status(0.1, &format!("Building {name}"));
     let python_build = matches!(cmd.first().map(String::as_str), Some("python" | "python3" | "py"));
     let cmd = interpreter(cmd)?;
@@ -888,6 +889,9 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
     c.args(&cmd[1..]).current_dir(root).env_remove("CARGO_TARGET_DIR").env("CARGO_TERM_PROGRESS_WHEN", "always").env("CARGO_TERM_PROGRESS_WIDTH", "100").stdout(Stdio::piped()).stderr(Stdio::piped());
     if let Some(t) = &target {
         c.env("CARGO_TARGET_DIR", t);
+    }
+    if let Some(k) = &shader_key {
+        c.env("NEONBRIDGE_SHADER_KEY", k);
     }
     let status = hidden(&mut c).spawn().and_then(|mut child| {
         // cargo's "Building [..] N/M" (or a Python build's N/M) moves the
@@ -901,13 +905,14 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
         let _ = out.map(|t| t.join());
         child.wait()
     });
+    crate::shaderkey::revert(&kept);
     unpatch(name, root, &applied);
     let status = status.map_err(|e| format!("runtime {name}: {}: {e}", cmd[0]))?;
     if !status.success() {
         return Err(format!("runtime {name}: build failed ({status})").into());
     }
     // Reverting the patches touched the sources: the exe stays the newer.
-    if !applied.is_empty() && let Ok(f) = fs::File::options().append(true).open(&exe) {
+    if !(applied.is_empty() && kept.is_empty()) && let Ok(f) = fs::File::options().append(true).open(&exe) {
         let _ = f.set_modified(SystemTime::now());
     }
     if !exe.is_file() {
@@ -941,6 +946,9 @@ fn build_stamp(name: &str, root: &Path, line: &[String], target: Option<&Path>) 
     if patching() && patch_root(name, root).is_some() && let Ok(p) = fs::read(patch_file(name)) {
         h.update(b"patch applied");
         h.update(&p);
+    }
+    if crate::shaderkey::on() && !crate::shaderkey::files(root).is_empty() {
+        h.update(b"shader key follows the translator v1");
     }
     h.update(line.join("\x1f").as_bytes());
     if let Some(t) = target {
@@ -1151,10 +1159,7 @@ pub fn cargo(cmd: &[String], cwd: &Path, target: &Path, label: &str) -> Result<(
 
 fn patch_root(name: &str, root: &Path) -> Option<PathBuf> {
     match name {
-        "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo" => Some(root.to_path_buf()),
-        // Their method-102 patch rebuilds the exe, and the exe's bytes key their
-        // shader cache: opt in with NEONBRIDGE_NEW_PATCHES=1.
-        "klbf" | "xtx" | "vicetay" | "vertex" | "belobug" | "amd" if std::env::var("NEONBRIDGE_NEW_PATCHES").is_ok_and(|v| v.trim() == "1") => Some(root.to_path_buf()),
+        "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo" | "klbf" | "xtx" | "vicetay" | "vertex" | "belobug" | "amd" => Some(root.to_path_buf()),
         "scarlettport" => Some(root.join("runtime").join("victory")),
         "anyxboxx" => Some(root.join("third_party").join("victory")),
         _ => None,
@@ -1222,7 +1227,10 @@ fn git_apply(tree: &Path, patch: &Path, extra: &[&str]) -> (bool, String) {
     let Some(rel) = ok.then(|| fs::canonicalize(tree).ok().zip(fs::canonicalize(&top).ok())).flatten()
         .and_then(|(t, r)| t.strip_prefix(&r).ok().map(|p| p.to_string_lossy().replace('\\', "/")))
     else {
-        return (false, format!("{} is not inside a git checkout", tree.display()));
+        // A downloaded tree (6ixpack\src) is no checkout: git apply works on plain folders.
+        let mut c = crate::runtimes::command("git");
+        c.args(["apply", "--ignore-whitespace"]).args(extra).arg(patch).current_dir(tree);
+        return quiet(c);
     };
     let mut c = crate::runtimes::command("git");
     c.args(["apply", "--ignore-whitespace"]).args(extra).arg(format!("--directory={rel}")).arg(patch).current_dir(&top);
