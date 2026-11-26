@@ -1,0 +1,38 @@
+# Neonbridge launcher spec for vendor/united: Fayberr's Victory-United (VIctory's best open PRs in one tree).
+# Build, run and env are its README and launch-curated.cmd (default profile: Series S, half scale).
+name = "united"
+fork = "VIctory"
+about = "Victory-United 8bcc9a1 (GPL-3.0): 9.3 fps median over 15 min after merging VIctory-7900XTX's speed work; not yet run here"
+upstream = "https://github.com/Fayberr/Victory-United"
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:68 (+--locked)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"   # launch-curated.cmd:7
+run = ["run", "--console", "series-s", "--execute", "{game_exe}"]   # launch-curated.cmd (default profile)
+prewarm = ["precompile", "--pipelines", "--jobs", "{jobs}", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll"]   # launch-curated.cmd --prewarm
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+# README.md:71-73: Agility 1.620.2 into target\release\D3D12 (stage-agility.ps1)
+setup = [
+  "agility: powershell -NoProfile -ExecutionPolicy Bypass -File stage-agility.ps1 [asks first: download]",
+]
+
+preset_series_x = ["--console=series-x", "VICTORY_OWN_UPSCALER=", "VICTORY_RENDER_SCALE="]   # launch-curated.cmd --series-x
+preset_8gb = ["VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours: its 2048 MB card buffers trimmed for 8 GB cards
+
+[env]   # launch-curated.cmd :profile
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_CARD_BUFFERS_MIN_MB = "1"
+VICTORY_CARD_BUFFERS_MB = "2048"
+VICTORY_RELAY = "2"
+VICTORY_LATE_WAIT = "3"
+VICTORY_WIDE_BACK = "1"
+VICTORY_LIBRARY_TRIM = "0"
+VICTORY_REBAR = "0"
+VICTORY_COPY_BACK_ONLY_READBACK = "0"
+VICTORY_AMBIENT_STUB = "1"
+VICTORY_SHADOWMASK_STUB = "1"
+VICTORY_EXPOSURE_STUB = "1"
+VICTORY_OWN_UPSCALER = "1"
+VICTORY_RENDER_SCALE = "0.5"
