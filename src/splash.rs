@@ -387,13 +387,13 @@ unsafe fn paint(hwnd: HWND) {
 
         let title = font(44, 800);
         let small = font(17, 400);
-        text(dc, "NEON", RECT { left: 32, top: 28, right: WIDTH / 2, bottom: 84 }, PINK, title, DT_LEFT | DT_VCENTER);
+        text(dc, "i", RECT { left: 32, top: 28, right: WIDTH / 2, bottom: 84 }, PINK, title, DT_LEFT | DT_VCENTER);
         let mut size: windows_sys::Win32::Foundation::SIZE = std::mem::zeroed();
-        let neon = wide("NEON");
+        let neon = wide("i");
         let old = SelectObject(dc, title);
         GetTextExtentPoint32W(dc, neon.as_ptr(), 4, &mut size);
         SelectObject(dc, old);
-        text(dc, "BRIDGE", RECT { left: 32 + size.cx, top: 28, right: WIDTH - 32, bottom: 84 }, CYAN, title, DT_LEFT | DT_VCENTER);
+        text(dc, "95", RECT { left: 32 + size.cx, top: 28, right: WIDTH - 32, bottom: 84 }, CYAN, title, DT_LEFT | DT_VCENTER);
         // Counted lines carry their own numbers; dots only for waits.
         // No count: dots and the step's elapsed time ("Warming the shaders... 1m 20s").
         let dots = match since.map(|t| t.elapsed()).filter(|_| pulse) {

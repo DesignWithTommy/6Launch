@@ -454,9 +454,9 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
     fill_rect(dc, rect(0, 0, w, h), BACKGROUND);
 
     // Header: the wordmark, small, and one 1 px line.
-    let neon = width_of(dc, "NEON", f.word);
-    text(dc, "NEON", rect(24, 0, 200, HEADER), PINK, f.word, DT_LEFT | DT_VCENTER);
-    text(dc, "BRIDGE", rect(24 + neon, 0, 240, HEADER), CYAN, f.word, DT_LEFT | DT_VCENTER);
+    let neon = width_of(dc, "i", f.word);
+    text(dc, "i", rect(24, 0, 200, HEADER), PINK, f.word, DT_LEFT | DT_VCENTER);
+    text(dc, "95", rect(24 + neon, 0, 240, HEADER), CYAN, f.word, DT_LEFT | DT_VCENTER);
     fill_rect(dc, rect(0, HEADER, w, HEADER + 1), BORDER);
 
     // Left: the runtimes.

@@ -6,17 +6,17 @@ Everything a player doesn't need: building from source, the command line, the ru
 
 ```
 cargo build --release                      # target\release\i95.exe
-neonbridge                                 # the picker window (or, in a terminal, numbered choices)
-neonbridge --runtime victory --game <dump dir> [--log run.log] [--timeout S]
+i95                                 # the picker window (or, in a terminal, numbered choices)
+i95 --runtime victory --game <dump dir> [--log run.log] [--timeout S]
 ```
 
 You need Visual Studio Build Tools with the x64 C++ tools, the Windows SDK and Rust (stable, `x86_64-pc-windows-msvc`). Each runtime's own toolchain is pinned in its tree (`rust-toolchain.toml`), and rustup fetches it.
 
-`neonbridge --package` builds every runtime and lays out a release. A runtime that can't be built here (a missing prerequisite or a failed build) is left out and listed under "Not bundled" in the package's README.
+`i95 --package` builds every runtime and lays out a release. A runtime that can't be built here (a missing prerequisite or a failed build) is left out and listed under "Not bundled" in the package's README.
 
 ## Runtimes
 
-Each runtime is a tree under `vendor/<name>`, copied unchanged from its upstream at the hash in its `UPSTREAM` file. Its `NEONBRIDGE.toml` tells the launcher how to build it, which exe and arguments to run, its environment, options, presets and setup steps. A runtime's own fixes, if any, are in `vendor/patches/rt-<name>.patch`, applied for the build and reverted after it.
+Each runtime's source is bundled under `vendor/<name>/source`, unchanged from its upstream at the hash in its `UPSTREAM` file. Its `NEONBRIDGE.toml` tells the launcher how to build it, which exe and arguments to run, its environment, options, presets and setup steps. i95 never patches a runtime: each builds as its author publishes it.
 
 In picker order: each toml's `rank = N` (best first, by the leader's own published results; unranked trees last, Mix always last).
 
@@ -43,7 +43,7 @@ A build is skipped when its build stamp (`<exe>.nbstamp`: the tree's git hash, i
 
 | Command | Does |
 |---|---|
-| `neonbridge` | No arguments: the picker. In a terminal with `NEONBRIDGE_PICKER=0`, nothing is asked. |
+| `i95` | No arguments: the picker. In a terminal with `NEONBRIDGE_PICKER=0`, nothing is asked. |
 | `--runtime <name>` | The runtime to use (or `NEONBRIDGE_RUNTIME`; default `scarlettport`). |
 | `--list` | The runtimes. |
 | `--list <name>` | That runtime's options, their defaults and the values a run would use, plus its presets and setup steps. |
@@ -57,7 +57,7 @@ A build is skipped when its build stamp (`<exe>.nbstamp`: the tree's git hash, i
 
 Settings apply in this order, the later winning: the toml, your environment, the preset, then `--set`.
 
-The `neonbridge-own` runtime keeps its own options (`--debug`, `--rev`, `--tuxbox`, `--pipelines`, `neonbridge ctl ...`); `neonbridge --runtime neonbridge-own --help` lists them.
+The `neonbridge-own` runtime keeps its own options (`--debug`, `--rev`, `--tuxbox`, `--pipelines`, `i95 ctl ...`); `i95 --runtime neonbridge-own --help` lists them.
 
 ## Environment variables
 
