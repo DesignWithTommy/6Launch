@@ -187,9 +187,6 @@ pub fn boxes(children: &[u32; 4], boxes: &[[f32; 6]; 4], ray: &Ray, sort: bool) 
     let mut ids = [NONE; 4];
     let mut distances = [f32::INFINITY; 4];
     for (n, b) in boxes.iter().enumerate() {
-        if children[n] == NONE {
-            continue;
-        }
         let (mut near, mut far) = ([0f32; 3], [0f32; 3]);
         for a in 0..3 {
             let low = (b[a] - ray.origin[a]) * inverse[a];
@@ -199,8 +196,11 @@ pub fn boxes(children: &[u32; 4], boxes: &[[f32; 6]; 4], ray: &Ray, sort: bool) 
         }
         let enter = near[0].max(near[1]).max(near[2]);
         let leave = far[0].min(far[1]).min(far[2]);
-        // A box whose minimum x is NaN is switched off.
-        if !b[0].is_nan() && leave >= enter.max(0.0) && enter < ray.extent {
+        // A box whose minimum x is NaN is switched off. A child that is not
+        // there may have inverted infinite bounds, which every ray enters at
+        // minus infinity: it would be first of the sorted children and end
+        // the walk before them (DexNom/VIctory bc3cd4b0).
+        if children[n] != NONE && !b[0].is_nan() && leave >= enter.max(0.0) && enter < ray.extent {
             ids[n] = children[n];
             distances[n] = enter;
         }
@@ -289,6 +289,17 @@ pub fn half_to_f32(h: u16) -> f32 {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    /// An empty slot's inverted infinite bounds do not come before the
+    /// children a ray enters (after DexNom/VIctory bc3cd4b0).
+    #[test]
+    fn an_empty_slot_is_never_entered() {
+        let inside = |x: f32| [x - 1.0, -1.0, -1.0, x + 1.0, 1.0, 1.0];
+        let (up, down) = (f32::INFINITY, f32::NEG_INFINITY);
+        let bounds = [inside(30.0), [up, up, up, down, down, down], inside(10.0), [up, up, up, down, down, down]];
+        let ray = Ray::new([0.0; 3], [1.0, 0.0, 0.0], 100.0);
+        assert_eq!(boxes(&[8, NONE, 16, NONE], &bounds, &ray, true), [16, 8, NONE, NONE]);
+    }
 
     /// The smallest 16-bit float not below `x` (`up`) or not above it.
     pub(crate) fn f32_to_half(x: f32, up: bool) -> u16 {
@@ -428,20 +439,6 @@ pub(crate) mod tests {
         // Backwards: nothing.
         let back = Ray::new([0.0; 3], [-1.0, 0.0, 0.0], 1000.0);
         assert_eq!(intersect(&node, 5, &back, true), [NONE; 4]);
-    }
-
-    #[test]
-    fn an_absent_child_with_finite_bounds_sorts_after_a_hit() {
-        let children = [NONE, 8, NONE, NONE];
-        let bounds = [
-            moved(UNIT, [2.0, 0.0, 0.0]),
-            moved(UNIT, [4.0, 0.0, 0.0]),
-            [f32::NAN; 6],
-            [f32::NAN; 6],
-        ];
-        let ray = Ray::new([0.0; 3], [1.0, 0.0, 0.0], 10.0);
-        assert_eq!(boxes(&children, &bounds, &ray, true), [8, NONE, NONE, NONE]);
-        assert_eq!(boxes(&children, &bounds, &ray, false), [NONE, 8, NONE, NONE]);
     }
 
     #[test]

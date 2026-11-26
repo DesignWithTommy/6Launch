@@ -2,7 +2,7 @@
 name = "rufflab"
 fork = "klbf-lab"
 rank = 13   # #13 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ruff-lab d37ba20 (GPL-3.0): klbf-lab for 8 GB cards, 16 GB RAM and hard disks"
+about = "ruff-lab bcca048 (GPL-3.0): klbf-lab for 8 GB cards, 16 GB RAM and hard disks"
 upstream = "https://github.com/LoverCatys/ruff-lab"
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:65
 exe = "target/release/victory.exe"

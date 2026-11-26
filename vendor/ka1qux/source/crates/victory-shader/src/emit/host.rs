@@ -62,24 +62,113 @@ fn err(e: windows::core::Error) -> String {
     e.message().to_string()
 }
 
-/// Whether `device` runs native 16-bit operations (D3D12 OPTIONS4
-/// `Native16BitShaderOpsSupported`).
-pub fn native16(device: &ID3D12Device) -> bool {
-    let mut options = D3D12_FEATURE_DATA_D3D12_OPTIONS4::default();
-    // SAFETY: the query writes the structure of the given size.
+fn software(desc: &DXGI_ADAPTER_DESC1) -> bool {
+    desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE.0 as u32 != 0
+        || (desc.VendorId == 0x1414 && desc.DeviceId == 0x8c)
+}
+
+fn adapter_matches(requested: &str, index: u32, name: &str) -> bool {
+    if let Ok(wanted) = requested.parse::<u32>() {
+        wanted == index
+    } else {
+        !requested.is_empty() && name.to_lowercase().contains(&requested.to_lowercase())
+    }
+}
+
+fn adapter_desc(device: &ID3D12Device) -> windows::core::Result<DXGI_ADAPTER_DESC1> {
+    // SAFETY: plain adapter queries for a live device.
+    unsafe {
+        let factory: IDXGIFactory4 = CreateDXGIFactory2(DXGI_CREATE_FACTORY_FLAGS(0))?;
+        factory
+            .EnumAdapterByLuid::<IDXGIAdapter1>(device.GetAdapterLuid())?
+            .GetDesc1()
+    }
+}
+
+fn shader_model(device: &ID3D12Device) -> windows::core::Result<D3D_SHADER_MODEL> {
+    let mut sm = D3D12_FEATURE_DATA_SHADER_MODEL {
+        HighestShaderModel: D3D_SHADER_MODEL_6_6,
+    };
+    // SAFETY: a feature structure of the requested type and size.
     unsafe {
         device.CheckFeatureSupport(
-            D3D12_FEATURE_D3D12_OPTIONS4,
-            (&raw mut options).cast(),
-            size_of_val(&options) as u32,
-        )
+            D3D12_FEATURE_SHADER_MODEL,
+            (&raw mut sm).cast(),
+            size_of_val(&sm) as u32,
+        )?;
     }
-    .is_ok()
-        && options.Native16BitShaderOpsSupported.as_bool()
+    Ok(sm.HighestShaderModel)
+}
+
+/// Create the device used by the runtime and offline pipeline checks.
+/// An explicit DXGI index or name in `VICTORY_D3D12_ADAPTER` takes priority.
+/// Otherwise prefer a high-performance SM 6.6 adapter, then try DXGI's
+/// default if there is no suitable enumerated adapter.
+pub fn create_preferred_device() -> windows::core::Result<ID3D12Device> {
+    let requested = std::env::var("VICTORY_D3D12_ADAPTER").unwrap_or_default();
+    let requested = requested.trim();
+    // SAFETY: plain adapter queries and device creation.
+    unsafe {
+        let create = |adapter: Option<&IDXGIAdapter1>| -> windows::core::Result<ID3D12Device> {
+            let mut device = None;
+            match adapter {
+                Some(adapter) => D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, &mut device)?,
+                None => D3D12CreateDevice(None, D3D_FEATURE_LEVEL_12_0, &mut device)?,
+            }
+            device.ok_or_else(windows::core::Error::empty)
+        };
+        if !requested.is_empty() {
+            let factory: IDXGIFactory4 = CreateDXGIFactory2(DXGI_CREATE_FACTORY_FLAGS(0))?;
+            for index in 0.. {
+                let Ok(adapter) = factory.EnumAdapters1(index) else {
+                    break;
+                };
+                let desc = adapter.GetDesc1()?;
+                let name = String::from_utf16_lossy(&desc.Description);
+                if !software(&desc) && adapter_matches(requested, index, name.trim_end_matches('\0'))
+                {
+                    return create(Some(&adapter));
+                }
+            }
+            return Err(windows::core::Error::new(
+                DXGI_ERROR_NOT_FOUND,
+                format!("VICTORY_D3D12_ADAPTER={requested} matched no hardware adapter"),
+            ));
+        }
+        if let Ok(factory) = CreateDXGIFactory2::<IDXGIFactory6>(DXGI_CREATE_FACTORY_FLAGS(0)) {
+            for index in 0.. {
+                let Ok(adapter) = factory.EnumAdapterByGpuPreference::<IDXGIAdapter1>(
+                    index,
+                    DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                ) else {
+                    break;
+                };
+                if adapter.GetDesc1().is_ok_and(|desc| !software(&desc))
+                    && let Ok(device) = create(Some(&adapter))
+                    && shader_model(&device).is_ok_and(|sm| sm.0 >= D3D_SHADER_MODEL_6_6.0)
+                {
+                    return Ok(device);
+                }
+            }
+        }
+        create(None)
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn an_explicit_adapter_matches_an_index_or_name() {
+    let nvidia = "NVIDIA GeForce RTX 3050 Laptop GPU";
+    let integrated = "Intel(R) UHD Graphics";
+    assert!(adapter_matches("1", 1, nvidia));
+    assert!(!adapter_matches("1", 0, integrated));
+    assert!(adapter_matches("geforce rtx 3050", 1, nvidia));
+    assert!(!adapter_matches("nvidia", 0, integrated));
+    assert!(!adapter_matches("", 0, integrated));
 }
 
 impl Host {
-    /// The default adapter, or WARP with `warp` (or `VICTORY_WARP=1`).
+    /// The preferred hardware adapter, or WARP with `warp` (or `VICTORY_WARP=1`).
     pub fn new(warp: bool) -> Result<Self, String> {
         let warp = warp || std::env::var("VICTORY_WARP").is_ok_and(|v| v == "1");
         // SAFETY: plain D3D12/DXGI calls with valid out pointers.
@@ -101,49 +190,49 @@ impl Host {
                 let adapter: IDXGIAdapter = factory.EnumWarpAdapter().map_err(err)?;
                 D3D12CreateDevice(&adapter, D3D_FEATURE_LEVEL_12_0, &mut device).map_err(err)?;
             } else {
-                D3D12CreateDevice(None, D3D_FEATURE_LEVEL_12_0, &mut device).map_err(err)?;
+                let hardware = create_preferred_device().map_err(err)?;
                 // A machine without a graphics card gives the software
                 // adapter as its default device (a hosted test runner,
                 // whose first adapter is a display stub that cannot make a
                 // device): that is no hardware device, and the tests that
                 // ask for one skip it, as they do where there is none.
-                if let Some(made) = &device {
-                    let factory: IDXGIFactory4 =
-                        CreateDXGIFactory2(DXGI_CREATE_FACTORY_FLAGS(0)).map_err(err)?;
-                    if let Ok(adapter) = factory.EnumAdapterByLuid::<IDXGIAdapter1>(made.GetAdapterLuid())
-                        && let Ok(desc) = adapter.GetDesc1()
-                        && (desc.Flags & 2 != 0 || (desc.VendorId == 0x1414 && desc.DeviceId == 0x8c))
-                    {
-                        return Err("the default device is the software adapter".to_owned());
-                    }
+                if adapter_desc(&hardware).is_ok_and(|desc| software(&desc)) {
+                    return Err("the default device is the software adapter".to_owned());
                 }
+                device = Some(hardware);
             }
             let device = device.ok_or("no device")?;
-            let mut sm = D3D12_FEATURE_DATA_SHADER_MODEL {
-                HighestShaderModel: D3D_SHADER_MODEL_6_6,
-            };
-            device
-                .CheckFeatureSupport(
-                    D3D12_FEATURE_SHADER_MODEL,
-                    (&raw mut sm).cast(),
-                    size_of_val(&sm) as u32,
-                )
-                .map_err(err)?;
-            if sm.HighestShaderModel.0 < D3D_SHADER_MODEL_6_6.0 {
-                return Err(format!(
-                    "the device supports SM {:#x} only",
-                    sm.HighestShaderModel.0
-                ));
+            let sm = shader_model(&device).map_err(err)?;
+            if sm.0 < D3D_SHADER_MODEL_6_6.0 {
+                return Err(format!("the device supports SM {:#x} only", sm.0));
             }
             Ok(Host { device })
         }
     }
 
-    /// Whether this device runs native 16-bit operations (D3D12
-    /// `Native16BitShaderOpsSupported`, SM 6.2 and up, which the device
-    /// already has): what [`super::set_host_native16`] takes.
-    pub fn native16(&self) -> bool {
-        native16(&self.device)
+    /// The name of the adapter that actually created the device.
+    pub fn adapter_name(&self) -> Option<String> {
+        let desc = adapter_desc(&self.device).ok()?;
+        Some(String::from_utf16_lossy(&desc.Description).trim_end_matches('\0').to_owned())
+    }
+
+    /// The maximum wave size and whether the adapter is AMD RDNA, for
+    /// offline shader translation followed by host pipeline creation.
+    pub fn translation_caps(&self) -> Option<(u32, bool)> {
+        let mut waves = D3D12_FEATURE_DATA_D3D12_OPTIONS1::default();
+        // SAFETY: a feature structure of the requested type and size.
+        unsafe {
+            self.device.CheckFeatureSupport(
+                D3D12_FEATURE_D3D12_OPTIONS1,
+                (&raw mut waves).cast(),
+                size_of_val(&waves) as u32,
+            )
+        }
+        .ok()?;
+        let rdna = waves.WaveLaneCountMin == 32
+            && waves.WaveLaneCountMax == 64
+            && adapter_desc(&self.device).is_ok_and(|desc| desc.VendorId == 0x1002);
+        Some((waves.WaveLaneCountMax, rdna))
     }
 
     /// The root signature translated shaders expect: user data per stage
@@ -634,10 +723,7 @@ fn stub(pixel: bool, outputs: Vec<SigElement>) -> HostShader {
         root_cbvs: Vec::new(),
         root_srvs: Vec::new(),
         root_uavs: Vec::new(),
-        written_root_uavs: Vec::new(),
-        writes_guest_memory: false,
         root_indexed_views: Vec::new(),
-        half_views: Vec::new(),
     }
 }
 
@@ -656,10 +742,6 @@ pub enum Root {
         srv: bool,
         data: Vec<u32>,
     },
-    /// A root UAV over a zeroed buffer of this many dwords, whose contents
-    /// [`Host::dispatch`] returns after the views' ([`Host::dispatch`]
-    /// only).
-    Uav(u32),
 }
 
 /// Bindings for [`Host::draw`]: root arguments and the heap contents.
@@ -897,7 +979,7 @@ impl Host {
                         at.ptr += (index * size) as u64;
                         list.SetGraphicsRootDescriptorTable(*param, at);
                     }
-                    Root::View { .. } | Root::Uav(_) => return Err("root views in a draw".into()),
+                    Root::View { .. } => return Err("root views in a draw".into()),
                 }
             }
             list.OMSetRenderTargets(1, Some(&rtv), false, None);
@@ -1021,15 +1103,11 @@ fn transition(
 
 /// A view in the heap for [`Host::dispatch`].
 #[cfg(test)]
-#[derive(Clone, Copy)]
 pub enum View<'a> {
     /// An RGBA32F texture SRV (width, height, texels).
     Texture(u32, u32, &'a [[f32; 4]]),
-    /// An RGBA32F cube SRV (face size, texels of faces +x -x +y -y +z -z).
-    Cube(u32, &'a [[f32; 4]]),
-    /// An RGBA32F cube SRV with mips (face size, mip count, texels in the
-    /// order of D3D's subresources: per face, its levels from the largest).
-    CubeMips(u32, u16, &'a [[f32; 4]]),
+    /// An RGBA32F cube SRV (face size, mip count, texels in D3D subresource order).
+    Cube(u32, u16, &'a [[f32; 4]]),
     /// A raw buffer UAV of this many dwords, zeroed.
     RawUav(u32),
     /// An RGBA32F texture UAV (width, height), zeroed.
@@ -1038,9 +1116,6 @@ pub enum View<'a> {
     UintTextureUav(u32, u32),
     /// A typed RGBA16F buffer UAV of this many elements, zeroed.
     HalfUav(u32),
-    /// The same buffer viewed as R16G16B16A16_UINT: what a translated
-    /// program that moves halves is shown ([`super::HostShader::half_views`]).
-    HalfUintUav(u32),
     /// A constant buffer of these dwords.
     Cbv(&'a [u32]),
     /// A buffer SRV over these dwords.
@@ -1080,18 +1155,6 @@ impl Host {
         pso: &ID3D12PipelineState,
         d: &Dispatch,
     ) -> Result<Vec<Vec<u32>>, String> {
-        self.dispatch_timed(root, pso, d, 1).map(|(out, _)| out)
-    }
-
-    /// [`Self::dispatch`] `times` times over, back to back, with the GPU
-    /// time between the first and the last in seconds (timestamps).
-    pub fn dispatch_timed(
-        &self,
-        root: &ID3D12RootSignature,
-        pso: &ID3D12PipelineState,
-        d: &Dispatch,
-        times: u32,
-    ) -> Result<(Vec<Vec<u32>>, f64), String> {
         let dev = &self.device;
         // SAFETY: D3D12 calls with descriptions that outlive them; resources
         // stay alive until the fence says the GPU is done.
@@ -1218,11 +1281,10 @@ impl Host {
                 let mut at = views.GetCPUDescriptorHandleForHeapStart();
                 at.ptr += i * view_size;
                 match *v {
-                    View::Texture(..) | View::Cube(..) | View::CubeMips(..) => {
+                    View::Texture(..) | View::Cube(..) => {
                         let (w, h, mut texels, faces, mips) = match *v {
                             View::Texture(w, h, t) => (w, h, t, 1, 1),
-                            View::Cube(n, t) => (n, n, t, 6, 1),
-                            View::CubeMips(n, mips, t) => (n, n, t, 6, mips),
+                            View::Cube(n, mips, t) => (n, n, t, 6, mips),
                             _ => unreachable!(),
                         };
                         let mut desc = texture(w, h, D3D12_RESOURCE_FLAG_NONE);
@@ -1290,18 +1352,12 @@ impl Host {
                         );
                         keep.push(tex);
                     }
-                    View::RawUav(_) | View::HalfUav(_) | View::HalfUintUav(_) => {
+                    View::RawUav(_) | View::HalfUav(_) => {
                         // (dwords, format, elements, flags)
                         let (n, format, elements, flags) = match *v {
                             View::HalfUav(e) => (
                                 2 * e,
                                 DXGI_FORMAT_R16G16B16A16_FLOAT,
-                                e,
-                                D3D12_BUFFER_UAV_FLAG_NONE,
-                            ),
-                            View::HalfUintUav(e) => (
-                                2 * e,
-                                DXGI_FORMAT_R16G16B16A16_UINT,
                                 e,
                                 D3D12_BUFFER_UAV_FLAG_NONE,
                             ),
@@ -1434,8 +1490,6 @@ impl Host {
             }
             list.SetDescriptorHeaps(&[Some(views.clone()), Some(samplers.clone())]);
             list.SetComputeRootSignature(root);
-            // Root UAVs, read back after the views' UAVs.
-            let mut root_uavs = Vec::new();
             for (param, arg) in &d.roots {
                 match arg {
                     Root::Constants(data) => list.SetComputeRoot32BitConstants(
@@ -1464,49 +1518,10 @@ impl Host {
                         }
                         keep.push(b);
                     }
-                    Root::Uav(n) => {
-                        let bytes = u64::from(*n) * 4;
-                        let b = make(
-                            D3D12_HEAP_TYPE_DEFAULT,
-                            &buffer(bytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-                            D3D12_RESOURCE_STATE_COMMON,
-                        )?;
-                        list.SetComputeRootUnorderedAccessView(*param, b.GetGPUVirtualAddress());
-                        let rb = make(
-                            D3D12_HEAP_TYPE_READBACK,
-                            &buffer(bytes, D3D12_RESOURCE_FLAG_NONE),
-                            D3D12_RESOURCE_STATE_COPY_DEST,
-                        )?;
-                        root_uavs.push((b, None, *n, rb));
-                    }
                 }
             }
-            uavs.append(&mut root_uavs);
             let [x, y, z] = d.groups;
-            let queries: ID3D12QueryHeap = {
-                let mut q: Option<ID3D12QueryHeap> = None;
-                dev.CreateQueryHeap(
-                    &D3D12_QUERY_HEAP_DESC {
-                        Type: D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
-                        Count: 2,
-                        NodeMask: 0,
-                    },
-                    &mut q,
-                )
-                .map_err(err)?;
-                q.ok_or("no query heap")?
-            };
-            let stamps = make(
-                D3D12_HEAP_TYPE_READBACK,
-                &buffer(16, D3D12_RESOURCE_FLAG_NONE),
-                D3D12_RESOURCE_STATE_COPY_DEST,
-            )?;
-            list.EndQuery(&queries, D3D12_QUERY_TYPE_TIMESTAMP, 0);
-            for _ in 0..times {
-                list.Dispatch(x, y, z);
-            }
-            list.EndQuery(&queries, D3D12_QUERY_TYPE_TIMESTAMP, 1);
-            list.ResolveQueryData(&queries, D3D12_QUERY_TYPE_TIMESTAMP, 0, 2, &stamps, 0);
+            list.Dispatch(x, y, z);
             for (r, size, n, rb) in &uavs {
                 // (Buffers were promoted from the common state by the dispatch.)
                 list.ResourceBarrier(&[transition(
@@ -1559,13 +1574,8 @@ impl Host {
                 rb.Unmap(0, None);
                 out.push(words);
             }
-            let mut p = std::ptr::null_mut();
-            stamps.Map(0, None, Some(&mut p)).map_err(err)?;
-            let [t0, t1] = p.cast::<[u64; 2]>().read();
-            stamps.Unmap(0, None);
-            let hz = queue.GetTimestampFrequency().map_err(err)?;
             drop(keep);
-            Ok((out, t1.saturating_sub(t0) as f64 / hz as f64))
+            Ok(out)
         }
     }
 }

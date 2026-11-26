@@ -48,10 +48,11 @@ pub(crate) enum C {
     /// Waiting for host pipelines being made (`pipeline::make`).
     PipelineWaitUs,
     /// Dynamic descriptor slots: tables asked for, refused (no free run),
-    /// and the nanoseconds of the searches.
+    /// and the nanoseconds of the searches; the slots the tables took.
     DynamicAsked,
     DynamicRefused,
     DynamicNs,
+    DynamicSlots,
     /// Marker texts for device-removed data (`HostList::note`).
     NoteNs,
     /// Ranges given to shaders (steps), their snapshots, and the bytes
@@ -129,12 +130,6 @@ pub(crate) enum C {
     WaitsForGroups,
     WaitsForBuffers,
     IndirectBounded,
-    /// `watch::writes` kernel askings that failed (the range is not
-    /// write-watched: view memory or not watchable).
-    WatchFailed,
-    /// `watch::writes` askings not made because the range's first block is
-    /// already known to be guarded view memory (no kernel call).
-    WatchKnownView,
 }
 const COUNTERS: usize = 80;
 /// One of some sets of counters, each in lines of the processor's memory of
@@ -1035,9 +1030,6 @@ pub(crate) fn recorded(started: std::time::Instant) {
     crate::timeline::called(took);
     add(C::RecordCalls, 1);
     add(C::RecordNs, ns);
-    crate::framelog::add(crate::framelog::T::RecordCalls, 1);
-    crate::framelog::add(crate::framelog::T::RecordNs, ns);
-    crate::framelog::here(crate::framelog::H::RecordNs, ns);
     if !RECORDED_SINCE.load(Relaxed) && !RECORDED_SINCE.swap(true, Relaxed) {
         let began = now_us().saturating_sub(ns / 1000);
         add(C::UntilRecordUs, began.saturating_sub(PRESENTED_AT.load(Relaxed)));
@@ -1051,12 +1043,6 @@ pub(crate) fn recorded(started: std::time::Instant) {
         return;
     }
     UNSENT.with(|u| u.set((0, 0)));
-    if crate::framelog::on() {
-        crate::framelog::add(crate::framelog::T::RecordLooks, 1);
-        if crate::framelog::on_slow_core() {
-            crate::framelog::add(crate::framelog::T::RecordSlow, 1);
-        }
-    }
     let id = thread_id();
     let mut all = RECORDERS.lock().unwrap_or_else(|e| e.into_inner());
     match all.iter_mut().find(|r| r.0 == id) {
@@ -1195,7 +1181,7 @@ pub(crate) fn log(frames: f64) {
     tracing::info!(
         "recording per frame ({frames:.0} frames): {:.0} list calls {:.1} ms (all recording \
          threads); {:.1} ms waiting for pipelines; dynamic slots: {:.0} tables asked, {:.0} \
-         refused, {:.1} ms searching; notes {:.1} ms; shader-written ranges: {:.0} steps in \
+         refused, {:.1} ms searching, {:.0} slots taken; notes {:.1} ms; shader-written ranges: {:.0} steps in \
          {:.1} submissions, snapshots {:.1} ms, {:.1} MB compared back; sparse reads {:.1} ms; \
          guards {:.1} ms; {:.1} MB copied whole (memory not watched); {:.1} frame waits \
          sleeping {:.1} ms (all threads); ranges of shaders that cannot store to buffers: \
@@ -1206,6 +1192,7 @@ pub(crate) fn log(frames: f64) {
         c[C::DynamicAsked as usize],
         c[C::DynamicRefused as usize],
         c[C::DynamicNs as usize] / 1e6,
+        c[C::DynamicSlots as usize],
         c[C::NoteNs as usize] / 1e6,
         c[C::GpuWrites as usize],
         c[C::BackSubmissions as usize],
@@ -1223,11 +1210,11 @@ pub(crate) fn log(frames: f64) {
         [0, 1, 2].map(|n| crate::watch::ALIASES[n].load(std::sync::atomic::Ordering::Relaxed));
     tracing::info!(
         "guards over several views of a page, since the start: {together} blocks guarded with their other views, \
-         {written} views noted written by a write through another, {mapped} ranges opened because a view of them was mapped"
+         {written} views opened by a write through another, {mapped} ranges opened because a view of them was mapped"
     );
     tracing::info!(
         "waits for the write trackers' locks per frame, all threads (number, time): {}",
-        crate::watch::lock_waits(frames as f64)
+        crate::watch::lock_waits(frames)
     );
     let [copies, blocks, opened, stores, unknown, full, stayed, copied_same, records] =
         [0, 1, 2, 3, 4, 5, 6, 7, 8].map(|n| crate::titlewrite::DONE[n].load(std::sync::atomic::Ordering::Relaxed));
@@ -1358,15 +1345,6 @@ pub(crate) fn log(frames: f64) {
             longest as f64 / 1e3
         );
     }
-    tracing::info!(
-        "  write-watch askings per frame that failed in the kernel: {:.0}; not made because the range \
-         is known guarded view memory: {:.0} (VICTORY_VIEW_ASK=1 asks the kernel anyway); such ranges left \
-         out of the submissions' askings ahead: {:.0}",
-        c[C::WatchFailed as usize],
-        c[C::WatchKnownView as usize],
-        crate::watch::AHEAD_VIEWS.swap(0, Relaxed) as f64 / frames,
-    );
-    crate::draw::window_line(frames);
     tracing::info!(
         "  waits for every earlier shader write, per frame: {:.0} for the title's barrier groups, {:.0} \
          for its barriers on buffers; {:.0} indirect commands bounded (a dispatch of ours between two \

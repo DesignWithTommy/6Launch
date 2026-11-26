@@ -14,17 +14,13 @@ game_dir = 'D:\victory-data\game'
 # Default: %LOCALAPPDATA%\victory\data.   env: VICTORY_DATA_DIR
 # data_dir = 'D:\victory-data\data'
 
-# AMD FidelityFX for PC: the folder with amd_fidelityfx_upscaler_dx12.dll
-# (FidelityFX SDK, Kits/FidelityFX/signedbin; its root also works). It upscales
-# in place of a title's console build. Unset: a `fidelityfx` folder beside
-# victory.exe, else the title's own.   env: VICTORY_FIDELITYFX_DIR
-# fidelityfx_dir = 'D:\victory-data\fidelityfx'
-
-# For VICTORY_FSR=<preset> on Series X: a text file of byte patterns telling
-# where the title picks its upscaler (see the README). You keep it; the
-# repository has none.   env: VICTORY_FSR_PROFILE
-# fsr_profile = 'D:\victory-data\fsr-profile.txt'
-
 # Other Xbox Series titles used to test platform-level code.
 # env: VICTORY_TEST_TITLES (separated by ';')
 test_titles = []
+
+# Your own profile of the title: where, in its code, the few places are that
+# are changed at load (renderer port 2, the frame rate, the output size). The
+# repository holds no code, offsets or bytes of the title, so these features
+# stay off without it. Format: the comment at the top of
+# crates/victory-loader/src/title_profile.rs.   env: VICTORY_TITLE_PROFILE
+# title_profile = 'D:\victory-data\title-profile.txt'

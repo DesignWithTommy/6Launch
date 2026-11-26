@@ -13,13 +13,6 @@ use crate::resource::{Memory, PAGEABLE_IIDS};
 #[cfg(windows)]
 pub(crate) mod host;
 
-/// The source bytes needed for a desktop CBV upload. Allocation and
-/// descriptor creation apply their own 256-byte rounding.
-#[cfg(any(windows, test))]
-pub(crate) fn constant_staging_bytes(size: u32) -> u32 {
-    size.min(64 * 1024)
-}
-
 const HEAP_IIDS: [Iid; 4] = [
     guid(
         0x8efb471d,
@@ -102,7 +95,9 @@ impl Heap {
             .get_or_init(|| {
                 let step = u64::from(increment(self.desc.kind)?);
                 let h = host::HostHeap::new(self.samplers(), self.desc.count)?;
-                for i in pending.drain(..) {
+                // (Taken, not drained: the boot-time vector's capacity goes
+                // with it, as upstream #3230 has it.)
+                for i in std::mem::take(&mut *pending) {
                     h.mirror(i, self.start + u64::from(i) * step, false);
                 }
                 Some(h)
@@ -132,39 +127,32 @@ const SHADER_VISIBLE: u32 = 1;
 
 /// Shader-visible heaps by address range, for mirroring descriptor writes:
 /// start, end, heap.
-///
-/// Read by every lookup and by [`sync_heaps`], written only when a heap is
-/// made or dropped. It was a mutex, and [`sync_heaps`] holds it for its
-/// whole pass (15 ms a frame on the submitting thread): the profile of run
-/// 225 has the title's six recording threads waiting 48.5 ms a frame in
-/// [`shader_slot`] for it, each lookup itself a few nanoseconds. Readers no
-/// longer wait for each other. Nothing a holder calls takes it again.
 #[cfg(windows)]
+///
+/// Held shared while a heap found here is used (by every thread that writes
+/// descriptors, and by [`sync_heaps`]), alone only where heaps come and go.
 static SHADER_HEAPS: std::sync::RwLock<Vec<(u64, u64, usize)>> = std::sync::RwLock::new(Vec::new());
 
-/// One [`sync_heaps`] at a time, as when the list above was a mutex.
-#[cfg(windows)]
-static SYNCING: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-/// The shader-visible heap holding `handle`, and the descriptor's index.
-#[cfg(windows)]
-fn shader_slot<'a>(handle: u64) -> Option<(&'a Heap, u32)> {
-    let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
-    let &(_, _, at) = heaps
-        .iter()
-        .find(|&&(start, end, _)| (start..end).contains(&handle))?;
-    // SAFETY: registered heaps are live (removed when dropped).
-    let heap = unsafe { &*(at as *const Heap) };
-    Some((heap, heap.index(handle)?))
-}
-
 /// Makes the host descriptor for what the title wrote at `handle`, if it
-/// is in a shader-visible heap.
+/// is in a shader-visible heap. Keeps `SHADER_HEAPS` locked for the duration
+/// so `Heap::drop` cannot free the heap concurrently.
 #[cfg(windows)]
 fn mirror(handle: u64) {
-    let Some((heap, index)) = shader_slot(handle) else {
+    let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
+    let Some(&(_, _, at)) = heaps
+        .iter()
+        .find(|&&(start, end, _)| (start..end).contains(&handle))
+    else {
         return;
     };
+    // SAFETY: registered heaps stay alive until `Heap::drop`, which takes
+    // the `SHADER_HEAPS` lock we hold here.
+    let heap = unsafe { &*(at as *const Heap) };
+    let Some(index) = heap.index(handle) else {
+        return;
+    };
+    // Renderer port #2: its record is looked at again with the title's own.
+    crate::port_descriptors::mark(handle);
     let mut pending = heap.pending.lock().unwrap_or_else(|e| e.into_inner());
     match heap.host.get() {
         None => pending.push(index),
@@ -174,6 +162,202 @@ fn mirror(handle: u64) {
                 host.mirror(index, handle, false);
             }
         }
+    }
+}
+
+/// Whether [`sync_heaps`] is done (`VICTORY_HEAP_SYNC=0`: not).
+#[cfg(windows)]
+fn sync_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("VICTORY_HEAP_SYNC").is_none_or(|v| v != "0"))
+}
+
+/// Whether a submission's [`sync_heaps`] is done by a thread of its own
+/// beside the rest of the preparing (`VICTORY_HEAP_SYNC_ASIDE=0`: in front of
+/// it, as before).
+///
+/// It took 13 ms a frame of the submitting thread (session play-1125-0203:
+/// 230 changed heap pages and 470,000 slots in 30 submissions). What it makes
+/// are the host heap's descriptors, which the card reads: it has to be done
+/// before the lists go to the queue, and nothing of the preparing looks at
+/// them (what a draw reads through a table it made itself, when recorded).
+#[cfg(windows)]
+fn sync_aside() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| sync_on() && std::env::var_os("VICTORY_HEAP_SYNC_ASIDE").is_none_or(|v| v != "0"))
+}
+
+/// How long that thread waits for a submission before it makes a round of its
+/// own (`VICTORY_HEAP_SYNC_EARLY=<ms>`, 4 if not given; `0`: none). The title
+/// copies its records while it records, and the first submission of a frame
+/// found all of them: 8 ms waited for (run cpu-2). A round made meanwhile
+/// leaves it those written since.
+#[cfg(windows)]
+fn sync_early() -> Option<std::time::Duration> {
+    static EVERY: std::sync::OnceLock<Option<std::time::Duration>> = std::sync::OnceLock::new();
+    *EVERY.get_or_init(|| {
+        let ms = std::env::var("VICTORY_HEAP_SYNC_EARLY").ok().and_then(|v| v.trim().parse().ok()).unwrap_or(4u64);
+        (ms > 0).then(|| std::time::Duration::from_millis(ms))
+    })
+}
+
+/// The thread's work: rounds asked for, rounds done.
+#[cfg(windows)]
+static SYNC_ROUNDS: (std::sync::Mutex<(u64, u64)>, std::sync::Condvar) = (std::sync::Mutex::new((0, 0)), std::sync::Condvar::new());
+
+/// [`sync_heaps`], begun; done when it is dropped (with [`sync_aside`]), or
+/// when this returns.
+#[cfg(windows)]
+pub(crate) struct SyncedHeaps(Option<u64>);
+
+#[cfg(windows)]
+pub(crate) fn begin_sync_heaps() -> SyncedHeaps {
+    if !sync_aside() {
+        sync_heaps();
+        return SyncedHeaps(None);
+    }
+    static STARTED: std::sync::Once = std::sync::Once::new();
+    static THREAD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    STARTED.call_once(|| {
+        let made = std::thread::Builder::new().name("victory-heap-sync".into()).spawn(|| {
+            crate::cores::keep_on_fast_cores("victory-heap-sync");
+            let rounds = || SYNC_ROUNDS.0.lock().unwrap_or_else(|e| e.into_inner());
+            /// A round is over, however it ends.
+            struct Over;
+            impl Drop for Over {
+                fn drop(&mut self) {
+                    SYNC_ROUNDS.0.lock().unwrap_or_else(|e| e.into_inner()).1 += 1;
+                    SYNC_ROUNDS.1.notify_all();
+                }
+            }
+            // Between the rounds asked for, while submissions come.
+            let mut last = std::time::Instant::now();
+            loop {
+                let mut r = rounds();
+                let mut asked = r.0 != r.1;
+                while !asked {
+                    let Some(every) = sync_early().filter(|_| last.elapsed().as_millis() < 500) else {
+                        r = SYNC_ROUNDS.1.wait(r).unwrap_or_else(|e| e.into_inner());
+                        asked = r.0 != r.1;
+                        continue;
+                    };
+                    let (back, over) = SYNC_ROUNDS.1.wait_timeout(r, every).unwrap_or_else(|e| e.into_inner());
+                    r = back;
+                    asked = r.0 != r.1;
+                    if over.timed_out() {
+                        break;
+                    }
+                }
+                drop(r);
+                let _over = asked.then(|| {
+                    last = std::time::Instant::now();
+                    Over
+                });
+                let _round =
+                    crate::timeline::span(if asked { "the heaps' records, for a submission" } else { "the heaps' records, early" });
+                let _ = std::panic::catch_unwind(sync_heaps);
+            }
+        });
+        THREAD.store(made.is_ok(), std::sync::atomic::Ordering::Release);
+    });
+    if !THREAD.load(std::sync::atomic::Ordering::Acquire) {
+        sync_heaps();
+        return SyncedHeaps(None);
+    }
+    let mut rounds = SYNC_ROUNDS.0.lock().unwrap_or_else(|e| e.into_inner());
+    rounds.0 += 1;
+    let mine = rounds.0;
+    drop(rounds);
+    SYNC_ROUNDS.1.notify_all();
+    SyncedHeaps(Some(mine))
+}
+
+/// Renderer port #7 (`crate::port_journal`, from renderer patch #4): [`begin_sync_heaps`] for a
+/// submission that needs round `mark` (one that began after what it waits
+/// for was written, `crate::port_journal::round_after`): asked for if it has not
+/// been. 0: as [`begin_sync_heaps`].
+#[cfg(windows)]
+pub(crate) fn begin_sync_heaps_after(mark: u64) -> SyncedHeaps {
+    if mark == 0 || !sync_aside() {
+        return begin_sync_heaps();
+    }
+    // (The thread is started by the first `begin_sync_heaps`.)
+    let mut rounds = SYNC_ROUNDS.0.lock().unwrap_or_else(|e| e.into_inner());
+    if rounds.1 == 0 && rounds.0 == 0 {
+        drop(rounds);
+        return begin_sync_heaps();
+    }
+    let asked = rounds.0 < mark;
+    rounds.0 = rounds.0.max(mark);
+    drop(rounds);
+    if asked {
+        SYNC_ROUNDS.1.notify_all();
+        crate::port_journal::STATS[crate::port_journal::LATE_ROUNDS].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    } else {
+        crate::port_journal::STATS[crate::port_journal::EARLY_ROUNDS].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+    SyncedHeaps(Some(mark))
+}
+
+/// Renderer port #7: the number of a round of the heaps' records that
+/// begins after this call, asked for if none is waiting to begin (at the
+/// title's submit: the round runs while the submission waits in the line).
+/// 0 if the records are not synced by a thread of their own (or it has not
+/// started yet).
+#[cfg(windows)]
+pub(crate) fn round_after_now() -> u64 {
+    if !sync_aside() {
+        return 0;
+    }
+    let mut rounds = SYNC_ROUNDS.0.lock().unwrap_or_else(|e| e.into_inner());
+    if rounds.1 == 0 && rounds.0 == 0 {
+        return 0;
+    }
+    let (round, ask) = crate::port_journal::round_after(rounds.0, rounds.1);
+    if ask {
+        rounds.0 = round;
+        drop(rounds);
+        SYNC_ROUNDS.1.notify_all();
+        crate::port_journal::STATS[crate::port_journal::ROUNDS_ASKED].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+    round
+}
+
+/// Renderer port #7: the number of the first round that begins after this
+/// call, not asked for ([`begin_sync_heaps_after`] asks for it if nobody did).
+#[cfg(windows)]
+pub(crate) fn round_mark() -> u64 {
+    if !sync_aside() {
+        return 0;
+    }
+    let rounds = SYNC_ROUNDS.0.lock().unwrap_or_else(|e| e.into_inner());
+    if rounds.1 == 0 && rounds.0 == 0 {
+        return 0;
+    }
+    rounds.0 + 1
+}
+
+/// Whether `[at, at + len)` touches the title memory of a placed
+/// shader-visible heap of descriptors.
+#[cfg(windows)]
+pub(crate) fn in_shader_heap(at: usize, len: usize) -> bool {
+    let (from, to) = (at as u64, at as u64 + len as u64);
+    SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner()).iter().any(|&(start, end, _)| from < end && start < to)
+}
+
+#[cfg(windows)]
+impl Drop for SyncedHeaps {
+    fn drop(&mut self) {
+        let Some(mine) = self.0 else {
+            return;
+        };
+        let began = std::time::Instant::now();
+        let mut rounds = SYNC_ROUNDS.0.lock().unwrap_or_else(|e| e.into_inner());
+        while rounds.1 < mine {
+            rounds = SYNC_ROUNDS.1.wait(rounds).unwrap_or_else(|e| e.into_inner());
+        }
+        drop(rounds);
+        SYNCED[6].fetch_add(began.elapsed().as_micros() as u64, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
@@ -189,14 +373,19 @@ fn mirror(handle: u64) {
 #[cfg(windows)]
 pub(crate) fn sync_heaps() {
     use std::sync::atomic::Ordering::Relaxed;
-    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    if !*ON.get_or_init(|| std::env::var_os("VICTORY_HEAP_SYNC").is_none_or(|v| v != "0")) {
+    if !sync_on() {
         return;
     }
     let started = std::time::Instant::now();
-    let (mut pages, mut looked, mut mirrored) = (0u64, 0u64, 0u64);
-    let mut page_bytes: Vec<u8> = Vec::new();
-    let _one = SYNCING.lock().unwrap_or_else(|e| e.into_inner());
+    let (mut pages, mut looked, mut mirrored, mut tabled, mut later) = (0u64, 0u64, 0u64, 0u64, 0u64);
+    let (mut views, mut bytes) = (0u64, 0u64);
+    let mut spent = [0u64; 3];
+    let since = |at: std::time::Instant| at.elapsed().as_nanos() as u64;
+    let mut kinds = [0u64; 5];
+    let mut job_ns = [0u64; 3];
+    let mut short = 0u64;
+    let mut wait: Vec<u32> = Vec::new();
+    let frame = crate::frame::current();
     let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
     for &(start, end, at) in heaps.iter() {
         // SAFETY: registered heaps are live (removed when dropped).
@@ -210,90 +399,415 @@ pub(crate) fn sync_heaps() {
         // Capped host heaps have no counterparts for the title slots reserved
         // for per-draw tables; raw writes there must not be mirrored.
         let mirrored_count = heap.desc.count.min(host.count());
-        for (range_from, range_end) in written.take(start as usize, end as usize) {
-            let mut page = range_from & !(crate::watch::PAGE - 1);
-            while page < range_end {
-                let from = page.max(range_from);
-                let to = (page + crate::watch::PAGE).min(range_end);
-                // The page's records are read through the kernel, into a
-                // copy: a page the title unmaps meanwhile fails the read
-                // where 2,048 reads in place would fault.
-                page_bytes.resize(to - from, 0);
-                if crate::host::read_into(from as *const u8, &mut page_bytes) {
-                    pages += 1;
-                    let slots = changed_slots(from, to, start as usize, step, mirrored_count);
-                    // The page's records in one go, under one lock
-                    // (`HostHeap::mirror_copied_page`); one by one below
-                    // with `VICTORY_HEAP_SYNC_PAGE=0`.
-                    let slots = if page_at_once() {
-                        let (seen, made) = host.mirror_copied_page(slots, (start, step), from, &page_bytes);
-                        looked += seen;
-                        mirrored += made;
-                        0..0
-                    } else {
-                        slots
+        // The records of some frames ago that no draw read through a table
+        // since: a shader may pick them by index.
+        let before = host.copied_before(frame);
+        let of_tables = std::sync::atomic::AtomicU64::new(0);
+        let (pages_a_job, records_a_job) = sync_jobs();
+        let phase = crate::timeline::span("the heaps' records: those that waited");
+        crate::land::each_view(true, before.len().div_ceil(records_a_job), &|n| {
+            for &index in before.chunks(records_a_job).nth(n).unwrap_or_default() {
+                if host.copied_tabled(index, frame) {
+                    of_tables.fetch_add(1, Relaxed);
+                } else {
+                    host.mirror(index, start + u64::from(index) * step, false);
+                }
+            }
+        });
+        phase.end();
+        let of_tables = of_tables.into_inner();
+        tabled += of_tables;
+        mirrored += before.len() as u64 - of_tables;
+        kinds[4] += before.len() as u64 - of_tables;
+        // Those of the changed pages, made together at the end.
+        let mut make: Vec<u32> = Vec::new();
+        // Ranges of the heap to look at, and whether a range is one the
+        // fallback of renderer port #2 looks at whole.
+        let mut parts: Vec<(usize, usize, bool)> = Vec::new();
+        let port = crate::port_descriptors::adopted(start);
+        if port {
+            // Renderer port #2: the slots the title's patched stores and our
+            // calls marked, in place of the changed pages; and a few of the
+            // pages the watch says were written, looked at whole.
+            let phase = crate::timeline::span("the heaps' records: the marks taken (renderer port 2)");
+            for (first, n) in crate::port_descriptors::take(start).unwrap_or_default() {
+                let from = start as usize + first as usize * step as usize;
+                parts.push((from, from + n as usize * step as usize, false));
+            }
+            phase.end();
+            if crate::port_descriptors::ask_due(frame) {
+                let began = std::time::Instant::now();
+                let phase = crate::timeline::span("the heaps' records: asking (renderer port 2's fallback)");
+                let taken = written.take(start as usize, end as usize);
+                phase.end();
+                spent[0] += since(began);
+                crate::port_descriptors::asked(&taken);
+            }
+            for page in crate::port_descriptors::to_check(frame) {
+                parts.push((page.max(start as usize), (page + crate::watch::PAGE).min(end as usize), true));
+            }
+        } else {
+            let began = std::time::Instant::now();
+            let phase = crate::timeline::span("the heaps' records: asking");
+            let taken = written.take(start as usize, end as usize);
+            phase.end();
+            spent[0] += since(began);
+            for (range_from, range_end) in taken {
+                let mut page = range_from & !(crate::watch::PAGE - 1);
+                while page < range_end {
+                    parts.push((page.max(range_from), (page + crate::watch::PAGE).min(range_end), false));
+                    page += crate::watch::PAGE;
+                }
+            }
+        }
+        // The marks' runs are short: more of them a job.
+        let pages_a_job = if port { pages_a_job.max(parts.len() / 48) } else { pages_a_job };
+        // A few pages a thread at a time: read, compared with what was last
+        // seen there and sorted out, beside one another (14 ms a frame of one
+        // thread at 160 pages, run faults-6).
+        let began = std::time::Instant::now();
+        let copied = host.copied_begin(step as usize);
+        let samplers = heap.samplers();
+        let in_place = sync_in_place() && step == 32 && crate::safecopy::on();
+        let found: Vec<std::sync::Mutex<SyncPart>> = parts.chunks(pages_a_job).map(|_| Default::default()).collect();
+        let phase = crate::timeline::span("the heaps' records: pages read and compared");
+        crate::land::each_view(true, found.len(), &|n| {
+            let mut out = SyncPart::default();
+            let mut page_bytes: Vec<u8> = Vec::new();
+            let mut changed: Vec<u32> = Vec::new();
+            let mut bits: Vec<u64> = Vec::new();
+            for &(from, to, check) in parts.chunks(pages_a_job).nth(n).unwrap_or_default() {
+                let checking = check.then(std::time::Instant::now);
+                let slots = changed_slots(from, to, start as usize, step, mirrored_count);
+                // A record that straddles the range's ends is left
+                // to the range that holds its first byte.
+                let first = ((from - start as usize) as u64).div_ceil(step).max(slots.start);
+                let lead = (start + first * step) as usize;
+                let records: &[u8] = if in_place {
+                    // Read where they are, each record once, and compared
+                    // as it is read (`host::Copied::changes_in_place`).
+                    let at = std::time::Instant::now();
+                    let count = (to.saturating_sub(lead) as u64 / step).min(slots.end.saturating_sub(first));
+                    changed.clear();
+                    // SAFETY: as below; title memory is read by a copy that
+                    // fails where a page is not there.
+                    let whole = unsafe { copied.changes_in_place(first as u32, lead as *const u8, count as usize, &mut bits, &mut changed) };
+                    out.ns[1] += since(at);
+                    // (A run of marked slots is no page; nor does it ask the guards.)
+                    if !port || check {
+                        out.pages += 1;
+                        out.views += u64::from(crate::watch::guarded(from, to));
+                    }
+                    out.bytes += (to - from) as u64;
+                    out.looked += count;
+                    out.short += u64::from(!whole);
+                    // What was read of the changed records is in the records
+                    // last seen now.
+                    // SAFETY: this part's records alone, which nothing else
+                    // writes meanwhile.
+                    unsafe { copied.seen(first as u32, count as usize) }
+                } else {
+                    // The page's records are read through the kernel, into a
+                    // copy: a page the title unmaps meanwhile fails the read
+                    // where 2,048 reads in place would fault.
+                    let at = std::time::Instant::now();
+                    page_bytes.resize(to - from, 0);
+                    if !crate::host::read_into(from as *const u8, &mut page_bytes) {
+                        continue;
+                    }
+                    out.ns[0] += since(at);
+                    out.pages += 1;
+                    out.views += u64::from(crate::watch::guarded(from, to));
+                    out.bytes += (to - from) as u64;
+                    let Some(records) = page_bytes.get(lead.wrapping_sub(from)..) else {
+                        continue;
                     };
-                    for index in slots {
-                        let handle = start + index * step;
-                        // A record that straddles the range's ends is left
-                        // to the range that holds its first byte.
-                        let Some(at) = (handle as usize).checked_sub(from) else {
+                    let count = (records.len() as u64 / step).min(slots.end.saturating_sub(first));
+                    out.looked += count;
+                    // Only the records that are not the ones last seen
+                    // there (`host::Copied::changes`).
+                    changed.clear();
+                    let at = std::time::Instant::now();
+                    // SAFETY: the parts are ranges of the heap apart from one
+                    // another, and only records that lie whole in one are its.
+                    unsafe { copied.changes(first as u32, &records[..(count * step) as usize], &mut changed) };
+                    out.ns[1] += since(at);
+                    records
+                };
+                let at = std::time::Instant::now();
+                for &index in &changed {
+                    let at = (u64::from(index) - first) as usize * step as usize;
+                    let word = |n: usize| {
+                        records
+                            .get(at + 4 * n..at + 4 * n + 4)
+                            .and_then(|b| b.try_into().ok())
+                            .map_or(0, u32::from_le_bytes)
+                    };
+                    if check {
+                        // Renderer port #2's fallback: what no mark told of.
+                        crate::port_descriptors::missed(index, start + u64::from(index) * step, !samplers && word(0) == VIEW_TAG, host.copied_tabled(index, frame));
+                    }
+                    if !samplers && word(0) == VIEW_TAG {
+                        // A draw's own table: the draw makes what it
+                        // reads of it (`draw.rs` `tables`).
+                        if host.copied_tabled(index, frame) {
+                            out.tabled += 1;
                             continue;
-                        };
-                        let Some(record) = page_bytes.get(at..at + step as usize) else {
+                        }
+                        // Buffer views and placed textures get no host
+                        // slot from this anyway, they wait for a draw
+                        // or a pass: noted some frames on, unless a
+                        // draw's table turns out to hold them.
+                        if matches!(word(2) >> KIND_SHIFT, CONSTANT | PLACED) && host.copied_waits() {
+                            out.wait.push(index);
                             continue;
-                        };
-                        looked += 1;
-                        // Only a record that is not the one last seen there
-                        // (`HostHeap::mirror_copied`).
-                        if host.mirror_copied(index as u32, handle, record) {
-                            mirrored += 1;
                         }
                     }
+                    // No view, in a slot that shows none: nothing to make or
+                    // unmake (32,000 of 41,000 a frame on the water, run
+                    // b2-water).
+                    if word(0) != VIEW_TAG && host.shows_none(index) {
+                        out.nothing += 1;
+                        continue;
+                    }
+                    out.make.push(index);
+                    out.kinds[if samplers {
+                        3
+                    } else if word(0) != VIEW_TAG {
+                        0
+                    } else if word(2) >> KIND_SHIFT == 0 {
+                        1
+                    } else {
+                        2
+                    }] += 1;
                 }
-                page += crate::watch::PAGE;
+                out.ns[2] += since(at);
+                if let Some(began) = checking {
+                    crate::port_descriptors::CHECKED[4].fetch_add(since(began), Relaxed);
+                }
             }
+            *found[n].lock().unwrap_or_else(|e| e.into_inner()) = out;
+        });
+        phase.end();
+        drop(copied);
+        for part in found {
+            let mut part = part.into_inner().unwrap_or_else(|e| e.into_inner());
+            pages += part.pages;
+            views += part.views;
+            bytes += part.bytes;
+            looked += part.looked;
+            short += part.short;
+            tabled += part.tabled;
+            kinds[0] += part.nothing;
+            later += part.wait.len() as u64;
+            mirrored += part.make.len() as u64;
+            wait.append(&mut part.wait);
+            make.append(&mut part.make);
+            for (kind, n) in kinds.iter_mut().zip(part.kinds) {
+                *kind += n;
+            }
+            for (ns, n) in job_ns.iter_mut().zip(part.ns) {
+                *ns += n;
+            }
+        }
+        spent[1] += since(began);
+        let began = std::time::Instant::now();
+        let phase = crate::timeline::span("the heaps' records: made");
+        crate::land::each_view(true, make.len().div_ceil(records_a_job), &|n| {
+            for &index in make.chunks(records_a_job).nth(n).unwrap_or_default() {
+                host.mirror(index, start + u64::from(index) * step, false);
+            }
+        });
+        phase.end();
+        spent[2] += since(began);
+        if !wait.is_empty() {
+            host.copied_wait(frame, std::mem::take(&mut wait));
         }
     }
     drop(heaps);
-    for (count, n) in SYNCED.iter().zip([pages, looked, mirrored, started.elapsed().as_micros() as u64]) {
+    let micros = started.elapsed().as_micros() as u64;
+    for (count, n) in SYNCED.iter().zip([pages, looked, mirrored, micros, tabled, later]) {
         count.fetch_add(n, Relaxed);
     }
+    let [taking, reading, making] = spent;
+    for (count, n) in SYNC_SPLIT.iter().zip([views, bytes, taking, reading, making]) {
+        count.fetch_add(n, Relaxed);
+    }
+    for (count, n) in SYNCED_KINDS.iter().zip(kinds) {
+        count.fetch_add(n, Relaxed);
+    }
+    for (count, n) in SYNC_JOBS_NS.iter().zip(job_ns) {
+        count.fetch_add(n, Relaxed);
+    }
+    SYNC_SHORT.fetch_add(short, Relaxed);
 }
+
+/// Pages [`sync_heaps`] read in place of which a part could not be read
+/// ([`sync_in_place`]), since the last frame line.
+#[cfg(windows)]
+static SYNC_SHORT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Whether [`sync_heaps`] reads a changed page's records where they are, each
+/// once, and compares each with the one last seen as it reads it, 32 bytes at
+/// a time (`VICTORY_SYNC_IN_PLACE=0`: into a copy of the page first, then
+/// compared, as before).
+///
+/// The copy and the compare were each a pass over all of the page: 7.4 and
+/// 5.3 ms a frame of the six threads for 35 MB (run heapsync-ab1, in the
+/// street). A page the title unmaps meanwhile fails where the copy failed;
+/// the records before the place are taken as they were read.
+///
+/// On by default since run heapsync-ab2 (A/B in the street: the pass 12.7 ms
+/// a frame against 15.7-16.2, the copy and compare 7.4 ms of its threads
+/// against 13.3, the submitting thread's wait for it 2.0 ms against 2.2-2.6;
+/// the picture the same).
+#[cfg(windows)]
+fn sync_in_place() -> bool {
+    #[cfg(feature = "diagnostics")]
+    if let Some(on) = crate::ab::pick("VICTORY_SYNC_IN_PLACE") {
+        return on;
+    }
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("VICTORY_SYNC_IN_PLACE").is_none_or(|v| v != "0"))
+}
+
+/// Of [`sync_heaps`]'s page jobs since the last frame line, on all threads:
+/// nanoseconds reading pages, comparing them with what was last seen, and
+/// sorting out the records that changed.
+#[cfg(windows)]
+static SYNC_JOBS_NS: [std::sync::atomic::AtomicU64; 3] = [const { std::sync::atomic::AtomicU64::new(0) }; 3];
+
+/// Pages and records [`sync_heaps`] gives a thread at a time
+/// (`VICTORY_SYNC_FINE=1`: [`SYNC_PAGES_FINE`] and [`SYNC_AT_A_TIME_FINE`];
+/// otherwise [`SYNC_PAGES`] and [`SYNC_AT_A_TIME`], as before).
+///
+/// A round for a submission finds a dozen pages or so: by eight a job that
+/// was two jobs, on two of the six threads, while the submission waited
+/// for the round (2 to 3.4 ms at a time, run city4).
+#[cfg(windows)]
+fn sync_jobs() -> (usize, usize) {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    let default_fine = || *ON.get_or_init(|| std::env::var_os("VICTORY_SYNC_FINE").is_some_and(|v| v != "0"));
+    #[cfg(feature = "diagnostics")]
+    let fine = crate::ab::pick("VICTORY_SYNC_FINE").unwrap_or_else(default_fine);
+    #[cfg(not(feature = "diagnostics"))]
+    let fine = default_fine();
+    if fine { (SYNC_PAGES_FINE, SYNC_AT_A_TIME_FINE) } else { (SYNC_PAGES, SYNC_AT_A_TIME) }
+}
+
+#[cfg(windows)]
+const SYNC_PAGES_FINE: usize = 2;
+
+#[cfg(windows)]
+const SYNC_AT_A_TIME_FINE: usize = 64;
+
+/// Of those mirrored, since the last frame line: no view, a view of an object,
+/// another, a sampler; waited and no draw came.
+#[cfg(windows)]
+static SYNCED_KINDS: [std::sync::atomic::AtomicU64; 5] = [const { std::sync::atomic::AtomicU64::new(0) }; 5];
+
+/// What a thread found on its pages of a heap, for [`sync_heaps`].
+#[cfg(windows)]
+#[derive(Default)]
+struct SyncPart {
+    pages: u64,
+    views: u64,
+    bytes: u64,
+    looked: u64,
+    tabled: u64,
+    nothing: u64,
+    make: Vec<u32>,
+    wait: Vec<u32>,
+    kinds: [u64; 5],
+    /// Nanoseconds reading, comparing, sorting out ([`SYNC_JOBS_NS`]).
+    ns: [u64; 3],
+    /// Pages read in place not all there ([`SYNC_SHORT`]).
+    short: u64,
+}
+
+/// Pages [`sync_heaps`] gives a thread at a time.
+#[cfg(windows)]
+const SYNC_PAGES: usize = 8;
+
+/// Records [`sync_heaps`] gives a thread at a time.
+#[cfg(windows)]
+const SYNC_AT_A_TIME: usize = 256;
 
 /// Since the last frame line, of [`sync_heaps`]: changed pages of placed
 /// shader-visible heaps looked at, slots on them, slots whose record was
-/// not the one last seen (mirrored), and the microseconds it took.
+/// not the one last seen and was mirrored, the microseconds it took; then
+/// new records left to the draws that read them through a table, and new
+/// records that waited for one ([`host::HostHeap::copied_wait`]); and the
+/// microseconds submissions waited for it ([`sync_aside`]).
 #[cfg(windows)]
-pub(crate) static SYNCED: [std::sync::atomic::AtomicU64; 4] = [const { std::sync::atomic::AtomicU64::new(0) }; 4];
+pub(crate) static SYNCED: [std::sync::atomic::AtomicU64; 7] = [const { std::sync::atomic::AtomicU64::new(0) }; 7];
+
+/// The same, of [`SYNCED`]'s pages: those in view memory that was guarded;
+/// bytes read; nanoseconds asking what was written, reading it and comparing
+/// it with what was last seen, making views.
+#[cfg(windows)]
+static SYNC_SPLIT: [std::sync::atomic::AtomicU64; 5] = [const { std::sync::atomic::AtomicU64::new(0) }; 5];
 
 /// With the frame line: what [`sync_heaps`] did per frame over `frames`.
 /// Nothing while no heap page changed.
 #[cfg(windows)]
 pub(crate) fn sync_line(frames: f64) {
-    let [pages, looked, mirrored, micros] = [0, 1, 2, 3].map(|i| SYNCED[i].swap(0, std::sync::atomic::Ordering::Relaxed));
+    crate::port_descriptors::line(frames);
+    let [twins, moved, lost] = [0, 1, 2].map(|i| host::TWINS[i].swap(0, std::sync::atomic::Ordering::Relaxed));
+    if twins > 0 {
+        tracing::info!(
+            "raw twins of buffer views made per frame (VICTORY_RAW_VIEWS=0: none): {:.0}, of them {:.1} that do not begin on 16 bytes ({:.1} null)",
+            twins as f64 / frames,
+            moved as f64 / frames,
+            lost as f64 / frames
+        );
+    }
+    let [pages, looked, mirrored, micros, tabled, later, waited] = [0, 1, 2, 3, 4, 5, 6].map(|i| SYNCED[i].swap(0, std::sync::atomic::Ordering::Relaxed));
+    let split = [0, 1, 2, 3, 4].map(|i| SYNC_SPLIT[i].swap(0, std::sync::atomic::Ordering::Relaxed) as f64);
+    let kinds = [0, 1, 2, 3, 4].map(|i| SYNCED_KINDS[i].swap(0, std::sync::atomic::Ordering::Relaxed) as f64 / frames);
+    let jobs = [0, 1, 2].map(|i| SYNC_JOBS_NS[i].swap(0, std::sync::atomic::Ordering::Relaxed) as f64 / 1e6 / frames);
+    let quick = [0, 1].map(|i| host::SPANS_QUICK[i].swap(0, std::sync::atomic::Ordering::Relaxed) as f64 / frames);
+    let short = SYNC_SHORT.swap(0, std::sync::atomic::Ordering::Relaxed);
     if pages == 0 {
         return;
     }
     tracing::info!(
+        "the heaps' records' jobs per frame (VICTORY_SYNC_FINE={}, VICTORY_SYNC_IN_PLACE={}): on all threads {:.2} ms reading pages, \
+         {:.2} comparing (in place: reading too), {:.2} sorting out; writes of slots {:.0} leaving the spans alone (VICTORY_SPANS_QUICK), \
+         {:.0} under their lock; {} pages read in place not all there",
+        u8::from(sync_jobs().0 == SYNC_PAGES_FINE),
+        u8::from(sync_in_place()),
+        jobs[0],
+        jobs[1],
+        jobs[2],
+        quick[0],
+        quick[1],
+        short
+    );
+    tracing::info!(
         "descriptor records the title copied into its heap as bytes (VICTORY_HEAP_SYNC=0: not looked for): per frame \
-         {:.1} changed heap pages, {:.0} slots looked at, {:.1} whose record was new and was mirrored, {:.0} left to the \n         draws that read them through tables (VICTORY_HEAP_SYNC_TABLES=1 mirrors those too), {:.2} ms",
+         {:.1} changed heap pages, {:.0} slots looked at, {:.1} whose record was new and was mirrored, {:.1} new ones of \
+         draws' tables left to the draws, {:.1} that waited for a draw first, {:.2} ms ({:.2} ms waited for); of the mirrored \
+         {:.0} no views (with those of slots that show none), {:.0} of objects, {:.0} others, {:.0} samplers, {:.0} that waited and no draw came; \
+         {:.1} of the pages guarded views, {:.1} MB read; {:.2} ms asking, {:.2} reading and comparing, {:.2} making",
         pages as f64 / frames,
         looked as f64 / frames,
         mirrored as f64 / frames,
-        host::COPIED_TABLED.swap(0, std::sync::atomic::Ordering::Relaxed) as f64 / frames,
-        micros as f64 / 1000.0 / frames
+        tabled as f64 / frames,
+        later as f64 / frames,
+        micros as f64 / 1000.0 / frames,
+        waited as f64 / 1000.0 / frames,
+        kinds[0],
+        kinds[1],
+        kinds[2],
+        kinds[3],
+        kinds[4],
+        split[0] / frames,
+        split[1] / (1 << 20) as f64 / frames,
+        split[2] / 1e6 / frames,
+        split[3] / 1e6 / frames,
+        split[4] / 1e6 / frames
     );
-}
-
-/// Whether [`sync_heaps`] hands a changed page's records to the host heap
-/// in one go (`host::HostHeap::mirror_copied_page`). On by default: the
-/// same records are mirrored either way. `VICTORY_HEAP_SYNC_PAGE=0`: one
-/// by one, as before.
-#[cfg(windows)]
-fn page_at_once() -> bool {
-    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| std::env::var_os("VICTORY_HEAP_SYNC_PAGE").is_none_or(|v| v != "0"))
 }
 
 /// Title descriptor slots in a changed byte range that have host counterparts.
@@ -313,6 +827,36 @@ fn changed_slots(
     first.min(last)..last
 }
 
+/// The title's view heap that shaders of a list without one get their views
+/// from (`draw.rs`, `bind`): the title's structure builder binds root views
+/// only, and the host shows those, and memory by address, through heap slots.
+/// The biggest there is. `VICTORY_LENT_HEAP=0`: none, such a dispatch is
+/// dropped, as before.
+#[cfg(windows)]
+pub(crate) fn lent_heap() -> Option<usize> {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if !*ON.get_or_init(|| std::env::var_os("VICTORY_LENT_HEAP").is_none_or(|v| v != "0")) {
+        return None;
+    }
+    let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
+    heaps
+        .iter()
+        // SAFETY: registered heaps are live (removed when dropped).
+        .map(|&(_, _, h)| (h, unsafe { &*(h as *const Heap) }))
+        .filter(|(_, heap)| !heap.samplers() && matches!(heap.host.get(), Some(Some(_))))
+        .max_by_key(|(_, heap)| heap.desc.count)
+        .map(|(h, _)| h)
+}
+
+/// `f` of the title heap at `heap`, if that heap still exists; it stays
+/// until `f` is done.
+#[cfg(windows)]
+pub(crate) fn with_heap<T>(heap: usize, f: impl FnOnce(&Heap) -> T) -> Option<T> {
+    let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
+    // SAFETY: registered heaps are live (removed when dropped).
+    heaps.iter().any(|&(_, _, h)| h == heap).then(|| f(unsafe { &*(heap as *const Heap) }))
+}
+
 /// Gives back dynamic slots of the host heap behind the title heap at
 /// `heap`, if that heap still exists.
 #[cfg(windows)]
@@ -326,12 +870,48 @@ pub(crate) fn release_dynamic(heap: usize, first: u32, n: u32) {
     }
 }
 
+/// Runs `f` with the host heap of the title's largest view heap, if there is
+/// one (nothing is waited for).
+#[cfg(windows)]
+pub(crate) fn with_view_heap<T>(f: impl FnOnce(&host::HostHeap) -> T) -> Option<T> {
+    let heaps = SHADER_HEAPS.try_read().ok()?;
+    let host = heaps
+        .iter()
+        // SAFETY: registered heaps are live (removed when dropped).
+        .map(|&(_, _, at)| unsafe { &*(at as *const Heap) })
+        .filter(|heap| !heap.samplers())
+        .filter_map(|heap| heap.host.get()?.as_ref())
+        .max_by_key(|host| host.count())?;
+    Some(f(host))
+}
+
+/// Makes dynamic slot `index` of the host heap behind the title heap at
+/// `heap`, if that heap still exists, the constant buffer view of `size`
+/// bytes of `buffer` at `gpu`.
+#[cfg(windows)]
+pub(crate) fn constant_slot(
+    heap: usize,
+    index: u32,
+    buffer: &windows::Win32::Graphics::Direct3D12::ID3D12Resource,
+    gpu: u64,
+    size: u32,
+) {
+    let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
+    if heaps.iter().any(|&(_, _, h)| h == heap)
+        // SAFETY: registered heaps are live (removed when dropped).
+        && let Some(Some(host)) = unsafe { &*(heap as *const Heap) }.host.get()
+    {
+        host.constant_at(index, buffer, gpu, size);
+    }
+}
+
 #[cfg(windows)]
 impl Drop for Heap {
     fn drop(&mut self) {
         let at = std::ptr::from_ref::<Heap>(self) as usize;
         let mut heaps = SHADER_HEAPS.write().unwrap_or_else(|e| e.into_inner());
         heaps.retain(|&(_, _, h)| h != at);
+        crate::port_descriptors::let_go(self.start);
     }
 }
 
@@ -360,6 +940,15 @@ const RTV_TAG: u32 = u32::from_le_bytes(*b"vRTV");
 const _: () = assert!(size_of::<RtvRecord>() <= 112);
 
 impl RtvRecord {
+    /// All the view it records is made from: records with equal keys have
+    /// equal views (of the same host texture).
+    #[cfg(windows)]
+    pub(crate) fn key(&self) -> (usize, [u32; 7]) {
+        let mut words = [self.described; 7];
+        words[1..].copy_from_slice(&self.desc);
+        (self.resource as usize, words)
+    }
+
     /// The view description in the host's type (the same layout).
     #[cfg(windows)]
     pub(crate) fn desc(
@@ -442,7 +1031,7 @@ const DSV_TAG: u32 = u32::from_le_bytes(*b"vDSV");
 
 /// A shader view or sampler as the title described it (descriptions in the
 /// host's layout, kept as words), for the host to build its own from.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum View {
     /// Constant buffer: GPU address and size.
     Constant(u64, u32),
@@ -463,16 +1052,12 @@ pub(crate) enum View {
 
 impl View {
     /// Whether the view reads buffer memory (constant buffers, buffer views
-    /// of resources or of memory) or memory the title placed a texture in
-    /// to sample: such views get host slots only for draws. Placed
-    /// unordered texture views live on the host alone, as texture objects'
-    /// unordered views do, so shader-visible heap writes mirror them.
+    /// of resources or of memory) or memory the title placed a texture in:
+    /// such views get host slots only for draws.
     #[cfg(windows)]
     fn is_buffer(&self) -> bool {
-        const BUFFER: u32 = 1;
         match self {
-            View::Constant(..) | View::Placed(false, ..) => true,
-            View::Placed(true, resource, _) => resource[0] == BUFFER,
+            View::Constant(..) | View::Placed(..) => true,
             View::Shader(r, _) | View::Unordered(r, _, _) => {
                 crate::resource::buffer_bytes(*r as This).is_some()
             }
@@ -527,7 +1112,7 @@ static VIEWS: std::sync::RwLock<Views> = std::sync::RwLock::new(Views {
     shapes: Vec::new(),
     shape_index: std::collections::BTreeMap::new(),
 });
-const VIEW_TAG: u32 = u32::from_le_bytes(*b"vVIE");
+pub(crate) const VIEW_TAG: u32 = u32::from_le_bytes(*b"vVIE");
 
 /// A record is the tag and two words, `i` and `generation` (the host keeps
 /// them as one 64-bit key per slot). The top two bits of `generation` say
@@ -601,13 +1186,19 @@ fn constant_of(i: u32, generation: u32) -> View {
     View::Constant(payload & ((1 << CONSTANT_ADDRESS_BITS) - 1), size)
 }
 
-/// A placed view's shape and its address.
+/// A placed view's shape and its address. The resource's filler words (1
+/// and 13, the padding of its description: what the title's stack held)
+/// are not part of the shape, so that one texture is one shape however
+/// often the title writes its view: with them the table of shapes grew
+/// with every new leaving, 867,000 of them after nine minutes of play and
+/// 2,000 more a second (`VICTORY_PLACED_FILLER=1`: kept, as before).
 fn shape_of(unordered: bool, resource: &[u32; 14], desc: &[u32; 16]) -> (Shape, u64) {
     let mut rest = [0u32; 14];
     rest[..10].copy_from_slice(&desc[..10]);
     rest[10..].copy_from_slice(&desc[12..]);
+    let resource = if crate::resource::filler_kept() { *resource } else { crate::resource::without_filler(resource) };
     (
-        (unordered, *resource, rest),
+        (unordered, resource, rest),
         u64::from(desc[10]) | u64::from(desc[11]) << 32,
     )
 }
@@ -851,7 +1442,14 @@ pub(crate) fn make_waiting() {
             // texture without a host copy must go on waiting).
             // (Looked up first: the handle is read only while its heap is
             // there.)
-            let Some((heap, index)) = shader_slot(handle) else {
+            // (The heap stays while the lock is held: `mirror`.)
+            let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
+            let Some(&(_, _, at)) = heaps.iter().find(|&&(start, end, _)| (start..end).contains(&handle)) else {
+                continue;
+            };
+            // SAFETY: a registered heap, live while the lock is held.
+            let heap = unsafe { &*(at as *const Heap) };
+            let Some(index) = heap.index(handle) else {
                 continue;
             };
             let same = match view(handle) {
@@ -918,6 +1516,16 @@ fn view_at(i: u32, generation: u32) -> Option<View> {
     }
 }
 
+/// The words of the record at `handle`, if they are a view's.
+pub(crate) fn record_at(handle: u64) -> Option<[u32; 3]> {
+    if handle == 0 {
+        return None;
+    }
+    // SAFETY: the handle is a descriptor slot the title passes back.
+    let words = unsafe { (handle as *const [u32; 3]).read_unaligned() };
+    (words[0] == VIEW_TAG).then_some(words)
+}
+
 /// The view recorded at `handle`, if one is (and its resource is alive).
 pub(crate) fn view(handle: u64) -> Option<View> {
     if handle == 0 {
@@ -929,20 +1537,6 @@ pub(crate) fn view(handle: u64) -> Option<View> {
         return None;
     }
     view_at(i, generation)
-}
-
-/// As [`view`], for a slot a material record names indirectly: it may lie
-/// in the reserved, not committed part of a heap, so it is read only if
-/// its memory can be (`crate::material_demand`; after DexNom/VIctory
-/// b8ff22e).
-#[cfg(windows)]
-pub(crate) fn checked_view(handle: u64) -> Option<View> {
-    let mut bytes = [0u8; 12];
-    if handle == 0 || !crate::host::read_into(handle as *const u8, &mut bytes) {
-        return None;
-    }
-    let word = |i: usize| u32::from_le_bytes([bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]]);
-    (word(0) == VIEW_TAG).then(|| view_at(word(4), word(8))).flatten()
 }
 
 /// A description of `N` words, if the title passes one.
@@ -1022,11 +1616,21 @@ pub(crate) extern "system" fn create_sampler_x(_: This, desc: *const [u32; 27], 
 
 /// Device method: `count` descriptors of `kind` from `src` to `dst`.
 pub(crate) extern "system" fn copy_simple(_: This, count: u32, dst: u64, src: u64, kind: u32) {
-    let step = u64::from(increment(kind).unwrap_or(0));
+    let Some(step) = increment(kind).map(u64::from) else {
+        return;
+    };
     let len = u64::from(count) * step;
     if dst != 0 && src != 0 {
         // SAFETY: both ranges are descriptor slots the title owns.
-        unsafe { std::ptr::copy(src as *const u8, dst as *mut u8, len as usize) };
+        #[cfg(windows)]
+        unsafe {
+            crate::titlewrite::put(dst as *mut u8, src as *const u8, len as usize)
+        };
+        // SAFETY: as above.
+        #[cfg(not(windows))]
+        unsafe {
+            std::ptr::copy(src as *const u8, dst as *mut u8, len as usize)
+        };
         #[cfg(windows)]
         for i in 0..u64::from(count) {
             mirror(dst + i * step);
@@ -1129,6 +1733,9 @@ pub(crate) extern "system" fn create_heap(
     let placed = placement.address != 0 && placement.size == size;
     tracing::debug!(?desc, placed, "descriptor heap");
     let (start, memory) = if placed {
+        if placement.address.checked_add(size).is_none() {
+            return E_INVALIDARG;
+        }
         (placement.address, None)
     } else {
         match Memory::zeroed(size, 64) {
@@ -1151,6 +1758,11 @@ pub(crate) extern "system" fn create_heap(
             .then(|| crate::watch::track(start as usize, size as usize, true))
             .flatten(),
     });
+    // Renderer port #2: the title's own stores tell this heap's slots.
+    #[cfg(windows)]
+    if placed && visible && desc.kind == VIEWS_KIND {
+        crate::port_descriptors::adopt(start, desc.count);
+    }
     #[cfg(windows)]
     if visible {
         let at = std::ptr::from_ref::<Heap>(&heap) as usize;
@@ -1197,21 +1809,6 @@ mod tests {
     use super::*;
     use crate::object::{S_OK, slot};
 
-    #[test]
-    fn constant_buffer_staging_uses_only_the_host_addressable_prefix() {
-        for (size, expected) in [
-            (0, 0),
-            (255, 255),
-            (65_535, 65_535),
-            (65_536, 65_536),
-            (65_537, 65_536),
-            (2_785_536, 65_536),
-            (u32::MAX, 65_536),
-        ] {
-            assert_eq!(constant_staging_bytes(size), expected, "guest CBV size {size}");
-        }
-    }
-
     /// What newer titles pass; tests use it throughout, so that reading the
     /// placement stays inside the value.
     #[repr(C)]
@@ -1247,74 +1844,6 @@ mod tests {
                 capped
             ),
             5..5
-        );
-    }
-
-    /// A table made afresh for a draw holds the descriptors its shader
-    /// moves halves through (`HostShader::half_views`), also past the range
-    /// starts its used-resource entries give: with one entry for a range
-    /// from dword 0 and a 16-bit float buffer view at dword 8, the table
-    /// takes two dynamic slots, so the next allocation does not land on the
-    /// view's. (The case avt0m4t48 found in review on #927.)
-    #[cfg(windows)]
-    #[test]
-    fn a_fresh_table_holds_the_half_views_past_its_range_starts() {
-        use victory_shader::{ResourceType, RootType, UsedResource};
-        let Some(device) = crate::host::host() else {
-            return; // no host GPU
-        };
-        let list = device.new_list().expect("a host list");
-        let desc = HeapDesc {
-            kind: VIEWS_KIND,
-            count: 2,
-            flags: SHADER_VISIBLE,
-            nodes: 1,
-        };
-        let none = Placement {
-            address: 0,
-            size: 0,
-        };
-        let mut h: This = std::ptr::null();
-        assert_eq!(create(desc, none, &mut h), S_OK);
-        let title = heap(h);
-        let host_heap = title.host().expect("a host view heap");
-        let (first, second) = (title.handle(0).unwrap(), title.handle(1).unwrap());
-        // An R16G16B16A16_FLOAT buffer view of memory in the second slot.
-        let memory = [0u64; 64];
-        let address = memory.as_ptr() as u64;
-        let resource = [1, 0, 0, 0, 512, 0, 1, 0x1_0001, 0, 1, 0, 1, 0, 0];
-        let mut words = [0u32; 16];
-        words[..10].copy_from_slice(&[10, 1, 5768, 0, 0, 0, 64, 0, 0, 0]);
-        words[10] = address as u32;
-        words[11] = (address >> 32) as u32;
-        create_placed_srv(std::ptr::null(), &resource, &words, second);
-        assert!(view(second).as_ref().and_then(host::half_view).is_some());
-        let mut state = crate::draw::State::default();
-        state.set_heaps(&[h]);
-        state.set_table(true, 1, first);
-        let range = UsedResource {
-            kind: ResourceType::Srv,
-            root: RootType::Table,
-            table_offset_dwords: 0,
-            lower_bound: 0,
-            stride: 8,
-            dwords: 4,
-            user_data: 4,
-            slot: 1,
-        };
-        let made = state.tables(&list, &[range], &[], &[(1, 8)], true);
-        let [(1, offset)] = made[..] else {
-            panic!("one fresh table for root parameter 1, not {made:?}");
-        };
-        assert_ne!(offset, u32::MAX, "the table found no dynamic slots");
-        let next = host_heap.dynamic(1).expect("a dynamic slot");
-        host_heap.release(next, 1);
-        drop(state);
-        slot::<extern "system" fn(This) -> u32>(h, 0x10)(h);
-        assert_eq!(
-            next,
-            offset / 32 + 2,
-            "the next allocation took the table's second slot"
         );
     }
 
@@ -1396,292 +1925,6 @@ mod tests {
         unsafe { VirtualFree(memory, 0, MEM_RELEASE) };
     }
 
-    /// A slot mirrored again from the record it was made from is found
-    /// made without its heap's lock (`HostHeap::mirror`'s fast path); a
-    /// slot cleared since is made anew from the record, not taken for made.
-    #[test]
-    fn a_slot_mirrored_again_from_its_record_is_found_without_the_lock() {
-        use std::sync::atomic::Ordering::Relaxed;
-        use windows_sys::Win32::System::Memory::{
-            MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_READWRITE, VirtualAlloc, VirtualFree,
-        };
-        // SAFETY: a private allocation of the test's own.
-        let memory = unsafe {
-            VirtualAlloc(std::ptr::null(), crate::watch::PAGE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE)
-        };
-        assert!(!memory.is_null());
-        let desc = HeapDesc {
-            kind: SAMPLERS,
-            count: 64,
-            flags: SHADER_VISIBLE,
-            nodes: 1,
-        };
-        let placement = Placement {
-            address: memory as u64,
-            size: 64 * 16,
-        };
-        let mut h: This = std::ptr::null();
-        assert_eq!(create(desc, placement, &mut h), S_OK);
-        if let Some(host) = heap(h).host() {
-            // SAFETY: slot 7 of the heap's memory, 16 bytes.
-            let at = unsafe { memory.cast::<u8>().add(7 * 16) } as u64;
-            let sampler = [21, 3, 3, 3, 0, 1, 0, 0, 0, 0, 0, 0x7f7f_ffff, 0];
-            create_sampler(std::ptr::null(), &sampler, at);
-            assert!(host.mirror(7, at, true).is_some());
-            assert!(host.made(7));
-            // SAFETY: as above.
-            let record = unsafe { (at as *const [u8; 16]).read_unaligned() };
-            let before = crate::descriptor::host::MIRROR_FAST.load(Relaxed);
-            assert!(host.mirror(7, at, true).is_some());
-            assert!(crate::descriptor::host::MIRROR_FAST.load(Relaxed) > before);
-            // Cleared by the title: null, and the record written back later
-            // is made again rather than taken for made.
-            // SAFETY: as above.
-            unsafe { std::ptr::write_bytes(at as *mut u8, 0, 16) };
-            assert!(host.mirror(7, at, true).is_none());
-            assert!(!host.made(7));
-            // SAFETY: as above.
-            unsafe { (at as *mut [u8; 16]).write_unaligned(record) };
-            assert!(host.mirror(7, at, true).is_some());
-            assert!(host.made(7));
-        }
-        slot::<extern "system" fn(This) -> u32>(h, 0x10)(h);
-        // SAFETY: this allocation belongs to the test.
-        unsafe { VirtualFree(memory, 0, MEM_RELEASE) };
-    }
-
-    /// What a material record names (`crate::material_demand`): a slot
-    /// waiting for its upload as it was when the record was read; a null
-    /// slot out of the queue whose memory is all there and no other view
-    /// claims, put into the queue; never one the title wrote since the
-    /// read, nor one under a texture the card writes (after DexNom/VIctory
-    /// b8ff22e).
-    #[cfg(windows)]
-    #[test]
-    fn material_records_ask_only_for_current_free_textures() {
-        use windows_sys::Win32::System::Memory::{MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE, VirtualAlloc};
-        if crate::host::host().is_none() {
-            return;
-        }
-        let null = std::ptr::null();
-        let mut object = null;
-        let desc = HeapDesc { kind: 0, count: 8, flags: 1, nodes: 0 };
-        assert_eq!(create(desc, Placement { address: 0, size: 0 }, &mut object), S_OK);
-        let heap = heap(object);
-        let host = heap.host().unwrap();
-        // SAFETY: new memory, left to the process.
-        let addr = unsafe { VirtualAlloc(std::ptr::null(), 2 << 20, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) } as u64;
-        assert_ne!(addr, 0);
-        // A 1024x512 BC1 texture of 8 levels.
-        let color = [3, 0, 0, 0, 1024, 0, 512, 0x8_0001, 72, 1, 0, 0x105, 0, 0];
-        let put = |slot, at: u64, first: u32| {
-            let mut srv = [0u32; 16];
-            srv[0] = 72;
-            srv[1] = 4;
-            srv[2] = 5768;
-            srv[4] = first;
-            srv[5] = 8 - first;
-            srv[10] = at as u32;
-            srv[11] = (at >> 32) as u32;
-            create_placed_srv(null, &color, &srv, heap.handle(slot).unwrap());
-        };
-        let frame = crate::frame::current();
-        put(1, addr, 4);
-        let stamp = host.material_write_stamp();
-        // In the queue as written before the read: handed back.
-        let queued = host.demand_material_texture(heap, 1, stamp, frame).unwrap();
-        assert_eq!(queued.0, 1);
-        assert!(!host.texture_slot_recovered(queued.0, queued.1));
-        // Out of the queue and null: put back into it, to be looked at again.
-        host.textures_remove(1);
-        let revived = host.demand_material_texture(heap, 1, stamp, frame).unwrap();
-        assert!(host.texture_slots_due(frame, 8).0.contains(&revived));
-        assert!(host.texture_slot_recovered(revived.0, revived.1));
-        let small = crate::resource::placed_bytes_from(&color, 4).unwrap();
-        assert!(host.material_upload_allowed(1, revived.1, addr, small, small));
-        assert!(!host.material_upload_allowed(1, revived.1, addr, small, small - 1));
-        assert!(!host.material_upload_allowed(1, revived.1 + 1, addr, small, small));
-        // Written by the title after the read: not this record's to ask for.
-        host.textures_remove(1);
-        put(1, addr, 4);
-        host.textures_remove(1);
-        assert!(host.demand_material_texture(heap, 1, stamp, frame).is_none());
-        let stamp = host.material_write_stamp();
-        assert!(host.demand_material_texture(heap, 1, stamp, frame).is_some());
-        // A texture the card writes over the same memory: never.
-        host.textures_remove(1);
-        let mut writer = color;
-        writer[8] = 28;
-        writer[12] = 1;
-        let writer = crate::resource::texture_at(addr, &writer);
-        if writer.is_some() && crate::resource::writable_texture_overlaps(addr, addr + small) {
-            assert!(host.demand_material_texture(heap, 1, stamp, frame).is_none());
-        }
-        assert_eq!(release(object), 0);
-    }
-
-    /// Every texture the host writes at an address counts for the memory
-    /// it lies over until it is released, not only the newest, and so does
-    /// one the host copied into (`crate::material_demand`).
-    #[cfg(windows)]
-    #[test]
-    fn overlapping_textures_the_card_writes_count_until_each_is_released() {
-        use windows::core::{IUnknown, Interface};
-        use windows_sys::Win32::System::Memory::{MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_READWRITE, VirtualAlloc, VirtualFree};
-        if crate::host::host().is_none() {
-            return;
-        }
-        // SAFETY: new memory, the test's until both textures are released.
-        let memory = unsafe { VirtualAlloc(std::ptr::null(), 2 << 20, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) };
-        assert!(!memory.is_null());
-        let base = memory as u64;
-        crate::resource::TARGET_OWNERS_ON.set(true);
-        let owner = |side: u32| {
-            let words: [u32; 14] = [3, 0, 0, 0, side, 0, side, 0x1_0001, 28, 1, 0, 0x105, 1, 0];
-            // SAFETY: the 14 words have the layout of the title's resource
-            // description.
-            let desc = unsafe { std::mem::transmute::<[u32; 14], crate::resource::ResourceDesc>(words) };
-            let mut raw = std::ptr::null();
-            assert_eq!(
-                crate::resource::create_at_address(
-                    std::ptr::null(),
-                    base,
-                    &desc,
-                    0,
-                    std::ptr::null(),
-                    &crate::resource::PAGEABLE_IIDS[0],
-                    &mut raw
-                ),
-                S_OK
-            );
-            crate::texture::host_written(raw);
-            // SAFETY: takes over the title resource's first reference.
-            unsafe { IUnknown::from_raw(raw.cast_mut().cast()) }
-        };
-        let large = owner(512);
-        let small = owner(32);
-        let range = (base + 512 * 1024, base + 516 * 1024);
-        let check = |expected| {
-            assert_eq!(crate::resource::writable_texture_overlaps(range.0, range.1), expected);
-            assert_eq!(crate::texture::host_written_overlaps(range.0, range.1), expected);
-        };
-        check(true);
-        drop(small);
-        check(true);
-        drop(large);
-        check(false);
-        crate::resource::TARGET_OWNERS_ON.set(false);
-        // SAFETY: both textures are released.
-        assert_ne!(unsafe { VirtualFree(memory, 0, MEM_RELEASE) }, 0);
-    }
-
-    /// A material record the card holds is read back in command order and
-    /// names the slots to go first: the one waiting for its upload, and
-    /// two null ones a newer view had made stale (after DexNom/VIctory
-    /// b8ff22e).
-    #[cfg(windows)]
-    #[test]
-    // Shares process-wide state (heaps' records, the texture queue) with tests running beside it and
-    // failed now and then in a parallel run (once on CI, once locally); it passes alone. The switch it
-    // covers (VICTORY_MATERIAL_TEXTURE_DEMAND) is off by default. Run it with `--ignored`.
-    #[ignore = "flaky beside other tests; run alone with --ignored"]
-    fn material_records_are_read_from_the_card_in_command_order() {
-        use windows::Win32::Graphics::Direct3D12::*;
-        let Some(device) = crate::host::host() else { return };
-        let null = std::ptr::null();
-        let mut object = null;
-        let desc = HeapDesc { kind: 0, count: 128, flags: 1, nodes: 0 };
-        assert_eq!(create(desc, Placement { address: 0, size: 0 }, &mut object), S_OK);
-        let heap = heap(object);
-        let host = heap.host().unwrap();
-        // The record's buffer view, 688 dwords into the table.
-        let source_slot = 688 * 4 / 32;
-        let record_bytes = [0u64; 8];
-        let base = record_bytes.as_ptr() as u64;
-        let mut resource = [0; 14];
-        resource[0] = 1;
-        resource[4] = 64;
-        let mut view = [0; 16];
-        view[0] = 41;
-        view[1] = 1;
-        view[6] = 16;
-        view[10] = base as u32;
-        view[11] = (base >> 32) as u32;
-        let handle = heap.handle(source_slot).unwrap();
-        create_placed_srv(null, &resource, &view, handle);
-        let material = host.mirror(source_slot, handle, true).unwrap();
-        let (shadow, address, _) = host::buffer_copy(&material).unwrap();
-        let backing = vec![0u8; 1 << 20];
-        let addr = backing.as_ptr() as u64;
-        let tex = [3, 0, 0, 0, 64, 0, 64, 0x1_0001, 98, 1, 0, 0x105, 0, 0];
-        let mut tex_view = [0; 16];
-        tex_view[10] = addr as u32;
-        tex_view[11] = (addr >> 32) as u32;
-        create_placed_srv(null, &tex, &tex_view, heap.handle(3).unwrap());
-        let _frame = crate::frame::TEST_FRAME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let frame = crate::frame::current();
-        let stamp = host.material_write_stamp();
-        let write = host.demand_material_texture(heap, 3, stamp, frame).unwrap();
-        let list = device.new_list().unwrap();
-        // Two typed BC1 maps; a wider view of each at the same address in
-        // slot 8 makes them stale, and clearing slot 8 leaves their memory
-        // free and their slots null.
-        for (slot, at, width, height, levels, first) in
-            [(5, addr + 0x40000, 512, 256, 7, 1), (6, addr + 0x60000, 1024, 512, 8, 3)]
-        {
-            let mut shape = [3, 0, 0, 0, width, 0, height, (levels << 16) | 1, 71, 1, 0, 0x105, 0, 0];
-            let mut srv = [0u32; 16];
-            srv[0] = 71;
-            srv[1] = 4;
-            srv[2] = 5768;
-            srv[4] = first;
-            srv[5] = levels - first;
-            srv[10] = at as u32;
-            srv[11] = (at >> 32) as u32;
-            create_placed_srv(null, &shape, &srv, heap.handle(slot).unwrap());
-            shape[4] *= 2;
-            create_placed_srv(null, &shape, &srv, heap.handle(8).unwrap());
-            create_cbv(null, &[0x400, 6, 256, 0], heap.handle(8).unwrap());
-        }
-        // The record exists only on the card: title memory holds zeros.
-        let words = [0xf800_0003u32, 0, 7, 0, 5, 6];
-        let bytes = std::mem::size_of_val(&words) as u64;
-        let (upload, mapped) = device.upload_buffer(bytes).unwrap();
-        // SAFETY: the upload buffer holds `bytes` bytes; the copy goes into
-        // the host copy's range of the record.
-        unsafe {
-            std::ptr::copy_nonoverlapping(words.as_ptr().cast::<u8>(), mapped, bytes as usize);
-            list.list.CopyBufferRegion(&shadow.buffer, shadow.offset(address), &upload, 0, bytes);
-            list.list.ResourceBarrier(&[crate::host::transition(
-                &shadow.buffer,
-                D3D12_RESOURCE_STATE_COPY_DEST,
-                D3D12_RESOURCE_STATE_COPY_SOURCE,
-            )]);
-        }
-        crate::material_demand::record(&list, heap, heap.start, 0, &[0, 16, 20]);
-        list.close();
-        device.execute(&[&list]);
-        let wanted = host.material_demand.take(heap, host, frame);
-        assert_eq!(
-            wanted.iter().map(|&(slot, write)| (slot, host.texture_slot_recovered(slot, write))).collect::<Vec<_>>(),
-            [(3, false), (5, true), (6, true)]
-        );
-        assert_eq!(record_bytes, [0; 8]);
-        let mut due: Vec<_> = (32..48).map(|n| (n, 1)).collect();
-        due.push(write);
-        crate::material_demand::promote(&mut due, &wanted, frame);
-        assert_eq!(due[(frame % 4) as usize], write);
-        // A newer view of slot 3's memory, written after the read.
-        let mut newer = tex;
-        newer[4] = 128;
-        create_placed_srv(null, &newer, &tex_view, heap.handle(4).unwrap());
-        assert!(host.demand_material_texture(heap, 3, stamp, frame).is_none());
-        assert!(host.demand_material_texture(heap, 4, stamp, frame).is_none());
-        assert!(host.demand_material_texture(heap, 4, host.material_write_stamp(), frame).is_some());
-        drop(backing);
-        assert_eq!(release(object), 0);
-    }
-
     #[test]
     fn views_survive_copies() {
         let null = std::ptr::null();
@@ -1743,14 +1986,16 @@ mod tests {
     /// table; one shape stands for all the placed views alike.
     #[test]
     fn views_at_new_addresses_add_no_entries() {
-        if !inline() {
+        if !inline() || crate::resource::filler_kept() {
             return;
         }
         let null = std::ptr::null();
         let slots = [0u64; 4];
         let at = slots.as_ptr() as u64;
-        // A resource description and a view no other test uses.
-        let resource: [u32; 14] = std::array::from_fn(|k| 0x5ee0_0000 + k as u32);
+        // A resource description and a view no other test uses (its filler
+        // words, 1 and 13, as the shape keeps them: blank).
+        let mut resource: [u32; 14] = std::array::from_fn(|k| 0x5ee0_0000 + k as u32);
+        (resource[1], resource[13]) = (0, 0);
         let mut desc: [u32; 16] = std::array::from_fn(|k| 0x7a70_0000 + k as u32);
         let mine = |v: &View| match v {
             View::Constant(address, _) => (0x6_0000_0000..0x6_1000_0000).contains(address),
@@ -1770,6 +2015,17 @@ mod tests {
         }
         assert_eq!(entries(), 0, "no table entries");
         assert_eq!(shapes(), 1, "one shape for 20,000 placed views");
+        // The same texture written with whatever the title's stack held in
+        // the filler of its description: the same shape, the filler left
+        // out of what the record names (it grew the table by a shape for
+        // each leaving: 867,000 in nine minutes of play).
+        for n in 0..2_000u32 {
+            let mut noisy = resource;
+            (noisy[1], noisy[13]) = (0x7ff0_0000 + n, 0x1234_0000 ^ n.wrapping_mul(2654435761));
+            create_placed_srv(null, &noisy, &desc, at);
+            assert_eq!(view(at), Some(View::Placed(false, resource, desc)));
+        }
+        assert_eq!(shapes(), 1, "the filler is no shape");
         // The same shape, unordered: another shape.
         create_placed_uav(null, &resource, &desc, at);
         assert_eq!(view(at), Some(View::Placed(true, resource, desc)));

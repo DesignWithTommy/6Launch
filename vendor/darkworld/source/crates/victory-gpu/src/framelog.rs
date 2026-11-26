@@ -63,6 +63,24 @@ pub enum T {
     Remaps,
     RemapUs,
     RemapWaitUs,
+    /// Of that time: the kernel calls that unmap, split, map and commit
+    /// (nanoseconds, calls), and the GPU side's notes of what the range
+    /// shows now (`title_memory_remapped`, `title_memory_view`;
+    /// nanoseconds). The rest is the runtime's own page table.
+    RemapKernelNs,
+    RemapKernelCalls,
+    RemapNoteNs,
+    /// Kernel calls a remap left out as changing nothing
+    /// (`VICTORY_REMAP_CALLS`).
+    RemapCallsSaved,
+    /// Remaps that took the page table only for each look and change,
+    /// never across a kernel call (`VICTORY_REMAP_UNLOCKED`).
+    RemapsUnlocked,
+    /// DirectStorage's lookups in the page table: how many, the wait to
+    /// take it (nanoseconds), and how many ran while a remap was under way.
+    PageTableLookups,
+    PageTableWaitNs,
+    PageLookupsInRemap,
     /// Texture refreshes on every thread, and of them the wait for title
     /// memory to hold still; uploads recorded.
     RefreshUs,
@@ -100,6 +118,13 @@ pub enum T {
     WorkerSlow,
     RecordLooks,
     RecordSlow,
+    /// Windows' sides in the card's memory (`crate::shadow`'s
+    /// `window_card_most`): bytes and copies sent up to them before
+    /// submissions, and windows a submission declared shader writes to,
+    /// which are compared after its lists and fetched from.
+    CardWindowBytes,
+    CardWindowCopies,
+    CardWindowsCompared,
     Count,
 }
 
@@ -109,12 +134,6 @@ static TOTAL: [AtomicU64; N] = [const { AtomicU64::new(0) }; N];
 /// Adds to a total.
 pub fn add(t: T, n: u64) {
     TOTAL[t as usize].fetch_add(n, Relaxed);
-}
-
-/// Takes from a total (a time that was summed over threads is corrected
-/// to the time it took).
-pub fn sub(t: T, n: u64) {
-    TOTAL[t as usize].fetch_sub(n, Relaxed);
 }
 
 /// What a thread did inside our calls since its last present: for the
@@ -329,8 +348,9 @@ fn free_mb() -> u64 {
     m.ullAvailPhys >> 20
 }
 
-/// Values read when a frame ends, all running totals but the last.
-const S: usize = 11;
+/// Values read when a frame ends: running totals, and levels from
+/// [`S_FREE_MB`] on.
+const S: usize = 15;
 const S_THREAD_USER: usize = 0;
 const S_THREAD_KERNEL: usize = 1;
 const S_PROCESS_USER: usize = 2;
@@ -341,12 +361,20 @@ const S_PIPELINES_MADE: usize = 6;
 const S_PIPELINES_LOADED: usize = 7;
 const S_STAGING_REUSED: usize = 8;
 const S_STAGING_MADE: usize = 9;
-/// Not a total: the free memory then.
+/// Not totals, from here on: the free memory then; and windows with a side
+/// on the card, those sides' bytes, the room the texture queue keeps for
+/// more and the windows turned down since the start
+/// (`crate::shadow::window_cards_now`).
 const S_FREE_MB: usize = 10;
+const S_CARD_WINDOWS: usize = 11;
+const S_CARD_WINDOW_BYTES: usize = 12;
+const S_CARD_WINDOW_KEPT: usize = 13;
+const S_CARD_WINDOWS_REFUSED: usize = 14;
 
 fn sample() -> [u64; S] {
     let (tu, tk) = thread_times();
     let (pu, pk) = process_times();
+    let windows = crate::shadow::window_cards_now();
     [
         tu,
         tk,
@@ -359,6 +387,10 @@ fn sample() -> [u64; S] {
         crate::texture::SPARE_STATS[0].load(Relaxed),
         crate::texture::SPARE_STATS[1].load(Relaxed),
         free_mb(),
+        windows[0],
+        windows[1],
+        windows[2],
+        windows[3],
     ]
 }
 
@@ -412,9 +444,12 @@ fn text(f: &Frame) -> String {
          send-and-hash lists {:.1} ms in {:.0}, our compare lists {:.1} ms in {:.0}, all other lists {:.1} ms in {:.0} | \
          recording, all threads: {:.1} ms in {:.0} calls; all submit calls {:.1} ms | textures: refresh {:.1} ms ({:.1} waiting for memory to hold \
          still), {:.0} uploads, staging {:.0} made {:.0} reused | remapping: {:.0} calls {:.1} ms ({:.1} waiting for \
-         readers) | pipelines: {:.0} made, {:.0} loaded, {:.1} ms waited | disk: {:.0} reads {:.1} MB {:.1} worker ms | \
+         readers; {:.1} in {:.0} kernel calls ({:.0} left out), {:.1} noting it, {:.1} the rest; {:.0} with the page table let go) | page \
+         table: {:.0} lookups, {:.1} ms waiting for it, {:.0} during a remap | pipelines: {:.0} made, {:.0} loaded, {:.1} ms waited | disk: {:.0} reads {:.1} MB {:.1} worker ms | \
          faults: {:.0} page, {:.0} guard | process: {:.0} user {:.0} kernel ms | pacing, all threads {:.1} ms | {:.0} \
-         draws | {:.0} MB free | found on a slow core: the render thread {:.0} of {:.0} looks, the submit thread {:.0} of {:.0}, recording threads {:.0} of {:.0}",
+         draws | {:.0} MB free | found on a slow core: the render thread {:.0} of {:.0} looks, the submit thread {:.0} of {:.0}, recording threads {:.0} of {:.0} \
+         | card windows: {:.0} on the card {:.0} MB (room kept for more {:.0} MB, {:.0} turned down), sent up {:.1} MB in {:.0} copies, \
+         compared for shader writes {:.0} times",
         f.us / 1e3,
         (s(S_THREAD_USER) + s(S_THREAD_KERNEL)) / 1e3,
         s(S_THREAD_USER) / 1e3,
@@ -454,6 +489,15 @@ fn text(f: &Frame) -> String {
         t(T::Remaps),
         ms(T::RemapUs),
         ms(T::RemapWaitUs),
+        t(T::RemapKernelNs) / 1e6,
+        t(T::RemapKernelCalls),
+        t(T::RemapCallsSaved),
+        t(T::RemapNoteNs) / 1e6,
+        (ms(T::RemapUs) - ms(T::RemapWaitUs) - t(T::RemapKernelNs) / 1e6 - t(T::RemapNoteNs) / 1e6).max(0.0),
+        t(T::RemapsUnlocked),
+        t(T::PageTableLookups),
+        t(T::PageTableWaitNs) / 1e6,
+        t(T::PageLookupsInRemap),
         s(S_PIPELINES_MADE),
         s(S_PIPELINES_LOADED),
         ms(T::PipelineWaitUs),
@@ -473,6 +517,13 @@ fn text(f: &Frame) -> String {
         t(T::WorkerLooks),
         t(T::RecordSlow),
         t(T::RecordLooks),
+        s(S_CARD_WINDOWS),
+        s(S_CARD_WINDOW_BYTES) / 1048576.0,
+        s(S_CARD_WINDOW_KEPT) / 1048576.0,
+        s(S_CARD_WINDOWS_REFUSED),
+        t(T::CardWindowBytes) / 1e6,
+        t(T::CardWindowCopies),
+        t(T::CardWindowsCompared),
     )
 }
 
@@ -573,7 +624,9 @@ pub fn frame() {
             s: std::array::from_fn(|i| sampled[i].wrapping_sub(s0[i]) as i64 as f64),
             h: here.map(|v| v as f64),
         };
-        f.s[S_FREE_MB] = sampled[S_FREE_MB] as f64;
+        for (level, &v) in f.s[S_FREE_MB..].iter_mut().zip(&sampled[S_FREE_MB..]) {
+            *level = v as f64;
+        }
         if thread != thread0 {
             // Another thread presented: its processor time is not this frame's.
             (f.s[S_THREAD_USER], f.s[S_THREAD_KERNEL]) = (0.0, 0.0);
@@ -646,10 +699,27 @@ mod tests {
     fn totals_and_a_threads_own_counts_add_up() {
         let before = TOTAL[T::DiskReads as usize].load(Relaxed);
         add(T::DiskReads, 3);
-        sub(T::DiskReads, 1);
-        assert_eq!(TOTAL[T::DiskReads as usize].load(Relaxed) - before, 2);
+        assert_eq!(TOTAL[T::DiskReads as usize].load(Relaxed) - before, 3);
         here(H::PaceUs, 5);
         here(H::PaceUs, 6);
         assert_eq!(HERE.with(|c| c.get())[H::PaceUs as usize], 11);
+    }
+
+    #[test]
+    fn card_windows_are_told_with_the_frame() {
+        let mut f = frame(0, 40.0);
+        f.s[S_CARD_WINDOWS] = 645.0;
+        f.s[S_CARD_WINDOW_BYTES] = (2660u64 << 20) as f64;
+        f.s[S_CARD_WINDOW_KEPT] = (412u64 << 20) as f64;
+        f.t[T::CardWindowBytes as usize] = 7.9e6;
+        f.t[T::CardWindowCopies as usize] = 175.0;
+        let out = text(&f);
+        assert!(
+            out.ends_with(
+                "| card windows: 645 on the card 2660 MB (room kept for more 412 MB, 0 turned down), sent up 7.9 MB in 175 \
+                 copies, compared for shader writes 0 times"
+            ),
+            "{out}"
+        );
     }
 }

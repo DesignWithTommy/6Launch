@@ -1311,6 +1311,11 @@ unsafe fn frame_fits(
 /// pointer out of the copy. It takes a little more for a function's end
 /// than the unwinder does (any jump after the `pop`s, wherever it goes).
 ///
+/// The unwinder does not stop reading at the function's end: a part of a
+/// function can end before its return, where the next part begins, and
+/// the `pop`s before that end are run all the same. Those bytes are not
+/// ours to read, so a frame whose answer needs one of them is refused.
+///
 /// # Safety
 /// `code` bytes at `context.Rip` are readable.
 unsafe fn epilogue_fits(
@@ -1321,12 +1326,14 @@ unsafe fn epilogue_fits(
     end: usize,
 ) -> bool {
     let rip = context.Rip as *const u8;
-    // Past the function's end reads as a breakpoint: nothing of an epilogue.
+    // Whether a byte past the function's end was asked for.
+    let beyond = std::cell::Cell::new(false);
     let byte = |i: usize| {
         if i < code {
             // SAFETY: inside the `code` bytes the caller says are readable.
             unsafe { rip.add(i).read() }
         } else {
+            beyond.set(true);
             0xcc
         }
     };
@@ -1373,6 +1380,9 @@ unsafe fn epilogue_fits(
         || byte(at) == 0xf3 && byte(at + 1) == 0xc3
         || byte(at) == 0xff && byte(at + 1) == 0x25
         || byte(at) & 0xf0 == 0x40 && byte(at + 1) == 0xff && byte(at + 2) & 0x38 == 0x20;
+    if beyond.get() {
+        return false;
+    }
     !leaves || (!pops_rsp && pops < 64 && rsp >= start && rsp + 8 * (pops + 1) <= end)
 }
 

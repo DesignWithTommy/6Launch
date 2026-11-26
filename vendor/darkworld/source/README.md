@@ -1,7 +1,7 @@
 # VIctory fork (work in progress)
 
-> **About this repository.** It is a snapshot published as one commit, without
-> history: [fxceless/victory-fork](https://github.com/fxceless/victory-fork)
+> **About this repository.** It is published as snapshots, one commit each,
+> without upstream's history: [fxceless/victory-fork](https://github.com/fxceless/victory-fork)
 > at commit `d510ee4a` (2026-11-25), itself a fork of
 > [VIctory](https://github.com/Marvisak/VIctory), with the changes listed
 > under [Changes in this snapshot](#changes-in-this-snapshot) made on top in
@@ -39,7 +39,90 @@ developer or publisher.
 
 ## Changes in this snapshot
 
-On top of fxceless/victory-fork `d510ee4a`:
+On top of fxceless/victory-fork `d510ee4a`, in two steps: the first
+snapshot (2026-11-25) and the update of 2026-11-26.
+
+### New in the update of 2026-11-26
+
+Frames a second from scripted sessions on one PC, Series X profile unless
+said otherwise: with the camera parked in the world (seconds 395 to 450 of
+a session) and in a heavy streaming scene early in the game (seconds 190 to
+226). Every session spreads the title's crowded threads over all
+processors (`VICTORY_SPREAD=1`, `VICTORY_SPREAD_SPARE` naming every
+processor). The figures compare builds with each other, not machines.
+
+| Build | Switches beyond the spread | Parked | Streaming scene |
+|-------|----------------------------|--------|-----------------|
+| First snapshot | none | 18.5 to 19.3 | - |
+| Fewer CPU costs, corner box | none | 22.7 to 22.8 | 1.4 to 1.7 |
+| Work off the submitting thread, card windows | `VICTORY_SCRATCH_CARD=0 VICTORY_MERGE_STEPS=0 VICTORY_WIDE_TEXTURES=0` | 22.3 | 1.7 |
+| The same | the same and `VICTORY_CARD_WINDOWS_MB=3072` | **24.5** | 6.0 |
+| The same | `VICTORY_WIDE_TEXTURES=0 VICTORY_CARD_WINDOWS_MB=3072` | 23.4 | **7.3** |
+| Fewer CPU costs, corner box | `VICTORY_CONSOLE=series-s` | 28.3, picture not usable | 1.8 |
+
+Each row is a build of the parts it names; the remap changes and the corner
+box measured neutral on top of them (22.0 against 21.3, and 22.8 against
+22.7, parked). For the best parked rate set `VICTORY_WIDE_TEXTURES=0
+VICTORY_CARD_WINDOWS_MB=3072 VICTORY_SCRATCH_CARD=0 VICTORY_MERGE_STEPS=0`;
+for the streaming scene leave the last two out.
+
+- **Fewer CPU costs in the GPU host.** The write journal keeps its stamps in
+  chunks of 64 pages; the guards are taken once per list when asking ahead;
+  the clock is read only where a submission's steps are timed; a host copy's
+  use is noted once a frame and a buffer view's whole host copy is found
+  once; a list's fresh descriptor tables are keyed with a fold and held in
+  the list, and the copies of its root views retire with them; a made title
+  slot's view is found without holding the heap.
+- **Work off the submitting thread.** A flush's stale pages are copied, its
+  large compares spread, a submission's textures checked and host list
+  resets and closes made on helper threads. View memory's guards are walked a
+  word of blocks at a time, the changed runs of merged pages are found a word
+  at a time (`VICTORY_RUNS_BY_WORDS`), a write-watch asking pays its fixed
+  costs once, copies into title memory open their guards by fault
+  (`VICTORY_COPY_OPEN_LATE=0` opens them before every copy, as before), and a
+  merge marks only the 4 KiB steps it stored as written
+  (`VICTORY_MERGE_STEPS`).
+- **Card windows.** `VICTORY_CARD_WINDOWS_MB=<MB>` keeps up to that many MB
+  of the windows into the title's own allocator (the vertices, indices and
+  constants draws read) in the card's memory, with the room the texture
+  queue needs kept free. The CPU's side stays in title memory, and what
+  changed in it goes up before each submission. List scratch constants are
+  read from twins in card memory (`VICTORY_SCRATCH_CARD`, on by default).
+- **Title memory remaps.** A title page is mapped without repeating the
+  split and the commit, the page table is let go while a remap calls the
+  kernel, and the kernel calls of each remap are timed.
+- **Corner box.** The frame rate and the machine's load are drawn into the
+  top left corner of every frame shown, under a DARKWORLDHM name bar: frames
+  a second and a frame's time, the worst frame of the second, the processors
+  (all programs, this process, its busiest thread), the card's busiest engine
+  (all programs, this process), the card's memory against its budget, the
+  process's committed memory and the PC's free memory, and a graph of the
+  last frames' times. Colours say what holds the frame. On by default; F3
+  goes round the whole box, the box with more (draws, the submitting
+  thread's work a frame, the memory shared with the card), the frame rate
+  alone and nothing. `VICTORY_FPS_COUNTER=more`, `=fps` or `=0` picks the
+  mode at start. The title's own frame and frame captures are not touched.
+- **Diagnostics.** The card's memory by owner (`VICTORY_CARD_MEMORY=1`):
+  title textures, render targets, card copies of title buffers, read-back
+  buffers, host copies and the rest, in the card's memory and in the PC
+  memory shared with it. List calls are timed with the time-stamp counter,
+  fresh tables counted by entry kind, and the process's times kept in each
+  frame's sample. The sampling profiler (`VICTORY_PROFILE=1`) no longer
+  crashes on a function end it cannot read whole.
+
+Where it stands:
+
+- 30 frames a second in the world is not reached. In the parked scene the
+  submitting thread's work, about 35 ms a frame, is the limit.
+- In the streaming scene the frame waits on memory. The console's CPU and
+  GPU share one memory; here the title commits about 40 GB, read-back copies
+  of the textures its CPU reads take over 6 GB of the PC memory the card
+  shares, and what the PC cannot keep resident comes back by page faults.
+- With `VICTORY_CONSOLE=series-s` the world frame comes out black and the
+  interface plane is missing: that profile's upscaling path and the
+  composition of its two planes are not handled yet.
+
+### In the first snapshot (2026-11-25)
 
 - **Shader translation.** The iteration limit of a translated loop is tested
   at the loop's own exits in compute programs that use 64-lane waves. Tested
@@ -85,8 +168,7 @@ On top of fxceless/victory-fork `d510ee4a`:
   NickJBc, Lilith133T, LeonardoS11, FrancescoGelosoEterea, DoubleD17,
   BitWuehler.
 
-Most of these switches are off unless set. 30 frames a second in the world
-is not reached.
+Most of these switches are off unless set.
 
 ## Status of this fork (2026-11-25)
 

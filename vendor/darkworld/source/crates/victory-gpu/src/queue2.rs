@@ -419,6 +419,7 @@ impl Second {
             };
             match (made, buffer) {
                 (Ok(()), Some(buffer)) => {
+                    crate::cardmem::enter(&buffer, crate::cardmem::Owner::Landing);
                     let wide: Vec<u16> = "victory landing buffer (title bytes on their way up)".encode_utf16().chain([0]).collect();
                     // SAFETY: a live buffer and a terminated string.
                     let _ = unsafe { buffer.SetName(windows::core::PCWSTR(wide.as_ptr())) };

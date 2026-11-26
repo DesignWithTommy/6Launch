@@ -369,7 +369,7 @@ fn shape_for(device: &ID3D12Device, width: u64, height: u32, make: bool) -> Opti
     let shape = Arc::new(Shape {
         width,
         height,
-        image: image?,
+        image: image.inspect(|i| crate::cardmem::enter(i, crate::cardmem::Owner::Ambient))?,
         read: AtomicU64::new(0),
     });
     if shapes.len() >= SIZES {

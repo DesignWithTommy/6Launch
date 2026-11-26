@@ -1,5 +1,6 @@
-//! The level a cube sample with explicit gradients takes (after
-//! DexNom/VIctory 921d8d3, whose test this follows).
+//! Cube samples with gradients select their level by the footprint (after
+//! DexNom/VIctory 921d8d3b).
+
 use super::host::{Dispatch, Host, Root, View};
 use super::intersect_tests::build_compute_shader;
 use crate::native::{
@@ -7,11 +8,10 @@ use crate::native::{
 };
 use windows::Win32::Graphics::Direct3D12::*;
 
-/// Every texel of a level is the level's number, on all six faces, so a
-/// sample returns the level it selected (with its fraction, filtered
-/// between levels).
+/// The level is the red channel on all six faces so every sample returns
+/// its selected mip directly (including the fraction with trilinear filtering).
 #[test]
-fn a_cube_sample_with_gradients_takes_the_level_of_its_footprint() {
+fn guest_cube_gradient_selects_mip_by_footprint() {
     const SIZE: usize = 64;
     const MIPS: u16 = 7;
     let mut words = vec![
@@ -25,19 +25,18 @@ fn a_cube_sample_with_gradients_takes_the_level_of_its_footprint() {
         0xFA00_0000, // sampler to s[24:27] from s[2:3]
         0x7E1E_0280, // v15 = 0 for output byte offsets
     ];
-    // (opcode, footprint in texels, minimum or given level, level expected)
     let cases = [
-        // image_sample_d: footprints of 1, 2 and 16 texels, and none.
+        // image_sample_d: successive XY footprints (in texels).
         (0x22, 1.0, 0.0, 0.0),
         (0x22, 2.0, 0.0, 1.0),
         (0x22, 16.0, 0.0, 4.0),
         (0x22, 0.000001, 0.0, 0.0),
         (0x22, 0.0, 0.0, 0.0),
-        // image_sample_d_cl: the instruction's minimum level.
+        // image_sample_d_cl: an instruction-specified minimum level.
         (0x23, 1.0, 3.0, 3.0),
         (0x23, 16.0, 2.0, 4.0),
         (0x23, 0.0, 2.0, 2.0),
-        // image_sample_l and image_sample_lz: the level given.
+        // image_sample_l and image_sample_lz: the level is given directly.
         (0x24, 0.0, 2.0, 2.0),
         (0x27, 0.0, 0.0, 0.0),
     ];
@@ -47,14 +46,14 @@ fn a_cube_sample_with_gradients_takes_the_level_of_its_footprint() {
         if op == 0x22 || op == 0x23 {
             addr.extend([delta, 0.0, 0.0, delta]); // derivatives along the face
         }
-        addr.extend([1.5f32, 1.5, 0.0]); // the +x face, its centre
+        addr.extend([1.5f32, 1.5, 0.0]); // positive X face, center
         if op == 0x23 || op == 0x24 {
             addr.push(lod);
         }
         for (reg, value) in addr.iter().enumerate() {
             words.extend([0x7E00_02FF | ((reg as u32) << 17), value.to_bits()]);
         }
-        // MIMG, cube, dmask R, inputs from v0, SRV s16, sampler s24, into v10.
+        // MIMG, CUBE, dmask:R, v0... inputs, SRV s16, sampler s24, result v10.
         words.extend([0xF000_0118 | (op << 18), 0x00C4_0A00]);
         // buffer_store_dword v10, v15, s[12:15], 0 offen offset:i*4
         words.extend([0xE070_1000 | (i as u32 * 4), 0x8003_0A0F]);
@@ -109,8 +108,6 @@ fn a_cube_sample_with_gradients_takes_the_level_of_its_footprint() {
         MaxAnisotropy: 1,
         ..Default::default()
     };
-    let _one = super::valu_tests::ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
-    let mut ran = 0;
     for (name, warp) in [("WARP", true), ("hardware", false)] {
         let Ok(host) = Host::new(warp) else {
             eprintln!("no SM 6.6 {name} device; skipped");
@@ -122,8 +119,14 @@ fn a_cube_sample_with_gradients_takes_the_level_of_its_footprint() {
                 &root,
                 &pso,
                 &Dispatch {
-                    roots: vec![(0, Root::Constants(vec![0; shader.user_data_dwords() as usize]))],
-                    views: &[View::CubeMips(SIZE as u32, MIPS, &texels), View::RawUav(cases.len() as u32)],
+                    roots: vec![(
+                        0,
+                        Root::Constants(vec![0; shader.user_data_dwords() as usize]),
+                    )],
+                    views: &[
+                        View::Cube(SIZE as u32, MIPS, &texels),
+                        View::RawUav(cases.len() as u32),
+                    ],
                     samplers: &[sampler],
                     groups: [1, 1, 1],
                 },
@@ -132,9 +135,5 @@ fn a_cube_sample_with_gradients_takes_the_level_of_its_footprint() {
         let levels: Vec<_> = out[0].iter().copied().map(f32::from_bits).collect();
         let expected = cases.map(|(_, _, _, mip)| mip);
         assert_eq!(levels.as_slice(), expected, "{name}");
-        ran += 1;
-    }
-    if ran == 0 {
-        eprintln!("no device: the levels were not checked");
     }
 }

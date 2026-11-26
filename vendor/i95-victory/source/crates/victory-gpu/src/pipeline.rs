@@ -837,6 +837,8 @@ mod tests {
             root_indexed_views: vec![], samplers: vec![], static_samplers: vec![],
         };
         let shader = Arc::new(Shader {
+            #[cfg(windows)]
+            resolves_light: false,
             hash: "root binding test".into(), stage: "compute", container: Vec::new(),
             translated: OnceLock::from(Some(Translated { host: host_shader, used: vec![], stores: true })),
         });

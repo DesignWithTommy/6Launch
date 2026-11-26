@@ -22,12 +22,10 @@ pub struct Config {
     pub data_dir: PathBuf,
     /// Other titles used to exercise platform-level code.
     pub test_titles: Vec<PathBuf>,
-    /// The user's copy of AMD FidelityFX for PC (the folder with its
-    /// upscaler DLL), which replaces a title's console build.
-    pub fidelityfx_dir: Option<PathBuf>,
-    /// A title profile: code patterns for `VICTORY_FSR` on Series X (a file
-    /// the user keeps; nothing about a title is built in).
-    pub fsr_profile: Option<PathBuf>,
+    /// The user's own profile of the title: where the places in its code that
+    /// are changed at load are (`VICTORY_TITLE_PROFILE`). Never in the
+    /// repository; without it those changes stay off.
+    pub title_profile: Option<PathBuf>,
     /// The config file that was read, if any.
     pub source: Option<PathBuf>,
 }
@@ -47,14 +45,13 @@ struct FilePaths {
     data_dir: Option<PathBuf>,
     #[serde(default)]
     test_titles: Vec<PathBuf>,
-    fidelityfx_dir: Option<PathBuf>,
-    fsr_profile: Option<PathBuf>,
+    title_profile: Option<PathBuf>,
 }
 
 impl Config {
     /// Loads configuration from the environment and the config file.
     pub fn load() -> Result<Self> {
-        let explicit = std::env::var_os("VICTORY_CONFIG").map(PathBuf::from);
+        let explicit = explicit_config_path(|k| std::env::var_os(k));
         let path = explicit
             .clone()
             .unwrap_or_else(|| PathBuf::from("victory.toml"));
@@ -104,8 +101,7 @@ impl Config {
             cache_dir,
             data_dir,
             test_titles,
-            fidelityfx_dir: env_path("VICTORY_FIDELITYFX_DIR").or(file.fidelityfx_dir),
-            fsr_profile: env_path("VICTORY_FSR_PROFILE").or(file.fsr_profile),
+            title_profile: env_path("VICTORY_TITLE_PROFILE").or(file.title_profile),
             source,
         })
     }
@@ -127,6 +123,14 @@ impl Config {
     pub fn data_subdir(&self, sub: &str) -> Result<PathBuf> {
         subdir(&self.data_dir, sub)
     }
+}
+
+/// The config file explicitly named by the environment, if any. An empty
+/// `VICTORY_CONFIG` means unset, like the other path variables.
+fn explicit_config_path(env: impl Fn(&str) -> Option<std::ffi::OsString>) -> Option<PathBuf> {
+    env("VICTORY_CONFIG")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
 }
 
 fn subdir(root: &Path, sub: &str) -> Result<PathBuf> {
@@ -165,18 +169,20 @@ mod tests {
     }
 
     #[test]
-    fn fidelityfx_folder_and_profile_come_from_either_place() {
-        let file = FilePaths {
-            fidelityfx_dir: Some("sdk-from-file".into()),
-            fsr_profile: Some("profile-from-file".into()),
+    fn the_title_profile_comes_from_the_environment_or_the_file() {
+        let file = || FilePaths {
+            title_profile: Some("profile-from-file".into()),
             ..Default::default()
         };
-        let env = |k: &str| (k == "VICTORY_FIDELITYFX_DIR").then(|| OsString::from("sdk-from-env"));
-        let cfg = Config::resolve(file, None, env).unwrap();
-        assert_eq!(cfg.fidelityfx_dir.unwrap(), PathBuf::from("sdk-from-env"));
-        assert_eq!(cfg.fsr_profile.unwrap(), PathBuf::from("profile-from-file"));
-        let cfg = Config::resolve(FilePaths::default(), None, |_| None).unwrap();
-        assert!(cfg.fidelityfx_dir.is_none() && cfg.fsr_profile.is_none());
+        let none = |_: &str| None;
+        let cfg = Config::resolve(file(), None, none).unwrap();
+        assert_eq!(cfg.title_profile.unwrap(), PathBuf::from("profile-from-file"));
+        let env = |k: &str| (k == "VICTORY_TITLE_PROFILE").then(|| OsString::from("profile-from-env"));
+        let cfg = Config::resolve(file(), None, env).unwrap();
+        assert_eq!(cfg.title_profile.unwrap(), PathBuf::from("profile-from-env"));
+        let empty = |k: &str| (k == "VICTORY_TITLE_PROFILE").then(OsString::new);
+        let cfg = Config::resolve(FilePaths::default(), None, empty).unwrap();
+        assert!(cfg.title_profile.is_none());
     }
 
     #[test]
@@ -210,6 +216,17 @@ mod tests {
         assert_eq!(
             cfg.test_titles,
             vec![PathBuf::from("first"), PathBuf::from("second")]
+        );
+    }
+
+    #[test]
+    fn empty_config_env_is_ignored() {
+        let empty = |k: &str| (k == "VICTORY_CONFIG").then(OsString::new);
+        assert_eq!(explicit_config_path(empty), None);
+        let set = |k: &str| (k == "VICTORY_CONFIG").then(|| OsString::from("custom.toml"));
+        assert_eq!(
+            explicit_config_path(set),
+            Some(PathBuf::from("custom.toml"))
         );
     }
 

@@ -120,7 +120,7 @@ fn staging_buffer(host: &crate::host::Host, total: u64) -> Option<(ID3D12Resourc
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     let size = total.max(64 << 10).next_power_of_two();
     if size > SPARE_MOST.1 || !*ON.get_or_init(|| std::env::var_os("VICTORY_STAGING_POOL").is_none_or(|v| v != "0")) {
-        return host.upload_buffer(total).map(|(buffer, data)| (buffer, data, 0));
+        return host.upload_buffer(total, crate::cardmem::Owner::Staging).map(|(buffer, data)| (buffer, data, 0));
     }
     let spare = {
         let mut all = SPARE.lock().unwrap_or_else(|e| e.into_inner());
@@ -138,7 +138,7 @@ fn staging_buffer(host: &crate::host::Host, total: u64) -> Option<(ID3D12Resourc
         return Some((buffer, data as *mut u8, size));
     }
     SPARE_STATS[1].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    host.upload_buffer(size).map(|(buffer, data)| (buffer, data, size))
+    host.upload_buffer(size, crate::cardmem::Owner::Staging).map(|(buffer, data)| (buffer, data, size))
 }
 
 /// Diagnostics ([`trace_seconds`]): what one texture's host copy shows.
@@ -626,7 +626,7 @@ pub(crate) fn alias(list: &HostList, placed: This, source: This) -> bool {
                 if bytes[0] == 0 || bytes[0] != bytes[1] || !alike {
                     return false;
                 }
-                let Some(buffer) = host.uav_buffer(bytes[0]) else {
+                let Some(buffer) = host.uav_buffer(bytes[0], crate::cardmem::Owner::Aliases) else {
                     return false;
                 };
                 crate::host::name(&buffer, || {
@@ -789,9 +789,11 @@ fn waited<T>(slot: usize, f: impl FnOnce() -> T) -> T {
 }
 
 thread_local! {
-    /// Room to read a texture's memory into: one buffer per submitting
-    /// thread. Each texture kept its own, a second copy in memory of every
-    /// write-watched or partly mapped texture ever sampled, for the run.
+    /// Room to read a texture's memory into: one buffer per thread that
+    /// checks textures (the submitting one, and the kept threads it hands
+    /// its checks to: `crate::host`'s `Checks`). Each texture kept its own,
+    /// a second copy in memory of every write-watched or partly mapped
+    /// texture ever sampled, for the run.
     static READ: std::cell::RefCell<Vec<u8>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
@@ -1047,7 +1049,7 @@ impl CpuRead {
         if let Some((_, buffer)) = buffers.iter().find(|(l, _)| *l == key) {
             return Some(buffer.clone());
         }
-        let buffer = host()?.read_back_buffer(bytes)?;
+        let buffer = host()?.read_back_buffer(bytes, crate::cardmem::Owner::ReadBacks)?;
         crate::host::name(&buffer, || format!("texels of {:#x} back to title memory", self.resource));
         buffers.push((key, buffer.clone()));
         Some(buffer)

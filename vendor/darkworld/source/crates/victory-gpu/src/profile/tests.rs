@@ -307,6 +307,31 @@ fn deep_stacks_are_cut_not_lost() {
     running.join().unwrap();
 }
 
+/// A part of a function can end before its return (the next part begins
+/// there), and the unwinder reads on: what stands before such an end is
+/// run as the function's last instructions all the same.
+#[test]
+fn an_end_that_needs_bytes_past_the_function_is_refused() {
+    // pop rsp, pop rdi, pop rbx, return.
+    let bytes = [0x5cu8, 0x5f, 0x5b, 0xc3];
+    // SAFETY: a zeroed CONTEXT is valid.
+    let mut context: CONTEXT = unsafe { std::mem::zeroed() };
+    context.Rip = bytes.as_ptr() as u64;
+    context.Rsp = 0x1000;
+    let (start, end) = (0x1000, 0x2000);
+    // SAFETY: the bytes named as the function's are in `bytes`.
+    unsafe {
+        // The return is the function's: the `pop rsp` before it is seen.
+        assert!(!epilogue_fits(&context, 4, 0, start, end));
+        // The return is past the function's end: refused, not passed.
+        assert!(!epilogue_fits(&context, 3, 0, start, end));
+        // Two `pop`s and the return, all the function's, inside the copy.
+        context.Rip += 1;
+        assert!(epilogue_fits(&context, 3, 0, start, end));
+        assert!(!epilogue_fits(&context, 2, 0, start, end));
+    }
+}
+
 /// Registers and stack bytes that mean nothing, at addresses inside real
 /// code: the walk stops, and reads nothing outside its copy (a read
 /// elsewhere would end the test with an access violation).

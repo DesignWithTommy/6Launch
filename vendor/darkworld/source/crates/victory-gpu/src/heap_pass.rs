@@ -18,6 +18,13 @@
 //! The span of a copy is worked out again only when one of its slots went.
 //! `VICTORY_HEAP_PASS_FULL=1` brings back the old pass (all slots every 16
 //! passes, all spans every pass) to compare.
+//!
+//! Of the slots marked written, those a look would find as the last look
+//! left them are passed over ([`Picked::pass_over`]): the pass's own look
+//! marks every slot it makes (`descriptor::host::HostHeap::mirror` notes a
+//! slot made from a new record as written), and the next pass looked at
+//! each of them again for nothing. `VICTORY_HEAP_PASS_UNCHANGED=0` looks at
+//! every marked slot, as before.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -31,6 +38,15 @@ pub(crate) const ORPHANS_EVERY: u64 = 16;
 pub(crate) fn full_pass() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("VICTORY_HEAP_PASS_FULL").is_some_and(|v| v == "1"))
+}
+
+/// Whether marked slots a look would find as the last look left them are
+/// passed over ([`Picked::pass_over`]). On by default;
+/// `VICTORY_HEAP_PASS_UNCHANGED=0` looks at every marked slot, as before.
+pub(crate) fn pass_over_unchanged() -> bool {
+    static ON: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("VICTORY_HEAP_PASS_UNCHANGED").is_none_or(|v| v != "0"));
+    *ON
 }
 
 /// A slot's record in title memory: the tag and two words
@@ -148,6 +164,59 @@ impl<C: Clone> Picked<C> {
         due.sort_unstable();
         due.dedup();
         due
+    }
+
+    /// Takes out of `due` (what [`Picked::plan`] gave, in slot order) the
+    /// slots a look would find as the last look left them, and returns how
+    /// many it took out: kept with a host copy, the record they hold now
+    /// (`record`) the one seen then, and their host slot made from it with
+    /// a view that is still current (`made`, asked once for all of them:
+    /// true for each such slot). A look at such a slot gives back the view
+    /// kept and nothing else ([`Picked::keep`] of what it holds already).
+    ///
+    /// None of the others is taken out: a slot whose record changed, an
+    /// orphan (no copy kept: it is looked at for one), a slot due for a
+    /// freed table entry (`descriptor::forget` moved the entry's
+    /// generation on: its view is not current), all slots of a pass that
+    /// keeps none (every [`FULL_EVERY`] passes), and every slot with the
+    /// old pass.
+    pub(crate) fn pass_over(
+        &self,
+        due: &mut Vec<u32>,
+        record: impl Fn(u32) -> Option<Record>,
+        made: impl FnOnce(&[(u32, Record)]) -> Vec<bool>,
+    ) -> usize {
+        if self.full || self.slots.is_empty() {
+            return 0;
+        }
+        let held: Vec<(u32, Record)> = due
+            .iter()
+            .filter_map(|&slot| {
+                let kept = self.slots.get(&slot)?;
+                (record(slot) == Some(kept.record)).then_some((slot, kept.record))
+            })
+            .collect();
+        if held.is_empty() {
+            return 0;
+        }
+        // A slot `made` gave no answer for is looked at.
+        let made = made(&held);
+        let mut same = held
+            .iter()
+            .zip(made.into_iter().chain(std::iter::repeat(false)))
+            .filter_map(|(&(slot, _), as_left)| as_left.then_some(slot))
+            .peekable();
+        // Both in `due`'s order: one walk.
+        let before = due.len();
+        due.retain(|&slot| {
+            if same.peek() == Some(&slot) {
+                same.next();
+                false
+            } else {
+                true
+            }
+        });
+        before - due.len()
     }
 
     fn record_of(&self, slot: u32) -> Option<Record> {
@@ -373,5 +442,61 @@ mod tests {
             let want: Vec<u32> = if n.is_multiple_of(ORPHANS_EVERY) { vec![0, 1, 2, 3] } else { vec![2] };
             assert_eq!(due, want, "pass {n}");
         }
+    }
+
+    #[test]
+    fn marked_slots_a_look_would_find_as_they_were_are_passed_over() {
+        let mut heap = heap(8);
+        let mut p = Picked::new(false);
+        assert_eq!(pass(&mut p, &heap, vec![], vec![]).len(), 8);
+        // 1: marked by the look that made it, as it was since; 2: written
+        // anew; 3: its host slot not made from its record (written with
+        // another and back); 4: its table entry freed (the view went); 6:
+        // marked as 1 was, and an orphan.
+        heap.records.insert(2, [1, 200, 1]);
+        p.orphan(6, heap.record(6).unwrap(), entry(heap.record(6).unwrap()));
+        p.note_forgotten(Some(&[104][..]));
+        let mut due = p.plan(vec![1, 2, 3, 4, 6], Vec::new, |s| heap.record(s), entry);
+        assert_eq!(due, vec![1, 2, 3, 4, 6]);
+        let mut asked = Vec::new();
+        let passed = p.pass_over(
+            &mut due,
+            |s| heap.record(s),
+            |held| {
+                asked.extend(held.iter().map(|&(s, _)| s));
+                // The host heap's answer: made from that record, view current.
+                held.iter().map(|&(s, _)| s == 1).collect()
+            },
+        );
+        // Asked of the slots kept with the record they hold now only.
+        assert_eq!(asked, vec![1, 3, 4]);
+        assert_eq!(passed, 1);
+        assert_eq!(due, vec![2, 3, 4, 6]);
+        // Slot 1 is kept as it was: its copy's span has it.
+        let span = p.spans().into_iter().find(|s| s.0 == 0).map(|s| (s.1, s.2));
+        assert_eq!(span, Some((0, 64)));
+    }
+
+    #[test]
+    fn nothing_is_passed_over_by_a_pass_over_all_slots_nor_by_the_old_pass() {
+        let heap = heap(4);
+        let yes = |held: &[(u32, Record)]| vec![true; held.len()];
+        // A pass over all slots keeps none from before.
+        let mut p: Picked<u32> = Picked::new(false);
+        for s in 0..4 {
+            p.keep(s, 0, &0, 0, 16, heap.record(s).unwrap(), None);
+        }
+        let mut due = p.plan(vec![], || vec![0, 1, 2, 3], |s| heap.record(s), entry);
+        assert_eq!(p.pass_over(&mut due, |s| heap.record(s), yes), 0);
+        assert_eq!(due, vec![0, 1, 2, 3]);
+        // The old pass looks at every slot marked.
+        let mut old: Picked<u32> = Picked::new(true);
+        let _ = old.plan(vec![], || vec![0, 1, 2, 3], |s| heap.record(s), entry);
+        for s in 0..4 {
+            old.keep(s, 0, &0, 0, 16, heap.record(s).unwrap(), None);
+        }
+        let mut due = old.plan(vec![2], || vec![0, 1, 2, 3], |s| heap.record(s), entry);
+        assert_eq!(old.pass_over(&mut due, |s| heap.record(s), yes), 0);
+        assert_eq!(due, vec![2]);
     }
 }

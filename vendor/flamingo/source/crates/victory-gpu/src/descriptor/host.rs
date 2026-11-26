@@ -605,6 +605,11 @@ struct Waiting {
     checked: (u64, u64, u64, u8, u64),
 }
 
+thread_local! {
+    /// This thread is inside [`HostHeap::publish`].
+    static PUBLISHING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// The queue of title slots whose texture view waits to be brought up to
 /// date for shaders that pick textures by index: which are due, and in
 /// which order (no host heap needed, so it is tested without one).
@@ -819,6 +824,30 @@ pub(crate) static OBJECT_TEXTURE_SLOTS: std::sync::atomic::AtomicU64 = std::sync
 /// them for indexed reads (structured: the stride; raw: 1, the index is the
 /// byte; typed: the format's); `None` if `view` is not a buffer view.
 fn view_stride(view: &View) -> Option<u32> {
+    let (stride, raw, format) = view_elements(view)?;
+    Some(if stride > 0 {
+        stride
+    } else if raw {
+        1
+    } else {
+        crate::resource::element(format).map_or(0, |(bytes, _)| bytes as u32)
+    })
+}
+
+/// What else the table of strides says of a typed buffer view of an integer
+/// format (`victory_shader::emit::VIEW_INTEGER`); 0 for any other view.
+fn view_kind(view: &View) -> u32 {
+    use victory_shader::emit::{VIEW_INTEGER, VIEW_SIGNED};
+    match view_elements(view) {
+        Some((0, false, 3 | 7 | 12 | 17 | 25 | 30 | 36 | 42 | 50 | 57 | 62)) => VIEW_INTEGER,
+        Some((0, false, 4 | 8 | 14 | 18 | 32 | 38 | 43 | 52 | 59 | 64)) => VIEW_INTEGER | VIEW_SIGNED,
+        _ => 0,
+    }
+}
+
+/// A buffer view's structure stride, whether it is raw, and its format;
+/// `None` if `view` is not a buffer view.
+fn view_elements(view: &View) -> Option<(u32, bool, u32)> {
     const BUFFER: u32 = 1;
     let (words, unordered): (&[u32; 10], bool) = match view {
         View::Shader(_, Some(d)) if d[1] == BUFFER => (d, false),
@@ -840,13 +869,7 @@ fn view_stride(view: &View) -> Option<u32> {
             (b.StructureByteStride, b.Flags.0 & D3D12_BUFFER_SRV_FLAG_RAW.0 != 0, d.Format)
         }
     };
-    Some(if stride > 0 {
-        stride
-    } else if raw {
-        1
-    } else {
-        crate::resource::element(format.0 as u32).map_or(0, |(bytes, _)| bytes as u32)
-    })
+    Some((stride, raw, format.0 as u32))
 }
 
 /// Host heaps' GPU ranges (start, bytes, bytes per slot, sampler), for
@@ -1253,6 +1276,23 @@ impl HostHeap {
     /// when the host caps its size.
     pub(crate) fn count(&self) -> u32 {
         self.count
+    }
+
+    /// Writes the word of the table of element strides for the dynamic slot
+    /// `index`, which holds `view` of a table made afresh: shaders ask it
+    /// whether a typed view in a table is of an integer format
+    /// (`victory_shader::emit::VIEW_INTEGER`; after XTX #114: the face
+    /// network keeps its 16-bit halves in integer views in tables).
+    pub(crate) fn dynamic_word(&self, index: u32, view: Option<&View>) {
+        if let Some((_, _, data)) = &self.strides
+            && index >= self.count
+            && index < victory_shader::emit::SLOT_STRIDES_COUNT
+        {
+            let word = view.and_then(view_stride).unwrap_or(0) | view.map_or(0, view_kind);
+            // SAFETY: inside the mapping; the slot is this caller's until its
+            // flight has landed.
+            unsafe { (*data as *mut u32).add(index as usize).write_volatile(word) };
+        }
     }
 
     /// The GPU addresses of the spill's table and fault notes ([`Spill`]).
@@ -1776,6 +1816,9 @@ impl HostHeap {
     /// `texture`, whether it now holds a view of a texture the title may
     /// fill; `seen` as for [`HostHeap::note_buffer`].
     fn queue_texture(&self, index: u32, texture: bool, seen: bool, frame: u64) {
+        if PUBLISHING.get() {
+            return;
+        }
         let stamp = if tabled_out() { self.tabled_stamp(index) } else { 0 };
         let now = (frame as u32).wrapping_add(1) & !TABLED_READ;
         // A table's slot lately: the draw that reads it uploads its
@@ -1820,6 +1863,13 @@ impl HostHeap {
     /// stale ([`Spans`]): out of the queue of textures already, their host
     /// slots are the caller's to make null (it holds `made`).
     fn note_buffer(&self, index: u32, view: Option<&View>, seen: bool) -> Vec<u32> {
+        self.note_buffer_marking(index, view, seen, true)
+    }
+
+    /// As [`Self::note_buffer`]; `mark`: a buffer view's slot is marked for the next heap
+    /// buffer pass ([`Self::buffer_changes`]). Not by that pass itself, which takes the slot in
+    /// where it makes it.
+    fn note_buffer_marking(&self, index: u32, view: Option<&View>, seen: bool, mark: bool) -> Vec<u32> {
         if self.sampler {
             return Vec::new();
         }
@@ -1883,12 +1933,13 @@ impl HostHeap {
             }
         }
         let stride = view.and_then(view_stride);
+        let kind = view.map_or(0, view_kind);
         if let Some((_, _, data)) = &self.strides
             && index < victory_shader::emit::SLOT_STRIDES_COUNT
         {
             // SAFETY: inside the mapping; shaders read it while we write (a
             // dword, either value is one the slot had).
-            unsafe { (*data as *mut u32).add(index as usize).write_volatile(stride.unwrap_or(0)) };
+            unsafe { (*data as *mut u32).add(index as usize).write_volatile(stride.unwrap_or(0) | kind) };
             // The title address of the buffer view, after the strides
             // (`victory_shader::emit::SLOT_ADDRESSES`): low dword, then high.
             let address = view
@@ -1908,7 +1959,7 @@ impl HostHeap {
         } else {
             buffers.remove(&index)
         };
-        if was {
+        if was && mark {
             self.changed
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
@@ -2216,11 +2267,40 @@ impl HostHeap {
         (looked, due.len() as u64)
     }
 
+    /// Makes host slot `index` from the record at `handle` if it is still
+    /// the one with `key`, whose texture's upload is in the queue now
+    /// (`crate::heap_worker`). The slot's place in the queue of textures
+    /// picked by index was settled when that upload was recorded, and stays
+    /// as it is. False if the title wrote the slot again.
+    pub(crate) fn publish(&self, index: u32, handle: u64, key: u64) -> bool {
+        // SAFETY: the handle is a descriptor slot in title memory.
+        let [tag, i, generation] = unsafe { (handle as *const [u32; 3]).read_unaligned() };
+        if tag != VIEW_TAG || u64::from(generation) << 32 | u64::from(i) != key {
+            return false;
+        }
+        PUBLISHING.set(true);
+        let shown = self.mirror(index, handle, true).is_some();
+        PUBLISHING.set(false);
+        shown
+    }
+
     /// Makes host slot `index` from the record the title has at `handle`
     /// if it changed since, and returns the view recorded there. Buffer
     /// views are made only for draws (`for_draw`), which also copy their
     /// data: a host copy of a buffer is made on first use.
     pub(crate) fn mirror(&self, index: u32, handle: u64, for_draw: bool) -> Option<View> {
+        self.mirror_marking(index, handle, for_draw, true)
+    }
+
+    /// As [`Self::mirror`] for a draw, for the heap buffer pass itself: the slot is not marked
+    /// for the next pass. The pass takes in the copy of every slot it makes, but each one it
+    /// made was marked again, and the next pass looked at it once more for nothing: half the
+    /// slots it looked at, some 15 ms of a 150 ms frame (after fxceless/victory-fork#1043).
+    pub(crate) fn mirror_unmarked(&self, index: u32, handle: u64) -> Option<View> {
+        self.mirror_marking(index, handle, true, false)
+    }
+
+    fn mirror_marking(&self, index: u32, handle: u64, for_draw: bool, mark: bool) -> Option<View> {
         if index >= self.count && self.spill_rewrite(index, handle) {
             return None;
         }
@@ -2261,7 +2341,7 @@ impl HostHeap {
             // Views of other textures in the memory this one describes
             // are stale: their host slots read nothing from here on, and
             // let go of the host copies they held.
-            for stale in self.note_buffer(index, Some(&view), for_draw) {
+            for stale in self.note_buffer_marking(index, Some(&view), for_draw, mark) {
                 if stale != index {
                     self.unmake(&mut made, stale);
                 }
@@ -3550,6 +3630,22 @@ mod tests {
         assert!(!same_placed_texture(&low, &View::Shader(0, None)));
     }
 
+    /// Typed buffer views of integer formats are marked in the table of
+    /// strides; float, normalized, raw and structured ones are not.
+    #[test]
+    fn integer_typed_buffer_views_are_marked_in_the_table_of_strides() {
+        use victory_shader::emit::{VIEW_INTEGER, VIEW_SIGNED};
+        // Format, dimension (buffer), first element, count, stride, counter, flags.
+        let uav = |format, stride, flags| View::Unordered(0, 0, Some([format, 1, 0, 0, 64, stride, 0, 0, flags, 0]));
+        assert_eq!(view_kind(&uav(12, 0, 0)), VIEW_INTEGER, "R16G16B16A16_UINT");
+        assert_eq!(view_kind(&uav(59, 0, 0)), VIEW_INTEGER | VIEW_SIGNED, "R16_SINT");
+        assert_eq!(view_kind(&uav(10, 0, 0)), 0, "R16G16B16A16_FLOAT");
+        assert_eq!(view_kind(&uav(58, 0, 0)), 0, "R16_SNORM");
+        assert_eq!(view_kind(&uav(39, 0, 1)), 0, "raw");
+        assert_eq!(view_kind(&uav(0, 16, 0)), 0, "structured");
+        assert_eq!(view_stride(&uav(12, 0, 0)), Some(8));
+    }
+
     /// A null 3D UAV made on the real device leaves it alive.
     #[test]
     fn null_3d_uav_is_accepted_by_the_device() {
@@ -3789,6 +3885,26 @@ mod tests {
         assert_eq!(spans.slots_holding(at + 0x2000, at + 0x2000), [] as [u32; 0]);
     }
 
+    /// A buffer view's slot is marked for the next heap buffer pass when it is noted, but not
+    /// when that pass notes it itself.
+    #[test]
+    fn the_heap_buffer_pass_does_not_mark_the_slots_it_makes() {
+        let Some(heap) = HostHeap::new(false, 8) else {
+            return; // no host GPU
+        };
+        // A raw view of 64 bytes, at an address no test and no title uses.
+        let at = 0x7fee_0000_0000u64;
+        let mut desc = [0u32; 16];
+        desc[..10].copy_from_slice(&[39, 1, 5768, 0, 0, 0, 16, 0, 1, 0]);
+        (desc[10], desc[11]) = (at as u32, (at >> 32) as u32);
+        let view = View::Placed(false, [1, 0, 0, 0, 64, 0, 1, 0x1_0001, 0, 1, 0, 1, 0, 0], desc);
+        let _ = heap.note_buffer_marking(2, Some(&view), true, false);
+        assert_eq!(heap.buffer_changes(), [] as [u32; 0]);
+        let _ = heap.note_buffer(3, Some(&view), false);
+        assert_eq!(heap.buffer_changes(), [3]);
+        assert_eq!(heap.buffer_slots(), [2, 3]);
+    }
+
     /// A write behind the guards' back under a placed texture: a slot
     /// waiting for its first upload is left alone, one uploaded before is
     /// counted, and made due two frames on when that is asked for. (The
@@ -3826,6 +3942,40 @@ mod tests {
         heap.texture_slot_done(1, write, None);
         assert_eq!(heap.slots_written_under(&written, 60, true, 60), [1, 1, 1]);
         assert_eq!(slots(60), [1]);
+    }
+
+    /// A slot whose texture was uploaded ahead shows it when it is
+    /// published, and does not go back into the queue of textures picked by
+    /// index for that; one the title wrote again is left alone.
+    #[test]
+    fn a_published_slot_stays_out_of_the_queue() {
+        let Some(heap) = HostHeap::new(false, 8) else {
+            return; // no host GPU
+        };
+        // 64x64 BC7, one mip, at an address no test and no title uses.
+        let view = |at: u64| {
+            let mut desc = [0u32; 16];
+            (desc[0], desc[1], desc[2], desc[5]) = (98, 4, 5768, 1);
+            (desc[10], desc[11]) = (at as u32, (at >> 32) as u32);
+            View::Placed(false, [3, 0, 0, 0, 64, 0, 64, 0x1_0001, 98, 1, 0, 0x105, 0, 0], desc)
+        };
+        let title = [0u32; 8];
+        let handle = title.as_ptr() as u64;
+        crate::descriptor::record(handle, view(0x7fec_0000_0000));
+        let (first, key) = crate::descriptor::view_and_key(handle).unwrap();
+        assert!(heap.note_buffer(1, Some(&first), false).is_empty());
+        let (index, write) = heap.texture_slots_due(u64::MAX, 8).0[0];
+        assert_eq!(index, 1);
+        // Its upload was recorded: out of the queue, the slot not made yet.
+        heap.texture_slot_done(1, write, None);
+        assert!(!heap.made(1));
+        assert!(heap.publish(1, handle, key));
+        assert!(heap.made(1));
+        assert!(heap.texture_slots_due(u64::MAX, 8).0.is_empty());
+        // Written again since the upload was recorded.
+        crate::descriptor::record(handle, view(0x7feb_0000_0000));
+        assert!(!heap.publish(1, handle, key));
+        assert_ne!(crate::descriptor::view_and_key(handle).unwrap().1, key);
     }
 
     /// `VICTORY_STALE_TEXTURES=0`: nothing is ever stale, and a view that

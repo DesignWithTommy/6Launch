@@ -18,15 +18,9 @@
 #[cfg(windows)]
 mod ambient;
 #[cfg(all(windows, feature = "diagnostics"))]
-mod backreads;
-#[cfg(all(windows, feature = "diagnostics"))]
 mod capture;
 #[cfg(windows)]
-mod cardmeter;
-#[cfg(all(windows, feature = "diagnostics"))]
-mod renderdoc;
-#[cfg(all(windows, feature = "diagnostics"))]
-mod shot;
+mod compose;
 pub mod console;
 #[cfg(all(windows, feature = "diagnostics"))]
 mod copystat;
@@ -37,24 +31,12 @@ mod cores;
 pub mod descriptor;
 pub mod device;
 #[cfg(windows)]
-mod drvwatch;
-#[cfg(windows)]
-mod fpsbox;
-#[cfg(windows)]
-mod spread;
-#[cfg(windows)]
 mod draw;
 pub mod dxgi;
 pub mod fence;
 pub mod frame;
 #[cfg(all(windows, feature = "diagnostics"))]
 mod book;
-#[cfg(windows)]
-mod fx;
-#[cfg(windows)]
-pub mod framelog;
-#[cfg_attr(not(windows), allow(dead_code))]
-mod heap_pass;
 #[cfg(windows)]
 mod host;
 #[cfg(windows)]
@@ -64,50 +46,32 @@ mod inplace;
 #[cfg(windows)]
 mod land;
 pub mod list;
-#[cfg(windows)]
-mod memcopy;
-#[cfg(windows)]
-mod memory;
 pub mod object;
-#[cfg(windows)]
-mod over;
 pub mod pipeline;
 #[cfg(windows)]
 mod picked;
-#[cfg(windows)]
-mod plaincopy;
 #[cfg(windows)]
 mod pool;
 #[cfg(all(windows, feature = "diagnostics"))]
 mod popwatch;
 #[cfg(windows)]
-pub mod precompile;
-#[cfg(windows)]
 mod primitive;
-#[cfg(all(windows, feature = "diagnostics"))]
-mod profile;
 pub mod query;
 pub mod queue;
-#[cfg(windows)]
-mod queue2;
-#[cfg(windows)]
-mod ranges;
-#[cfg(windows)]
-mod readback;
-#[cfg(windows)]
-mod rebar;
 #[cfg(all(windows, feature = "diagnostics"))]
 pub mod replay;
+#[cfg(windows)]
+mod residency;
 pub mod resource;
 pub mod root;
-#[cfg(windows)]
-mod census;
 #[cfg(windows)]
 mod safecopy;
 #[cfg(windows)]
 mod sampler;
 #[cfg(windows)]
 pub mod shader_cache;
+#[cfg(windows)]
+mod memory;
 #[cfg(windows)]
 mod shadow;
 #[cfg(windows)]
@@ -146,12 +110,10 @@ pub fn frame_phase() -> u32 {
     copystat::phase()
 }
 #[cfg(windows)]
-pub use census::title_memory_reserved;
-#[cfg(windows)]
 pub use inplace::{title_memory_freeing, title_memory_section, title_memory_section_gone, title_memory_view};
 #[cfg(windows)]
 pub use watch::{
-    kernel_writing, title_memory_allocated, title_memory_committed, title_memory_freed,
-    title_memory_reading, title_memory_remapped, title_memory_remapping, title_memory_splitting,
-    title_memory_unmapping, title_memory_written, writing as kernel_will_write,
+    kernel_writing, title_memory_allocated, title_memory_freed, title_memory_reading, title_memory_remapped,
+    title_memory_remapping, title_memory_splitting, title_memory_unmapping, title_memory_written,
+    writing as kernel_will_write,
 };

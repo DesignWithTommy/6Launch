@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Can it run GTA VI? | AnyXboxX</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%23ff5c8a%22/%3E%3C/svg%3E">
-<meta name="description" content="Can Grand Theft Auto VI (Xbox Series, build 1.0.2.1) run on a PC yet? Status, disk space and a hardware estimate, from AnyXboxX and Leonida.">
+<meta name="description" content="Can Grand Theft Auto VI (Xbox Series, build 1.0.2.1) run on a PC yet? Status and a hardware estimate, from AnyXboxX.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
@@ -45,21 +45,6 @@ section { margin-top: 64px; }
 h2 { font-weight: 800; font-size: clamp(1.6rem, 3.6vw, 2.3rem); line-height: 1.1; letter-spacing: -.015em; margin: 0 0 14px; }
 .lead { max-width: 64ch; color: var(--haze); margin: 0 0 22px; }
 .note { max-width: 72ch; color: var(--haze); font-size: .92rem; margin: 16px 0 0; }
-
-/* Disk space: one bar at scale (30 + 370 = 400) */
-.bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; background: var(--violet); }
-.bar span { display: block; }
-.bar .run { background: var(--lagoon); }
-.bar .assets { background: linear-gradient(90deg, var(--flamingo), var(--mango)); }
-.disk { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.disk li { border-left: 4px solid var(--line); padding-left: 14px; }
-.disk li[data-disk="run"] { border-color: var(--lagoon); }
-.disk li[data-disk="assets"] { border-color: var(--flamingo); }
-.disk li[data-disk="full"] { border-color: var(--foam); }
-.disk .gb { font-weight: 800; font-size: 2.2rem; line-height: 1; font-variant-numeric: tabular-nums; }
-.disk .what { font-weight: 600; margin-top: 4px; }
-.disk p { margin: 4px 0 0; color: var(--haze); font-size: .93rem; }
 
 /* Estimator */
 .estimator { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch;
@@ -168,29 +153,12 @@ footer p { max-width: 80ch; margin: 0 0 6px; }
   <div class="hero-text">
     <h1>Can it run GTA VI on PC?</h1>
     <div class="verdict" id="verdict">Not yet.</div>
-    <p>The game's executable (<code>game_scarlett_master.exe</code>) is missing from the package studied, so the game itself has never been started, by AnyXboxX or by Leonida. Once an executable is available, expect at least a few weeks of work before the game is even minimally playable.</p>
+    <p>The game's executable (<code>game_scarlett_master.exe</code>) is missing from the package studied, so the game itself has never been started by AnyXboxX. Once an executable is available, expect at least a few weeks of work before the game is even minimally playable.</p>
     <p class="build">Grand Theft Auto VI for Xbox Series, build 1.0.2.1. Status checked on <time datetime="2026-11-23">23 November 2026</time>.</p>
   </div>
 </header>
 
 <main>
-  <section aria-labelledby="disk-title">
-    <h2 id="disk-title">Disk space to plan for</h2>
-    <p class="lead">These are work files, on top of the game package itself, which the runtime reads in place. Work folders can go on another drive.</p>
-    <div class="bar" role="img" aria-label="400 GB in total: 30 GB to run the game, 370 GB for the optional asset export">
-      <span class="run" style="width: 7.5%"></span><span class="assets" style="width: 92.5%"></span>
-    </div>
-    <ul class="disk">
-      <li data-disk="run" data-gb="30"><div class="gb">~30 GB</div><div class="what">To run the game</div>
-        <p>Leonida's <code>check</code>, <code>shaders</code> and <code>runtime</code> stages.</p></li>
-      <li data-disk="assets" data-gb="370"><div class="gb">~370 GB</div><div class="what">Asset export, optional</div>
-        <p>Only for the asset tools (models, textures, audio). Not needed to play.</p></li>
-      <li data-disk="full" data-gb="400"><div class="gb">~400 GB</div><div class="what">Full build</div>
-        <p>All stages. Sizes as Windows Explorer shows them (GiB): 400 GiB is about 430 GB.</p></li>
-    </ul>
-    <p class="note">Source: the prerequisites in Leonida's README.</p>
-  </section>
-
   <section aria-labelledby="pc-title">
     <h2 id="pc-title">Will my PC run it?</h2>
     <p class="lead">An estimate from your graphics card, processor and memory. Your browser fills in what it can; correct anything it got wrong.</p>
@@ -224,10 +192,7 @@ footer p { max-width: 80ch; margin: 0 0 6px; }
     <ul class="status">
       <li class="no"><span class="dot"></span><b>Game executable</b><span class="detail"><span class="state">Missing.</span>Nothing can boot without it.</span></li>
       <li class="no"><span class="dot"></span><b>Booting, story mode</b><span class="detail"><span class="state">No.</span>Waits for the executable.</span></li>
-      <li class="ok"><span class="dot"></span><b>GPU shaders</b><span class="detail"><span class="state">Done.</span>All 26,503 of the game's shaders translate from RDNA 2 to SPIR-V and pass <code>spirv-val</code> (Leonida).</span></li>
-      <li class="ok"><span class="dot"></span><b>Models, textures, audio</b><span class="detail"><span class="state">Exported.</span>Read from the player's own copy (Leonida); some texture formats are still partial.</span></li>
-      <li class="wip"><span class="dot"></span><b>Xbox Direct3D 12 to Vulkan</b><span class="detail"><span class="state">In progress.</span>Device, queues and resources work; ray tracing is under way (Leonida).</span></li>
-      <li class="wip"><span class="dot"></span><b>Console system functions</b><span class="detail"><span class="state">In progress.</span>AnyXboxX has written 210 of the 396 GDK functions; Leonida has its own. The two projects share their work.</span></li>
+      <li class="wip"><span class="dot"></span><b>Console system functions</b><span class="detail"><span class="state">In progress.</span>AnyXboxX has written 210 of the 396 GDK functions.</span></li>
     </ul>
   </section>
 
@@ -236,7 +201,6 @@ footer p { max-width: 80ch; margin: 0 0 6px; }
     <ul class="needs">
       <li>Your own copy of the Xbox Series package, version 1.0.2.1. Nothing here provides it or explains how to get it.</li>
       <li>Windows 10 or 11, 64-bit, and a graphics card with Vulkan.</li>
-      <li>The disk space above.</li>
     </ul>
   </section>
 
@@ -245,12 +209,11 @@ footer p { max-width: 80ch; margin: 0 0 6px; }
     <div class="links">
       <a href="https://github.com/LooperSalty/AnyXboxX">AnyXboxX on GitHub</a>
     </div>
-    <p class="note">Leonida, the project this page once tracked, was deleted from GitHub on 2026-11-24.</p>
   </section>
 </main>
 
 <footer>
-  <p>AnyXboxX and Leonida are open-source projects under the GPL 3.0. They contain no game files, keys or executables. The illustration above is original.</p>
+  <p>AnyXboxX is an open-source project under the GPL 3.0. It contains no game files, keys or executables. The illustration above is original.</p>
   <p>Not affiliated with or endorsed by Rockstar Games, Take-Two Interactive or Microsoft. Grand Theft Auto and Xbox are trademarks of their respective owners.</p>
 </footer>
 <script type="module" src="app.js"></script>

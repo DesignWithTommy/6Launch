@@ -11,7 +11,7 @@ Open **PowerShell** (Start menu → type `PowerShell` → Enter) and paste each 
 ## 1. Check your PC (1 minute)
 
 - A recent graphics card with DirectX 12 (tested on AMD Radeon RX 9070 XT; other AMD and NVIDIA cards are being tested).
-- **More than 8 GB of video memory** recommended: 8 GB cards (RX 6600, RTX 3070…) currently crash at start.
+- **More than 8 GB of video memory is recommended.** Some 8 GB setups have [crashed during startup](https://github.com/PastiiJay/klbf-lab/issues/11). One RTX 2080 8 GB reached the 3D world and ran at about 2–3 FPS in gameplay during a 22-minute diagnostic session. [RTX 2080 report](https://github.com/PastiiJay/klbf-lab/issues/65)
 - **32 GB of RAM**, or 16 GB plus a large page file (step 2). A run uses about 20 GB of memory.
 - About 15 GB of free disk space for the tools and the shader cache.
 

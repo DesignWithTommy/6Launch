@@ -3,10 +3,8 @@
 //! Every command reads the user's own files and writes only to stdout or to
 //! the user's cache directory (outside the repository).
 
-mod agility;
 mod census;
 mod inspect;
-mod precompile;
 #[cfg(all(windows, feature = "diagnostics"))]
 mod replay;
 mod run;
@@ -31,6 +29,7 @@ struct Cli {
     command: Command,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Subcommand)]
 enum Command {
     /// Summarise one PE image: headers, sections, imports, TLS, build id.
@@ -97,28 +96,6 @@ enum Command {
         /// `VICTORY_VIEW_LIMIT` to what the run's log says of the host.
         #[arg(long)]
         warm: Option<PathBuf>,
-    },
-    /// Translate shaders into the runtime cache ahead of time (resumable).
-    /// With --pipelines, also compile compute pipelines into the host
-    /// pipeline library and GPU driver cache.
-    Precompile {
-        paths: Vec<PathBuf>,
-        /// Also compile compute shaders into `host-pipelines.bin` and the GPU
-        /// driver cache.
-        #[arg(long)]
-        pipelines: bool,
-        /// Restrict precompilation to one shader stage.
-        #[arg(long, value_enum)]
-        only: Option<precompile::StageFilter>,
-        /// Stop after this many unique shader containers.
-        #[arg(long)]
-        limit: Option<usize>,
-        /// Translation worker threads (default: every logical core).
-        #[arg(long)]
-        jobs: Option<usize>,
-        /// Concurrent GPU driver compute pipeline compilations (default: 4).
-        #[arg(long)]
-        pipeline_jobs: Option<usize>,
     },
     /// Translate every shader found (as `translate` finds them) into the
     /// shader cache, so that no run has to: a few minutes, once per change
@@ -192,9 +169,6 @@ enum Console {
 }
 
 fn main() -> Result<()> {
-    // LOCAL-ONLY (branch local/win10-agility): keep the Agility exports.
-    std::hint::black_box(agility::D3D12SDKVersion);
-    std::hint::black_box(&agility::D3D12SDKPath);
     victory_core::logging::init("info");
     // The audio recorder `run` starts for `VICTORY_AUDIO_CAPTURE`.
     #[cfg(all(windows, feature = "diagnostics"))]
@@ -240,14 +214,6 @@ fn main() -> Result<()> {
             }
             translate::run(paths, validate, pipelines, list, jobs)
         }
-        Command::Precompile {
-            paths,
-            pipelines,
-            only,
-            limit,
-            jobs,
-            pipeline_jobs,
-        } => precompile::run(paths, pipelines, only, limit, jobs, pipeline_jobs),
         Command::Shaders { paths, jobs } => translate::precompile(paths, jobs),
         #[cfg(windows)]
         Command::Warm { jobs, limit, again, used, these } => warm::run(jobs, limit, again, used, these),
@@ -260,12 +226,7 @@ fn main() -> Result<()> {
             title_args,
         } => {
             victory_hle::runtime::set_title_args(title_args);
-            let code = run::run(&exe, unimplemented, strict, execute, console)?;
-            if code != 0 {
-                // Preserve all 32 bits of the Windows process status.
-                std::process::exit(code as i32);
-            }
-            Ok(())
+            run::run(&exe, unimplemented, strict, execute, console)
         }
         #[cfg(all(windows, feature = "diagnostics"))]
         Command::Replay(options) => replay::run(options),
@@ -292,13 +253,6 @@ fn show_config() -> Result<()> {
     for t in &cfg.test_titles {
         println!("test_title  : {}", status(&Some(t.clone())));
     }
-    check_policy(&cfg)
-}
-
-/// Reports each configured path the asset policy refuses, and fails if
-/// there is one, so that `victory config` exits nonzero.
-fn check_policy(cfg: &victory_core::Config) -> Result<()> {
-    let mut violations = 0;
     for p in cfg
         .game_dir
         .iter()
@@ -307,13 +261,8 @@ fn check_policy(cfg: &victory_core::Config) -> Result<()> {
     {
         if let Err(e) = victory_core::ensure_outside_repo(p) {
             println!("POLICY VIOLATION: {e}");
-            violations += 1;
         }
     }
-    anyhow::ensure!(
-        violations == 0,
-        "{violations} configured path(s) violate the asset policy"
-    );
     Ok(())
 }
 
@@ -329,37 +278,4 @@ pub(crate) fn default_paths(paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
         "no paths given and none configured (see victory.example.toml)"
     );
     Ok(all)
-}
-
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use super::check_policy;
-
-    fn outside() -> PathBuf {
-        std::env::temp_dir().join("victory-config-test")
-    }
-
-    #[test]
-    fn config_check_passes_paths_outside_the_repository() {
-        let cfg = victory_core::Config {
-            cache_dir: outside().join("cache"),
-            data_dir: outside().join("data"),
-            ..Default::default()
-        };
-        assert!(check_policy(&cfg).is_ok());
-    }
-
-    #[test]
-    fn config_check_fails_a_path_inside_the_repository() {
-        let cfg = victory_core::Config {
-            game_dir: Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("game")),
-            cache_dir: outside().join("cache"),
-            data_dir: outside().join("data"),
-            ..Default::default()
-        };
-        let err = check_policy(&cfg).unwrap_err();
-        assert!(err.to_string().contains("1 configured path"), "{err}");
-    }
 }

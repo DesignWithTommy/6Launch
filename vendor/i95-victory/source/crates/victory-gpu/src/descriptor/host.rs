@@ -1323,6 +1323,23 @@ impl HostHeap {
         self.textures.lock().unwrap_or_else(|e| e.into_inner()).mapped(index)
     }
 
+    /// Right before a decoration bake: slots uploaded whole and not yet
+    /// looked at again, and slots uploaded with part of their memory, are
+    /// due at `frame` (after fxceless/victory-fork #1097), so a skin texture
+    /// whose bytes landed after its upload is uploaded again before the bake
+    /// reads it. Returns how many.
+    pub(crate) fn texture_slots_bake_prepare(&self, frame: u64) -> usize {
+        let mut textures = self.textures.lock().unwrap_or_else(|e| e.into_inner());
+        let mut pulled = 0;
+        for w in textures.slots.values_mut() {
+            if w.due > frame && ((w.checked.2 != 0 && w.checked.3 <= 1) || w.mapped > 0) {
+                w.due = frame;
+                pulled += 1;
+            }
+        }
+        pulled
+    }
+
     /// Takes the ranges of title memory the runtime mapped, unmapped or
     /// wrote since the last call ([`remapped`]) and makes the slots whose
     /// placed texture lies there due from the next frame (by when a write
@@ -1333,9 +1350,10 @@ impl HostHeap {
     /// left to their draws. Returns how many slots it made due.
     /// shortcut: the ranges are kept in one place for all heaps; the heap
     /// whose pass runs first takes them (a title has one view heap).
-    pub(crate) fn texture_slots_remapped(&self, frame: u64) -> usize {
+    /// `bake`: a decoration bake draws next ([`HostHeap::texture_slots_page_written`]).
+    pub(crate) fn texture_slots_remapped(&self, frame: u64, bake: bool) -> usize {
         use std::sync::atomic::Ordering::Relaxed;
-        self.texture_slots_page_written(frame);
+        self.texture_slots_page_written(frame, bake);
         let ranges = std::mem::take(&mut *REMAPPED.lock().unwrap_or_else(|e| e.into_inner())).into_ranges();
         if ranges.len() == 0 {
             return 0;
@@ -1367,11 +1385,31 @@ impl HostHeap {
     /// upload takes the bytes that are there by then. Slots tables read
     /// are left to their draws. Counted either way; returns how many slots
     /// it made due.
-    fn texture_slots_page_written(&self, frame: u64) -> usize {
+    ///
+    /// Before a decoration bake (`bake`) such slots are due at once, waiting
+    /// ones too, whatever `VICTORY_PAGE_WRITES` says (VI-BR-PORT 3dfeb17,
+    /// after fxceless/victory-fork #1097): the bytes have landed, and a skin
+    /// texture uploaded before them is read by the bake once, for the run
+    /// (black faces).
+    fn texture_slots_page_written(&self, frame: u64, bake: bool) -> usize {
         let ranges: Vec<_> =
             std::mem::take(&mut *PAGE_WRITTEN.lock().unwrap_or_else(|e| e.into_inner())).into_ranges().collect();
         if ranges.is_empty() {
             return 0;
+        }
+        if bake {
+            let mut slots: Vec<u32> = {
+                let placed = self.placed.lock().unwrap_or_else(|e| e.into_inner());
+                ranges.iter().flat_map(|&(start, end)| placed.slots_holding(start, end)).collect()
+            };
+            slots.sort_unstable();
+            slots.dedup();
+            slots.retain(|&slot| !self.tabled_lately(slot, frame));
+            let mut textures = self.textures.lock().unwrap_or_else(|e| e.into_inner());
+            for &slot in &slots {
+                textures.changed(slot, frame, frame);
+            }
+            return slots.len();
         }
         self.slots_written_under(&ranges, frame, crate::watch::page_writes() & 2 != 0)[2]
     }
@@ -3797,7 +3835,7 @@ mod tests {
         // Memory elsewhere: nothing. Under the texture: due from the next frame.
         remapped((at + 2 * len) as usize, 0x1000);
         remapped(at as usize, 0x1000);
-        assert_eq!(heap.texture_slots_remapped(50), 1);
+        assert_eq!(heap.texture_slots_remapped(50, false), 1);
         assert_eq!(slots(50), []);
         assert_eq!(slots(51), [1]);
         // A wider texture written at the same address: slot 1 is stale.

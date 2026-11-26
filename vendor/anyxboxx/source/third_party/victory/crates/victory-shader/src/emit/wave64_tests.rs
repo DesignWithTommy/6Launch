@@ -43,12 +43,12 @@ fn program(skip: u32) -> NativeProgram {
 
 /// A wave64 compute program of 64 threads (one console wave; the thread index in v0) with 4
 /// root constants in s0..s3 and a raw UAV's descriptor in s[8:11], then `body`.
-fn native(body: &[u32]) -> NativeProgram {
+pub(super) fn native(body: &[u32]) -> NativeProgram {
     native_of(body, true, 64)
 }
 
 /// The same for a console of 32-lane waves when `wave64` is not set, with `threads` threads.
-fn native_of(body: &[u32], wave64: bool, threads: u32) -> NativeProgram {
+pub(super) fn native_of(body: &[u32], wave64: bool, threads: u32) -> NativeProgram {
     native_with(body, wave64, threads, 0)
 }
 
@@ -107,7 +107,7 @@ fn lowered(native: &NativeProgram, p: &ir::Program, wide: &HashSet<usize>) -> Re
 }
 
 /// [`lowered`] for a host whose waves have at most `host_wave` lanes.
-fn lowered_on(
+pub(super) fn lowered_on(
     native: &NativeProgram,
     p: &ir::Program,
     wide: &HashSet<usize>,

@@ -23,6 +23,7 @@ GPL-2.0 and VIctory is GPL-3.0, so code is not copied between them.
 | Intro and menu flicker: a guarded texture whose memory changed in the last 90 frames is hashed at every check, not every 8th frame. The title writes its intro video and menu animation frames through views the guard does not see, so they showed stale pictures between fresh ones (victory-fork #269) | Flamingo (`victory-gpu/src/texture.rs`) |
 | Discord Rich Presence: the title's name, menus or world, the frame rate, the time played; looked at every second, sent when it changes (at most every 4 s, Discord's limit) | Flamingo (`apps/victory/src/discord.rs`) |
 | Structure builder: its last three programs translate on 32-lane GPUs | victory-fork PR #294 (working tree) |
+| The heap buffer pass no longer marks the slots it makes for the next pass (each was looked at twice): a third fewer slots looked at a frame | after victory-fork PR #1043 |
 | Wave32 shared-memory synchronisation for the visibility dispatch; merged-stage shared memory size and GS vertex bound; lane masks through joins; lane selectors wrapped at the console's wave width; wave32 pixel and vertex wave operations per 32-lane half; literal select masks in local half-waves | victory-fork PRs #368, #367, #377, #298, #318, #277 (working tree) |
 | FP16 interpolation and integer render-target pipelines; signed wave prefix and integer NaN checks in f16 conversions; refused shaders' containers saved (`VICTORY_DUMP_REFUSED`) | victory-fork PRs #280, #355, #266 (working tree) |
 | Geometry stages: host pipelines with a geometry stage made from the console's merged ES+GS pair (stacked on #381, #373, #367, #309; replaces #367 here) | victory-fork PR #400 (working tree) |
@@ -35,6 +36,21 @@ GPL-2.0 and VIctory is GPL-3.0, so code is not copied between them.
 | The repository's asset-policy size limit is 1 MiB (the merged shader PRs grew `emit/lower.rs` past 512 KiB) | Flamingo (`xtask/src/policy.rs`) |
 | Diagnostics: `VICTORY_PARTS=1` (translate lists each container's parts), `FLAMINGO_SAVE_FAILED=<dir>` (shaders that do not translate, saved as the title gave them) | Flamingo |
 | Speed and safety: AVX2 relay merge, texture refreshes do not wait for remaps, pipeline wakeups isolated, BVH sorted hits, watch monotonicity, detile bounds, descriptor and DirectStorage reference fixes, subobject bounds | victory-fork PRs #384, #393, #398, #414, #410, #408, #405, #403, #409 (working tree) |
+| Shader fixes from other forks: wave64 lane permutes stay within their half on 32-lane GPUs, and more | victory-fork PRs #1112, #1166 |
+| Copy order; constant views on fresh-table hits | VIctory PRs #2810, #2850 |
+| A budget counter and `VICTORY_INDIRECT_REST` | avatarmanz/VIctory-7900XTX 449830f6 |
+| NVIDIA's shader-visible view heap holds at most 1,000,000 slots; the title's has 1,245,184. Title view indices past the host's room read a null view instead of another draw's descriptor. A spill of those slots (`FLAMINGO_SPILL_SLOTS=<n>`) is in, off: shaders almost never pick them (runs 155-157) | Flamingo |
+| The stats overlay starts with the full display | Flamingo |
+| Indirect windows off in the settings: clamping a run of records ahead read records before the pass that writes them had run, and characters lost parts (run 162) | Flamingo |
+| Tried and taken back: the wave-wide form as a last resort (the world darker, run 148), a placed alias re-copied when its source changes (large black rectangles, runs 165 and 167), a helper lane's `v_readfirstlane` reading its own value (dark shards, runs 168-170) | victory-fork PRs #1176, #1150; VIctory 06019553 |
+| Pipeline syncs (list slots 0x408 and 0x410; 0x418 and 0x420 in newer titles) are a barrier on every shader write, not a no-op: a D3D12 list does not order its own dispatches (`FLAMINGO_SYNC_BARRIER=0` restores the old behavior) | Flamingo (run 174) |
+| 16-bit typed accesses through integer views pass bits, also for views in descriptor tables (the view's format kind rides in the table of strides): the face network's output was garbage | VIctory 4243a96a by way of avatarmanz/VIctory-7900XTX 9a6c829d, that fork's #114 and 4e3e0654 |
+| Textures picked by index uploaded by a thread of their own (`VICTORY_HEAP_WORKER=1`) | victory-fork d4a528ba (from its pull request #1007) |
+| `VICTORY_SKIP_PIPELINES` in every build: the settings leave out the title's impostors | Flamingo |
+| Wave64 on 32-lane hosts: an LDS atomic counts as a read too where the two host waves of a console wave must meet round a lane branch (an atomic minimum and an add on one word could run in the wrong order between the halves) | avatarmanz/VIctory-7900XTX #204 |
+| `VICTORY_CARD_BUFFERS_MIN_KB`: card copies of title buffers from that size up, in place of the 1 MiB floor | Flamingo, after avatarmanz/VIctory-7900XTX's trees |
+| Diagnostics: `FLAMINGO_DUMP_AT`; `shader-info --disasm` gives each program's wave size and stage I/O | Flamingo |
+| Diagnostics: the arguments indirect commands ran with (`frame-N-drawn.txt`), heap occupancy, title ranges dumped from their host copies and from title memory (`FLAMINGO_DUMP_RANGE`), mesh pipelines' state and small constant buffers in captures, `FLAMINGO_DISASM_HASHES`; test switches `FLAMINGO_GATHER_ZERO=1` and `FLAMINGO_LIST_BARRIER=1` | Flamingo |
 
 How this tree is put together: the scratch branch `flamingo-wip` (a worktree in the session's
 scratch folder) holds one local commit per PR, applied with three-way merges in the order above,
@@ -53,7 +69,7 @@ VICTORY_NO_WATCHDOG=1
 VICTORY_PIPELINE_WAIT_MS=24          # a draw waits at most 24 ms for its pipeline, then drops
 VICTORY_RELAY=1 VICTORY_LATE_WAIT=3  # the fork's fast path (its PR #234); relay stage 1: =2 loses character skin (victory-fork #89)
 VICTORY_CARD_BUFFERS_MIN_MB=1 VICTORY_CARD_BUFFERS_MB=1024
-VICTORY_INDIRECT_WINDOW=1           # indirect records clamped a window at a time (about 2x less GPU time)
+VICTORY_INDIRECT_WINDOW=0           # windows clamped records before the pass that writes them had run (run 162)
 VICTORY_SHADER_OPT=0                 # victory-fork #310: the shader clean-up passes draw black blocks
 VICTORY_WIDE_MERGE=1                 # fetched pieces merged on several threads (with fork #665)
 target\diag\victory.exe run <your dump>\<the title's executable> --execute
@@ -160,6 +176,60 @@ TdrDelay raised to 60 s. Here TdrDelay is the default 2 s. Keep test runs short.
 | 105 | + `VICTORY_WAVE_DEEP_SKIPS=0`, the shadow program in the wave-wide form | worse: both refused again, `CS_TransmissionVolumetricsSubmerged` no longer translates; the shadow program still fails |
 | 106 | + victory-fork #854: wave64 programs in the paired form on 32-lane GPUs | no pipeline refused, no program untranslated (the cascades' alpha shadow program translates); rows of black boxes on the water |
 | 107, 108 | + `FLAMINGO_BVH_MISS=1` (every ray misses) | the black boxes on the water gone (light streaks left where reflections take their fallback); a cutscene face well lit; no hang in two runs. On in the newest-code launcher |
+
+### Runs 146-223 (2026-11-25 and 26)
+
+Runs 109 to 145 are not logged here. From run 185 on: the Series S profile, the lean build, the
+first mission's boat cutscene. What was found, and what to look at next: [docs/handoff.md](docs/handoff.md).
+
+| Run | Settings | World |
+|-----|----------|-------|
+| 146 | heap occupancy dump | the title's view heap has 1,245,184 slots, about 94% filled and spread to the end; NVIDIA's shader-visible heap holds at most 1,000,000 |
+| 148 | + victory-fork #1176 (the wave-wide form as a last resort) | the world darker. Taken back |
+| 149, 154 | title view indices past the host's room read a null view | the cages and spikes made from random descriptors gone; parts go missing instead, different ones in each run (whole bodies; floating heads and huge polygons in the sky) |
+| 153, 155-157 | the spill of those slots on (`FLAMINGO_SPILL_SLOTS`) | 153 grey and untextured (cold pipelines); 155-157 textured, but 0-2 notes in 65,536 takes: shaders almost never pick those slots, so the heap cap is not why parts go missing. The spill stays off |
+| 159 | `VICTORY_RELAY=0` | a character's torso still missing: not the asynchronous copy-back |
+| 160, 161 | captures with the arguments the indirect commands ran with | the character draws are issued, but most run with 0 meshlet groups |
+| 162 | `VICTORY_INDIRECT_WINDOW=0` | one character's chest came back, at the same speed (6.1 fps). Windows are off in the settings since |
+| 165, 167 | + victory-fork #1150 (a placed alias re-copied when its source changes) | large black rectangles over the scene. Taken back |
+| 168-170 | the helper-lane `v_readfirstlane` port (VIctory 06019553) taken back | the dark shards mostly gone |
+| 171 | the character culls' records as title memory held them at recording | zero there, yet run with 104 to 596 groups: the card writes them earlier in the same submission, and that path works |
+| 172 | `FLAMINGO_GATHER_ZERO=1` (occlusion off) | a body still missing: not occlusion |
+| 173 | `VICTORY_CUT_WAITS=0` | much worse (big spiky polygons, a face with only glasses and teeth): queue order matters |
+| 174 | pipeline syncs as barriers on every shader write | a character whose clothes came and went from run to run is whole, and has been in every run since |
+| 175 | `FLAMINGO_LIST_BARRIER=1` (a barrier at the start of every list) | no change: not overlap between lists |
+| 176 | mesh pipelines' state in captures | the character colour pipelines test depth greater-or-equal (reversed Z) and write it: not a depth-equal pass against a pre-pass that lacked them |
+| 177, 179 | 16-bit typed accesses through integer views pass bits (in tables too) | faces move and look natural; no device loss |
+| 178 | as 177, with `VICTORY_RELAY=0` | grey skin and glowing eyes, from the relay switch: run 179, with the relay on, is natural |
+| 180 | `VICTORY_INPLACE=1` | one 4 MB window placed, slower. Not pursued |
+| 181-184 | the skinning outputs and the 182 MB ring of cull records dumped (`FLAMINGO_DUMP_RANGE`) | the skinning works, and the culls' mesh records and instance matrices on the card match title memory: the missing body is lost after the data |
+| 185 | Series S profile, lean build | 7.1 fps (Series X 5.4): GPU 35 ms a frame against 65. Big flat olive panels in boat shots |
+| 186 | + `VICTORY_HEAP_WORKER=1` | **9.1 fps**: the submitting thread's texture pass from 16 ms to 0 |
+| 187 | + `VICTORY_TEXTURE_NO_WAIT=1 VICTORY_RELAY=2 VICTORY_WIDE_BACK=1 VICTORY_CARD_REHASH_RUNS=1 VICTORY_JOIN_COPIES=1 VICTORY_JOIN_PARTS=1 VICTORY_LEVELS_ON_DEMAND=1` | 9.0 fps: no gain |
+| 188 | `VICTORY_TEXTURE_BACK=0` | the water breaks (the boat sits on the seabed) and the dark patches stay: not the copy-back |
+| 189 | `VICTORY_AMBIENT=0.6` | shade no longer black; 9.2 fps |
+| 190, 191 | the impostors' pixel programs left out (`VICTORY_SKIP_PIPELINES`): all four (190), the mesh impostors' two (191) | 190: the olive panels, most dark blocks on the water and the dark boxes over the beach gone, a body back in several shots; far trees and buildings missing. 191: the panels gone, the water blocks and the missing body stay: those come from the vertex-shader impostors |
+| 192 | impostors drawn, `VICTORY_WAVE_LOCAL=0` (the tree and prop culls in the exact paired form) | a body back, but the dark water blocks stay and a long spike polygon appears; 7.8 fps |
+| 193 | the README's settings (impostors left out) | **9.8 fps** (102 ms a frame: 46 preparing, 29 on the GPU). Some dark blocks on the water and the horizon; a dark triangle on the boat in one shot. On all 20 frames: a character's body missing in almost every boat shot, water blocks in nearly every water shot |
+| 194 | impostors drawn, the four batch culls in the exact paired form | olive full-screen panels in three frames, planks and bands; 9.0 fps |
+| 195 | impostors drawn, the four tile classifiers in the exact paired form | no full-screen panel; many large dark polygons; water blocks; 8.3 fps |
+| 196 | capture with every target dumped (`VICTORY_DUMP_TARGETS`) | the G-buffer has the characters' heads but not torsos and shirts; the subsurface-scattering buffer has them whole |
+| 197 | + `VICTORY_LATE_WAIT_LISTS=512 VICTORY_MERGE_RUNS=4096` | 9.0 fps, much worse picture (black and olive frames). Not used |
+| 198-201 | captures of consecutive frames; the skinning outputs dumped at the main cull | at the main cull most meshes hold this frame's skinned vertices; a few hold stale data, written by skinning recorded after the cull (see docs/handoff.md) |
+| 202 | + `VICTORY_WAIT_FORCE=0` | 10.6 fps; the body still missing |
+| 203 | + `VICTORY_CARD_BUFFERS_MIN_KB=64 VICTORY_CARD_BUFFERS_MB=1536` | **11.1 fps**, the card's time 13 ms; the body drawn in two shots more, a large flat panel in three |
+| 204, 205 | the skinning outputs dumped right after a skinning pass (`FLAMINGO_DUMP_AT` on direct dispatches) | a few meshes the pass has just written are already wrong (coordinates far off, or not finite), the same meshes in every frame: the skinning passes write them wrong, not a later pass |
+| 206 | + the 1,034 ray-traced resolve programs skipped (trustno1-coder/VIctory-NVIDIA's list) | 10.4 fps, 7 ms less preparing; no artifact gone (run 209: the panels back) |
+| 207, 208 | + `VICTORY_NAN_SCRUB` (VIctory-NVIDIA) | much worse (dark bronze characters, holes): taken back |
+| 210-214 | render targets bound as the title set them at a list cut (upstream VIctory #3217), against the old way | flat frames 6, 7 and 1 against 2 and 2: not better here; taken back |
+| 215 | the targets of two consecutive frames dumped | the quarter-size ray buffers keep their tiles from frame to frame |
+| 216 | `CS_RayBudgeting_Fill` left out | the water blocks stay |
+| 217 | `VICTORY_RAW_OWN_COPY=1` | no buffer view left null, but big black polygons and black frames: those copies feed stale data where zeros did no harm. Not used |
+| 218, 219 | the skinning passes' geometry and bone-remap views described and dumped (`FLAMINGO_DUMP_SLOT_WORD=64:16,64:17`) | the views are made, at the right size; the card copy matches title memory byte for byte and the weights are sane: the wrong meshes come from the translated program (or the driver), not from the data |
+| 220 | the heap buffer pass no longer marks the slots it makes | 9,111 slots looked at a frame against 14,089; the pass 27.0 ms against 31.6; 10.0 fps |
+| 221 | the water's transmission volumetrics left out (`5dc3b25986622949`, `6f225b641c5b0708`) | **the dark blocks on the water gone**; the water loses its turquoise; 8 flat frames of 20 in this run |
+| 222 | the same two in the exact paired form (`VICTORY_WAVE_WIDE_ONLY` without them) | the turquoise back and the blocks with it: not the wave form, one of their inputs; 10.4 fps |
+| 223 | a capture about every 4 s from the menus to the boat (95 frames) | 10.1 fps; 1 flat frame of 55 in the boat window. The opening cutscene: a smooth low-detail head early on (streaming), a character's face dark or her head missing in some shots and whole in others, black silhouettes on the beach. The log: no device loss, no panic; from 59 s on 5,400-11,000 textures picked by index wait for room on the card the whole run |
 
 ## Stats overlay
 

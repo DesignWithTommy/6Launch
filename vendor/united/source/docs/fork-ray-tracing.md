@@ -41,11 +41,7 @@ shaders and emulates the one instruction.
    7900 XTX; the title creates 53 such pipelines). They pass buffer addresses in a spilled parameter table
    rather than in descriptors. Added: the spilled user-data table, root
    unordered-access views (translator and host binding), byte and 16-bit buffer
-   accesses, and several control-flow shapes. On a GPU
-   with 32-lane waves, three of them (prefix sums over groups of 256 and 512
-   threads, whose 64-lane waves read lanes across their halves) run in the
-   paired form: one host wave for each console wave, each thread two of its
-   lanes.
+   accesses, and several control-flow shapes.
 2. **Title memory by raw address from shaders.** A directory with one entry per
    64 KiB of title address space leads a shader to the layer's host copy of
    that memory; loads, stores, atomic add/sub and float min/max go through it.
@@ -55,7 +51,7 @@ shaders and emulates the one instruction.
    for box nodes; a watertight ray/triangle test for triangle nodes; both forms
    of the instruction. A plain Rust reference lives in
    `crates/victory-shader/src/bvh.rs`; tests run the emitted DXIL on the GPU
-   over 313 ray/node cases and compare with the reference bit for bit.
+   over 311 ray/node cases and compare with the reference bit for bit.
 4. **The trace and shading programs translate** (59 of 64 trace programs, and
    the irradiance-cache shading program). This needed lane masks treated as
    plain numbers on some paths, and exact forms for programs written for
@@ -110,13 +106,6 @@ dispatches, faults and what came.
 
 ## Known gaps
 
-- With `VICTORY_BVH_BUILDER=1` the builder is not usable yet. Until the
-  paired form, three of its programs did not translate on a 32-lane GPU,
-  which kept it off; every builder pipeline is now created offline
-  (`victory translate --pipelines` with `VICTORY_HOST_MAX_WAVE=32`). Switched
-  on in game runs on an RTX 5090, with or without `VICTORY_BVH_QUARANTINE=1`,
-  the title crashed about 80 s into the gameplay, reading a pointer of all
-  ones.
 - Dynamic structures overlap each other (8 of 65 good in run light-10, 48 of
   275 in light-15). Part of the cause, run light-11's trace (`VICTORY_BVH_TRACE=1`): the title asks for a new
   structure's compacted size, reads it one or two frames later without looking
@@ -143,10 +132,8 @@ dispatches, faults and what came.
 - An access to a page that is not there is lost (a read gives zero, a store is
   dropped).
 - Not publicly documented, and assumed: the instruction's rounding, the order
-  of two boxes entered at the same distance, the result for a ray exactly
-  through an edge, and what a child that is not there returns when the ray
-  enters its box (here: a miss).
-- Cost on the GPU is unmeasured.
+  of two boxes entered at the same distance, and the result for a ray exactly
+  through an edge.
 
 ## Without rays: the stand-in (`crates/victory-gpu/src/ambient.rs`)
 

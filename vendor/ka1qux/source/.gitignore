@@ -49,7 +49,6 @@
 !/crates/victory-formats/src/bcpack-tables.bin
 *.dat
 *.pak
-*.rpf
 *.dds
 *.ktx
 *.ktx2

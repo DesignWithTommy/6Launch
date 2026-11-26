@@ -18,6 +18,8 @@
 #[cfg(all(windows, feature = "diagnostics"))]
 mod capture;
 #[cfg(windows)]
+mod cardmem;
+#[cfg(windows)]
 mod cardmeter;
 pub mod console;
 #[cfg(all(windows, feature = "diagnostics"))]
@@ -28,6 +30,8 @@ pub mod device;
 mod drvwatch;
 #[cfg(windows)]
 mod fpsbox;
+#[cfg(windows)]
+mod stats;
 #[cfg(windows)]
 mod spread;
 #[cfg(windows)]

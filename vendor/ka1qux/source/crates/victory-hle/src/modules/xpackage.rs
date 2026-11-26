@@ -136,6 +136,16 @@ extern "system" fn register_progress(
     put(out, token())
 }
 
+/// The completed installation has no pending progress callbacks to wait for.
+extern "system" fn unregister_progress(
+    _: This,
+    _monitor: *const c_void,
+    _token: u64,
+    _wait: bool,
+) -> bool {
+    true
+}
+
 /// 0: ready.
 // shortcut: every selector counts as installed, including ones the
 // package's layout does not have (the console answers those with an
@@ -211,7 +221,7 @@ extern "system" fn estimate_download(
 
 // shortcut: accepted but nothing is removed (the package folder is the
 // user's), so the chunks stay ready; the title's one call site
-// (title+0x293b4b0, its chunk manager) would then see them still installed.
+// (its chunk manager) would then see them still installed.
 extern "system" fn uninstall_chunks(
     _: This,
     id: *const c_char,
@@ -256,7 +266,7 @@ extern "system" fn mount_result(
 
 /// Titles enumerate content packages (kind 1); there are none.
 // shortcut: the game kind (0) also lists nothing, not this installation;
-// The title enumerates only content (kind 1, title+0x2937bf0).
+// The title enumerates only content (kind 1).
 extern "system" fn enumerate(
     _: This,
     kind: u32,
@@ -279,7 +289,7 @@ static VTABLE: Methods<40> = Methods([
     progress as *const (),              // 0x38
     missing::<8> as *const (),          // 0x40 update a monitor
     register_progress as *const (),     // 0x48
-    missing::<10> as *const (),         // 0x50 unregister it
+    unregister_progress as *const (),   // 0x50
     missing::<11> as *const (),         // 0x58 user locale
     find_availability as *const (),     // 0x60
     missing::<13> as *const (),         // 0x68 enumerate chunk availability
@@ -315,6 +325,34 @@ static VTABLE: Methods<40> = Methods([
 mod tests {
     use super::*;
     use crate::modules::xgameruntime::method;
+
+    #[test]
+    fn completed_installation_unregisters_progress_immediately() {
+        type Register =
+            extern "system" fn(This, *const c_void, *mut c_void, *const c_void, *mut u64) -> HRESULT;
+        type Unregister = extern "system" fn(This, *const c_void, u64, bool) -> bool;
+        extern "system" fn callback(_: *mut c_void, _: *const c_void) {}
+
+        let this: This = &OBJECT;
+        let register = method::<Register>(&OBJECT, 0x48);
+        assert_eq!(VTABLE.0[0x50 / 8], unregister_progress as *const ());
+        let unregister = method::<Unregister>(&OBJECT, 0x50);
+        for wait in [false, true] {
+            let mut token = 0;
+            assert_eq!(
+                register(
+                    this,
+                    monitor(),
+                    std::ptr::null_mut(),
+                    callback as *const c_void,
+                    &mut token
+                ),
+                S_OK
+            );
+            assert_ne!(token, 0);
+            assert!(unregister(this, monitor(), token, wait));
+        }
+    }
 
     #[test]
     fn the_installation_is_complete_and_alone() {

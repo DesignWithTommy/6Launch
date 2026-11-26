@@ -64,9 +64,33 @@ The local performance branches are recorded separately in the [10 FPS experiment
 
 **Other candidates.** Lab 39's second HUD plane expects a compositor and FidelityFX integration absent here. Its fresh-cache prebuild fix targets a command absent from this branch. The larger compute-dispatch port changes the indirect clamp and translator together and needs boundary cases around 65,535 groups on the new clamp. Jonirulah’s revised staged readback conflicts with the newer copy queue and remains available as a separately built experiment. The next native-FPS decision should come from measured frame windows and movement stalls. [HUD port](https://github.com/PastiiJay/klbf-lab-beta/commit/bfbc4d7) · [Dispatch port](https://github.com/PastiiJay/klbf-lab-beta/commit/015af28) · [Readback proposal](https://github.com/fxceless/victory-fork/pull/648)
 
+### Series X trial
+
+For the candidate prepared from newer submissions, indirect draws, and water readback, see the commit and author ledger in the [Series X trial notes](overnight-5080.md).
+
+**Streaming comparison.** fxceless added the nonblocking texture refresh in `f85101b6`. CBL commit `cb5cb1d4` adds the opt-in `OvernightStreaming` mode and records its setting. Windows PowerShell verified that it differs from `OvernightFPS` only in `VICTORY_TEXTURE_NO_WAIT`. The recorded FPS comparison predates that switch test. [Donor implementation](https://github.com/fxceless/victory-fork/commit/f85101b6) · [Measured Series X runs](overnight-5080.md#measured-series-x-comparison)
+
 ### Port checklist
 
 1. Record the source repo, PR and full donor SHA before changing code. Credit both the author and any downstream port that supplied the implementation.
 2. Use `git cherry-pick -x` for a direct cherry-pick. When adapting a patch, include the source PR and SHA in the commit body and preserve the donor's applicable attribution and license notices. Describe the local changes in the commit.
 3. Update this ledger with the local SHA and the result of the local comparison. Keep candidate and merged status explicit. Cite run reports as test evidence and credit the tester separately.
 4. Before publishing, include these contributor credits in the repo's public acknowledgments and link this ledger for detail.
+
+## RTX 5080 submission and staging trial
+
+The [5080 tuning report](5080-tuning.md) records fxceless’s submission index, CBL’s staging-table changes and diagnostics, donor review, executable identity and replay procedure.
+
+## Phase 5 mesh launch review
+
+- **Stellarr Studio SAS (Kelvaroq)** credits Moon AI for its development. Reviewed snapshot `e6d27b00286d55e55986f824d5f26f5f4e5d10ab`. Patch 0041 contains both the amplification-stage mesh launch and the wide hash. Patch 0042 adds indirect clamp and abandoned-merge counters. CBL integration `91211f60` adds opt-in launcher profiles, an argument-producer barrier, writer-aware gather closure, remaining clamp counters, list ownership of fallback pipelines and a mixed counted-draw hardware test. Gameplay results are pending. [0041 source](https://github.com/fablinoo/kelvaroq/blob/e6d27b00286d55e55986f824d5f26f5f4e5d10ab/native/patches/0041-mesh-launch-wide-hash.patch) · [0042 source](https://github.com/fablinoo/kelvaroq/blob/e6d27b00286d55e55986f824d5f26f5f4e5d10ab/native/patches/0042-clamp-merge-counters.patch) · [Project credits](https://github.com/fablinoo/kelvaroq#readme)
+- **tightfall**, submitted by **pug205gti6**, authored the wide compare already carried as `07e713e4` in baseline `d77c7395`. Both hash and compare dispatch one group per 64 KiB piece. Preserve the credits and co-author trailer listed above. [Original change](https://github.com/fxceless/victory-fork/commit/3c3ce86732d7d0b1a9c2aa88fe3728e3042a051e)
+- The [tracker review](5080-tuning.md#standings-checked-26-november-2026-at-1154-utc) credits the projects reporting measurements. The 7900 XTX switches are leads only. Identify individual authors, exact commits and downstream fixes before any port.
+
+### KLBF follow-up provenance
+
+PastiiJay’s klbf-lab is the measurement and launcher source, with main README `aadedf31` and Lab 61 beta-2 `74a7e383`. The source labels after-writer clamping as Neptune work. The constants and descriptor switches are also documented by VIctory-7900XTX. Trace original implementation commits and author trailers before any port. KLBF credits AMD’s FidelityFX SDK and distinguishes its integration from the upstream renderer. The candidate contains no KLBF implementation. [Pinned launcher](https://github.com/PastiiJay/klbf-lab/blob/74a7e38358898b0ec698dc4ae9cfd848bab06525/play.ps1) · [KLBF project credits](https://github.com/PastiiJay/klbf-lab/blob/aadedf31ef1e868927677a8b5b5816f8b83e4179/README.md#credits) · [Compatibility plan](5080-tuning.md#klbf-integration-review)
+
+## Depth-shaded ambient candidate
+
+Belobug authored the depth-occlusion shader and ambient resolve pass (GPL-3.0-or-later). uiliannn ported it to VItoriaBr at `d0af132b`, citing Belobug’s range `0603123..cd9f78c`. CBL uses the core pass and its original fixed lighting parameters. The post-dispatch hook checks the resolve program and its translated light and depth bindings. It requires a matching single-sample depth texture, uses list-owned descriptors and strong resource references, and invalidates CBL’s cached pipeline, root and heap bindings. CBL added diagnostic timing markers, opt-in replay profiles and a hardware readback regression test. [VItoriaBr port](https://github.com/uiliannn/VItoriaBr/commit/d0af132b6a1bd623ff8a7f70b01ca00fec8f385b) · [Original range](https://github.com/Belobug/VIctory-Belobug-AMD/compare/0603123...cd9f78c)

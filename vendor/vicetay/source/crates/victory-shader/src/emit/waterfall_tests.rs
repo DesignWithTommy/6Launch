@@ -16,16 +16,6 @@ use crate::{io, ir, resource, structure};
 /// s0 (textures, or with `buffers` structured buffers of dwords, at entries
 /// 0 and 1, a raw UAV at entry 2) and the table of samplers at s1.
 fn build(words: &[u32], buffers: bool) -> HostShader {
-    build_with(words, buffers, 1)
-}
-
-/// [`build`] for a program with `nonuniform` per-lane handles.
-fn build_with(words: &[u32], buffers: bool, nonuniform: u32) -> HostShader {
-    build_checked(words, buffers, nonuniform, nonuniform == 0)
-}
-
-/// [`build_with`], with whether the program has a wave operation.
-fn build_checked(words: &[u32], buffers: bool, nonuniform: u32, wave_ops: bool) -> HostShader {
     let table = |user_data: u8| RootParam {
         root: RootType::Table,
         table_offset_dwords: 0,
@@ -82,9 +72,8 @@ fn build_checked(words: &[u32], buffers: bool, nonuniform: u32, wave_ops: bool) 
     })
     .expect("lower");
     // One access with each lane's own heap index, no wave operation.
-    assert_eq!(lowered.nonuniform_handles, nonuniform);
-    // (Without an access to prove the loop a waterfall, its first-lane read is a wave operation.)
-    assert_eq!(lowered.wave_ops, wave_ops);
+    assert_eq!(lowered.nonuniform_handles, 1);
+    assert!(!lowered.wave_ops);
     let shader = HostShader {
         stage: HwStage::Cs,
         dxil: lowered.dxil,
@@ -106,9 +95,9 @@ fn build_checked(words: &[u32], buffers: bool, nonuniform: u32, wave_ops: bool) 
 }
 
 /// Runs `shader` with `views` at heap indices 0.. (the UAV last) on the
-/// hardware GPU and on WARP, returning the UAV's 32 dwords for each device
-/// that ran. At least one device must produce a readback.
-fn run(shader: &HostShader, views: &[View]) -> Vec<(&'static str, Vec<u32>)> {
+/// hardware GPU and on WARP (each skipped without a device) and returns,
+/// per one that ran, the UAV's 32 dwords.
+pub(super) fn run(shader: &HostShader, views: &[View]) -> Vec<(&'static str, Vec<u32>)> {
     let samplers = [D3D12_SAMPLER_DESC {
         Filter: D3D12_FILTER_MIN_MAG_MIP_POINT,
         AddressU: D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
@@ -157,10 +146,6 @@ fn run(shader: &HostShader, views: &[View]) -> Vec<(&'static str, Vec<u32>)> {
             .unwrap_or_else(|e| panic!("{label}: dispatch failed: {e}"));
         out.push((label, words[0].clone()));
     }
-    assert!(
-        !out.is_empty(),
-        "neither hardware nor WARP SM 6.6 device available"
-    );
     out
 }
 
@@ -244,7 +229,9 @@ fn lanes_load_from_the_buffer_their_nested_arms_chose() {
 fn lanes_sample_the_entry_their_offset_names_in_the_console_waterfall() {
     use crate::resource::tests::WATERFALL_INDEXED_WAVE32;
     let shader = build(WATERFALL_INDEXED_WAVE32, false);
-    for (label, red) in sampled(&shader) {
+    let results = sampled(&shader);
+    assert!(!results.is_empty());
+    for (label, red) in results {
         // Even lanes hold entry 0's offset, odd lanes entry 1's.
         let want: Vec<f32> = (0..32).map(|l| [1.0, 2.0][l & 1]).collect();
         assert_eq!(red, want, "{label}");
@@ -258,53 +245,30 @@ fn lanes_sample_their_own_texture_in_a_waterfall_narrowed_by_v_cmpx() {
     let want: Vec<f32> = (0..32).map(|l| if l < 16 { 1.0 } else { 2.0 }).collect();
     for folded in [false, true] {
         let shader = build(&cmpx_waterfall(false, folded), false);
-        for (label, red) in sampled(&shader) {
+        let results = sampled(&shader);
+        assert!(!results.is_empty());
+        for (label, red) in results {
             assert_eq!(red, want, "{label}, folded {folded}");
         }
     }
 }
+
 #[test]
 fn immediate_sampler_chosen_by_control_flow() {
-    check_immediate_sampler_choice(SampleOperation::Sample);
-}
-
-#[test]
-fn immediate_sampler_choice_packs_d16_after_the_join() {
-    check_immediate_sampler_choice(SampleOperation::SampleD16);
-}
-
-#[test]
-fn comparison_gather_uses_the_sampler_chosen_by_control_flow() {
-    check_immediate_sampler_choice(SampleOperation::GatherCmp);
-}
-
-#[derive(Clone, Copy)]
-enum SampleOperation {
-    Sample,
-    SampleD16,
-    GatherCmp,
-}
-
-fn check_immediate_sampler_choice(operation: SampleOperation) {
-    let d16 = matches!(operation, SampleOperation::SampleD16);
-    let cmp = matches!(operation, SampleOperation::GatherCmp);
     let s_mov_lit = |dst: u8, lit: u32| [0xBE80_03FF | (dst as u32) << 16, lit];
     let s_mov_zero = |dst: u8| 0xBE80_0380 | (dst as u32) << 16;
     let s_load_x8 = |dst: u8, base: u8| [0x3D << 26 | 0x03 << 18 | (dst as u32) << 6 | (base as u32 >> 1), 125 << 25];
     let s_load_x4_off = |dst: u8, base: u8, off: u32| [0x3D << 26 | 0x02 << 18 | (dst as u32) << 6 | (base as u32 >> 1), 125 << 25 | off];
-    // image_sample_lz takes v2..v3; image_gather4_c_lz also takes the reference in v1.
-    let dmask = if d16 { 3 } else { 1 };
-    let opcode = if cmp { 0x4F } else { 0x21 };
-    let vaddr = if cmp { 1 } else { 2 };
-    let image_sample: [u32; 2] = [
-        0x3C << 26 | opcode << 18 | dmask << 8 | 1 << 3,
-        u32::from(d16) << 31 | (16u32 >> 2) << 21 | (8u32 >> 2) << 16 | 4 << 8 | vaddr,
+    // image_sample_lz v4, v[2:3], s[8:15], s[16:19] dmask:0x1 dim:SQ_RSRC_IMG_2D
+    let image_sample_lz: [u32; 2] = [
+        0x3C << 26 | 0x21 << 18 | 1 << 8 | 1 << 3, // dmask=1, dim=2D(1)
+        (16u32 >> 2) << 21 | (8u32 >> 2) << 16 | 4 << 8 | 2,
     ];
     // buffer_store_dword v4, off, s[20:23], 0
     let buf_store: [u32; 2] = [0x38 << 26 | 0x1C << 18, 0x80 << 24 | (20u32 >> 2) << 16 | 4 << 8];
 
     // Two distinct valid immediate sampler descriptors (different wrap/filter bits).
-    let samp_a: [u32; 4] = [if cmp { 0x7092 } else { 0x92 }, 0x00C0_0000, 0x1850_0000, 0];
+    let samp_a: [u32; 4] = [0x0000_0092, 0x00C0_0000, 0x1850_0000, 0];
     let samp_b: [u32; 4] = [0x0000_0092, 0x00C0_0000, 0x1850_0001, 0];
 
     for (case_name, alt) in [("same_sampler", samp_a), ("different_samplers", samp_b)] {
@@ -314,9 +278,6 @@ fn check_immediate_sampler_choice(operation: SampleOperation) {
         words.push(s_mov_zero(3));
         words.extend_from_slice(&s_load_x8(8, 2)); // s[8:15] = texture SRV (offset 0)
         words.extend_from_slice(&s_load_x4_off(20, 2, 64)); // s[20:23] = raw UAV (offset 16 dwords = 64B)
-        if cmp {
-            words.push(0x7E00_02F0 | (1 << 17)); // v_mov_b32 v1, 0.5 (reference)
-        }
         // v2 = 0.5, v3 = 0.5 (sample coordinates).
         words.push(0x7E00_02F0 | (2 << 17)); // v_mov_b32 v2, 0.5
         words.push(0x7E00_02F0 | (3 << 17)); // v_mov_b32 v3, 0.5
@@ -338,7 +299,7 @@ fn check_immediate_sampler_choice(operation: SampleOperation) {
         let join_pc = words.len();
         words[br_else] = 0xBF84_0000 | ((else_pc - br_else - 1) as u32 & 0xFFFF);
         words[br_join] = 0xBF82_0000 | ((join_pc - br_join - 1) as u32 & 0xFFFF);
-        words.extend_from_slice(&image_sample);
+        words.extend_from_slice(&image_sample_lz);
         words.extend_from_slice(&buf_store);
         words.push(0xBF81_0000); // s_endpgm
 
@@ -413,14 +374,7 @@ fn check_immediate_sampler_choice(operation: SampleOperation) {
         let static_samplers = lowered
             .samplers
             .iter()
-            .enumerate()
-            .map(|(n, &w)| {
-                let mut sampler = super::StaticSampler::from_words(w);
-                if lowered.cmp_samplers >> n & 1 != 0 {
-                    sampler.filter |= 0x80;
-                }
-                sampler
-            })
+            .map(|&w| super::StaticSampler::from_words(w))
             .collect();
         let shader = HostShader {
             stage: HwStage::Cs,
@@ -459,126 +413,26 @@ fn check_immediate_sampler_choice(operation: SampleOperation) {
                         other => panic!("unexpected user data {other:?}"),
                     };
                 }
-                let texels = [[1.0f32, 0.5, 0.0, 1.0]];
-                let depth = [0.75f32];
-                let texture = if cmp {
-                    View::ComparisonTexture(1, 1, &depth)
-                } else {
-                    View::Texture(1, 1, &texels)
-                };
+                let texels = [[1.0f32, 0.0, 0.0, 1.0]];
                 let out = host
                     .dispatch(
                         &root,
                         &pso,
                         &Dispatch {
                             roots: vec![(0, Root::Constants(ud))],
-                            views: &[texture, texture, View::RawUav(1)],
+                            views: &[
+                                View::Texture(1, 1, &texels),
+                                View::Texture(1, 1, &texels),
+                                View::RawUav(1),
+                            ],
                             samplers: &[],
                             groups: [1, 1, 1],
                         },
                     )
                     .unwrap_or_else(|e| panic!("{case_name}/{label}: dispatch failed: {e}"));
-                let expected = match operation {
-                    SampleOperation::Sample => 1.0f32.to_bits(),
-                    SampleOperation::SampleD16 => 0x3800_3c00,
-                    // The first sampler always compares true, the alternate never does.
-                    SampleOperation::GatherCmp if branch == 1 && alt == samp_b => 0,
-                    SampleOperation::GatherCmp => 1.0f32.to_bits(),
-                };
-                assert_eq!(out[0][0], expected, "{case_name}/{label} branch={branch}");
+                let got = f32::from_bits(out[0][0]);
+                assert_eq!(got, 1.0, "{case_name}/{label} branch={branch}");
             }
         }
-    }
-}
-
-/// `v_alignbit_b32 v1, s14, s13, 30`, which is the width - 1 and, from bit
-/// 16, the height - 1 of the image descriptor's dwords 1 and 2.
-const WATERFALL_SIZE_ONLY_WAVE32: &[u32] = &[
-    0xBE84_0300, // s_mov_b32 s4, s0
-    0xBE85_0380, // s_mov_b32 s5, 0
-    0xF408_0A02,
-    0xFA00_0040, // s_load_dwordx4 s[40:43], s[4:5], 0x40
-    0x3420_0082, // v_lshlrev_b32 v16, 2, v0
-    0x360E_0081, // v_and_b32 v7, 1, v0
-    0x340E_0E85, // v_lshlrev_b32 v7, 5, v7
-    0xBF8C_C07F, // s_waitcnt lgkmcnt(0)
-    0xBE97_037E, // s_mov_b32 s23, exec_lo
-    0xBE95_037E, // s_mov_b32 s21, exec_lo
-    0x7E28_0507, // 0x20: v_readfirstlane_b32 s20, v7
-    0x7DA4_0E14, // v_cmpx_eq_u32 exec_lo, s20, v7
-    0xF40C_0302,
-    0x2800_0000, // s_load_dwordx8 s[12:19], s[4:5], s20
-    0xBF8C_C07F, // s_waitcnt lgkmcnt(0)
-    0xD54E_0001,
-    0x0278_1A0E, // v_alignbit_b32 v1, s14, s13, 30
-    0xBE95_4715, // s_andn2_wrexec_b32 s21, s21
-    0xBF89_FFF7, // s_cbranch_execnz -> 0x20
-    0xBEFE_0317, // s_mov_b32 exec_lo, s23
-    0xE070_1000,
-    0x800A_0110, // buffer_store_dword v1, v16, s[40:43], 0 offen
-    0xBF81_0000, // s_endpgm
-];
-
-#[test]
-fn a_descriptor_only_read_as_data_gives_its_views_size() {
-    // Without a use no instruction names the view's kind; the table's range
-    // does (an image: taken for 2D). The lowering used to refuse.
-    let shader = build_with(WATERFALL_SIZE_ONLY_WAVE32, false, 0);
-    let (a, b) = ([[0.0f32; 4]; 8 * 4], [[0.0f32; 4]; 4 * 2]);
-    let views = [
-        View::Texture(8, 4, &a),
-        View::Texture(4, 2, &b),
-        View::RawUav(32),
-    ];
-    for (label, got) in run(&shader, &views) {
-        // Even lanes hold entry 0's offset (8 x 4), odd lanes entry 1's (4 x 2).
-        let want: Vec<u32> = (0..32)
-            .map(|l| if l & 1 == 0 { 7 | 3 << 16 } else { 3 | 1 << 16 })
-            .collect();
-        assert_eq!(got, want, "{label}");
-    }
-}
-
-/// Entry 0's buffer descriptor read only for its record count (dword 2), as
-/// the shallow-water simulation's timestep reduction (ceb5eb68cd99cb07) tests it before anything
-/// reads the buffer: each lane stores the count, none if it is 0.
-const RECORDS_ONLY_WAVE32: &[u32] = &[
-    0xBE84_0300, // s_mov_b32 s4, s0
-    0xBE85_0380, // s_mov_b32 s5, 0
-    0xF408_0202,
-    0xFA00_0000, // s_load_dwordx4 s[8:11], s[4:5], 0
-    0xF408_0A02,
-    0xFA00_0040, // s_load_dwordx4 s[40:43], s[4:5], 0x40
-    0x3420_0082, // v_lshlrev_b32 v16, 2, v0
-    0xBF8C_C07F, // s_waitcnt lgkmcnt(0)
-    0xBF06_800A, // s_cmp_eq_u32 s10, 0
-    0xBF85_0003, // s_cbranch_scc1 -> s_endpgm
-    0x7E02_020A, // v_mov_b32 v1, s10
-    0xE070_1000,
-    0x800A_0110, // buffer_store_dword v1, v16, s[40:43], 0 offen
-    0xBF81_0000, // s_endpgm
-];
-
-#[test]
-fn a_buffer_descriptor_only_measured_gives_its_record_count() {
-    // No instruction uses entry 0 as a descriptor; its dword 2 is read as a number. The
-    // lowering used to leave it without a value ("a descriptor's address or format read
-    // as data") and the program was refused.
-    let shader = build_checked(RECORDS_ONLY_WAVE32, true, 0, false);
-    let data: Vec<u32> = (0..24).collect();
-    let views = [
-        View::Buffer {
-            data: &data,
-            stride: Stride::Structured(4),
-        },
-        View::Buffer {
-            data: &data,
-            stride: Stride::Structured(4),
-        },
-        View::RawUav(32),
-    ];
-    for (label, got) in run(&shader, &views) {
-        // 24 elements of 4 bytes: the console's record count.
-        assert_eq!(got, vec![24u32; 32], "{label}");
     }
 }

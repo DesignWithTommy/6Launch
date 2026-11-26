@@ -158,7 +158,15 @@ fn card_limits() -> (u64, u64) {
         // the shader writes of the smaller buffers are then found by the
         // card's hashes too, and with that the first room's walls were
         // drawn in every run.
-        (mb("VICTORY_CARD_BUFFERS_MIN_MB", 1).max(1 << 20), mb("VICTORY_CARD_BUFFERS_MB", 1024))
+        // Flamingo: `VICTORY_CARD_BUFFERS_MIN_KB` (from 4 KiB) in place of the MiB floor,
+        // as avatarmanz/VIctory-7900XTX's trees take it (64 with 1,536 MB in all: 18 fps
+        // on an RTX 4070 in one tester's tree, their issue #213).
+        let min = std::env::var("VICTORY_CARD_BUFFERS_MIN_KB")
+            .ok()
+            .and_then(|v| v.trim().parse::<u64>().ok())
+            .map(|kb| (kb << 10).max(4 << 10))
+            .unwrap_or_else(|| mb("VICTORY_CARD_BUFFERS_MIN_MB", 1).max(1 << 20));
+        (min, mb("VICTORY_CARD_BUFFERS_MB", 1024))
     })
 }
 

@@ -672,7 +672,8 @@ impl Rig {
             self.device
                 .CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &buffer_desc(size, D3D12_RESOURCE_FLAG_NONE), state, None, &mut buffer)?
         };
-        buffer.ok_or_else(windows::core::Error::empty)
+        let owner = if kind == D3D12_HEAP_TYPE_DEFAULT { crate::cardmem::Owner::Probes } else { crate::cardmem::Owner::PcOther };
+        buffer.inspect(|b| crate::cardmem::enter(b, owner)).ok_or_else(windows::core::Error::empty)
     }
 
     /// What the GPU reads of `size` bytes of `resource` from `offset`.
@@ -742,6 +743,7 @@ impl Rig {
             self.device.CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &buffer_desc(bytes, D3D12_RESOURCE_FLAG_NONE), D3D12_RESOURCE_STATE_COMMON, None, &mut to)?
         };
         let to = to.ok_or_else(windows::core::Error::empty)?;
+        crate::cardmem::enter(&to, crate::cardmem::Owner::Probes);
         let mut best = f64::MAX;
         for _ in 0..3 {
             let started = std::time::Instant::now();
@@ -1055,6 +1057,7 @@ unsafe fn cost(p: &mut Probe, rig: &mut Rig, memory: &dyn Fn() -> Option<[u64; 4
             &mut buffer,
         );
         if let (Ok(()), Some(buffer)) = (made, buffer) {
+            crate::cardmem::enter(&buffer, crate::cardmem::Owner::PcOther);
             let speed = rig.copy_ms(&buffer, bytes as u64).ok();
             p.lines.push(format!("cost, for comparison: the card copies {mb} MB out of a shared buffer of today's kind in {} ms", ms(speed)));
         }

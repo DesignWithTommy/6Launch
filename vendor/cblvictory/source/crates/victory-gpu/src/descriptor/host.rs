@@ -358,6 +358,59 @@ impl Spans {
     }
 }
 
+/// Merge ranges within one drained queue, before taking the placement lock.
+/// An empty remap can select its predecessor, so keep such batches intact.
+fn coalesce_ranges(ranges: &mut Vec<(u64, u64)>) {
+    if ranges.len() < 2 || ranges.iter().any(|&(start, end)| start >= end) {
+        return;
+    }
+    ranges.sort_unstable();
+    let mut last = 0;
+    for read in 1..ranges.len() {
+        let (start, end) = ranges[read];
+        if start <= ranges[last].1 {
+            ranges[last].1 = ranges[last].1.max(end);
+        } else {
+            last += 1;
+            ranges[last] = (start, end);
+        }
+    }
+    ranges.truncate(last + 1);
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RangeMode {
+    Off,
+    Measure,
+    Coalesce,
+}
+
+fn range_mode() -> RangeMode {
+    static MODE: std::sync::OnceLock<RangeMode> = std::sync::OnceLock::new();
+    *MODE.get_or_init(|| match std::env::var("VICTORY_TEXTURE_RANGE_BATCH").as_deref() {
+        Ok("1") => RangeMode::Coalesce,
+        Ok("measure") => RangeMode::Measure,
+        _ => RangeMode::Off,
+    })
+}
+
+// Per non-overflow batch: drained ranges, lookups, raw slot hits, distinct
+// slots, and elapsed microseconds including lock acquisition and deduplication.
+type RangeStats = [std::sync::atomic::AtomicU64; 5];
+static REMAP_STATS: RangeStats = [const { std::sync::atomic::AtomicU64::new(0) }; 5];
+static WRITE_STATS: RangeStats = [const { std::sync::atomic::AtomicU64::new(0) }; 5];
+
+pub(crate) fn log_texture_range_stats() {
+    use std::sync::atomic::Ordering::Relaxed;
+    if range_mode() != RangeMode::Off {
+        for (queue, stats) in [("remap", &REMAP_STATS), ("page_write", &WRITE_STATS)] {
+            let [drained, lookups, slot_hits, distinct_slots, lookup_us] =
+                stats.each_ref().map(|value| value.load(Relaxed));
+            tracing::info!(queue, drained, lookups, slot_hits, distinct_slots, lookup_us, "texture notification totals");
+        }
+    }
+}
+
 /// Title memory written behind the guards' back whose bytes are there
 /// (DirectStorage's reads into physical pages, at the addresses the title
 /// has them mapped; `crate::watch::title_memory_written`), since a texture
@@ -1088,12 +1141,16 @@ impl HostHeap {
         let enough = self.free.load(std::sync::atomic::Ordering::Relaxed) >= n
             && n < self.too_long.load(std::sync::atomic::Ordering::Relaxed);
         let n = n as usize;
-        // Search from `next` on, then from the start.
-        let starts = (*next as usize..self.dynamic as usize).chain(0..*next as usize);
+        // Search from `next` on, then from the start (extending past cursor by
+        // n - 1 so contiguous runs crossing the cursor are not missed).
+        let cursor = *next as usize;
+        let end = self.dynamic as usize;
+        let second_end = cursor.saturating_add(n.saturating_sub(1)).min(end);
+        let starts = (cursor..end).chain(0..second_end);
         let mut run = 0;
         let mut found = None;
         let mut last = usize::MAX;
-        for at in starts.take(if enough { DYNAMIC as usize } else { 0 }) {
+        for at in starts.take(if enough { usize::MAX } else { 0 }) {
             // A run cannot wrap past the end.
             if at != last.wrapping_add(1) {
                 run = 0;
@@ -1123,7 +1180,7 @@ impl HostHeap {
         crate::copystat::add(crate::copystat::C::DynamicNs, started.elapsed().as_nanos() as u64);
         taken[first..first + n].fill(true);
         self.free.fetch_sub(n as u32, std::sync::atomic::Ordering::Relaxed);
-        *next = ((first + n) % DYNAMIC as usize) as u32;
+        *next = ((first + n) % self.dynamic as usize) as u32;
         Some(self.count + first as u32)
     }
 
@@ -1244,19 +1301,17 @@ impl HostHeap {
         if ranges.is_empty() && !all {
             return 0;
         }
-        let mut slots: Vec<u32> = {
-            let placed = self.placed.lock().unwrap_or_else(|e| e.into_inner());
-            if all {
+        let mut slots = if all {
+            let mut slots: Vec<_> = {
+                let placed = self.placed.lock().unwrap_or_else(|e| e.into_inner());
                 placed.by_slot.keys().copied().collect()
-            } else {
-                ranges.iter().flat_map(|&(start, end)| placed.slots_in(start, end)).collect()
-            }
-        };
-        if all {
+            };
+            slots.sort_unstable();
             tracing::info!("remapped ranges overflowed: full rescan of {} slots", slots.len());
-        }
-        slots.sort_unstable();
-        slots.dedup();
+            slots
+        } else {
+            self.texture_range_slots(ranges, Spans::slots_in, &REMAP_STATS)
+        };
         slots.retain(|&slot| !self.tabled_lately(slot, frame));
         let mut textures = self.textures.lock().unwrap_or_else(|e| e.into_inner());
         for &slot in &slots {
@@ -1264,6 +1319,42 @@ impl HostHeap {
         }
         STALE[3].fetch_add(slots.len() as u64, Relaxed);
         slots.len()
+    }
+
+    /// Resolve one detached batch against one snapshot of the placement index.
+    /// Completed writes and remaps use different predecessor rules.
+    fn texture_range_slots(
+        &self,
+        mut ranges: Vec<(u64, u64)>,
+        lookup: impl Fn(&Spans, u64, u64) -> Vec<u32>,
+        stats: &RangeStats,
+    ) -> Vec<u32> {
+        let mode = range_mode();
+        let started = (mode != RangeMode::Off).then(std::time::Instant::now);
+        let drained = ranges.len();
+        if mode == RangeMode::Coalesce {
+            coalesce_ranges(&mut ranges);
+        }
+        let mut slots: Vec<_> = {
+            let placed = self.placed.lock().unwrap_or_else(|e| e.into_inner());
+            ranges.iter().flat_map(|&(start, end)| lookup(&placed, start, end)).collect()
+        };
+        let hits = slots.len();
+        slots.sort_unstable();
+        slots.dedup();
+        if let Some(started) = started {
+            let counts = [
+                drained as u64,
+                ranges.len() as u64,
+                hits as u64,
+                slots.len() as u64,
+                started.elapsed().as_micros() as u64,
+            ];
+            for (counter, count) in stats.iter().zip(counts) {
+                counter.fetch_add(count, std::sync::atomic::Ordering::Relaxed);
+            }
+        }
+        slots
     }
 
     /// Takes the ranges of title memory written behind the guards' back
@@ -1283,20 +1374,15 @@ impl HostHeap {
         if ranges.is_empty() {
             return 0;
         }
-        self.slots_written_under(&ranges, frame, crate::watch::page_writes() & 2 != 0)[2]
+        self.slots_written_under(ranges, frame, crate::watch::page_writes() & 2 != 0)[2]
     }
 
     /// [`HostHeap::texture_slots_page_written`] for `ranges` (start, end):
     /// the slots that held bytes of them, those of them uploaded before,
     /// and those made due (the latter, if `due`).
-    fn slots_written_under(&self, ranges: &[(u64, u64)], frame: u64, due: bool) -> [usize; 3] {
+    fn slots_written_under(&self, ranges: Vec<(u64, u64)>, frame: u64, due: bool) -> [usize; 3] {
         use std::sync::atomic::Ordering::Relaxed;
-        let mut slots: Vec<u32> = {
-            let placed = self.placed.lock().unwrap_or_else(|e| e.into_inner());
-            ranges.iter().flat_map(|&(start, end)| placed.slots_holding(start, end)).collect()
-        };
-        slots.sort_unstable();
-        slots.dedup();
+        let mut slots = self.texture_range_slots(ranges, Spans::slots_holding, &WRITE_STATS);
         slots.retain(|&slot| !self.tabled_lately(slot, frame));
         let held = slots.len();
         let mut textures = self.textures.lock().unwrap_or_else(|e| e.into_inner());
@@ -1814,7 +1900,7 @@ impl HostHeap {
         let Some(host) = host() else { return };
         let desc = D3D12_CONSTANT_BUFFER_VIEW_DESC {
             BufferLocation: gpu,
-            SizeInBytes: size.next_multiple_of(256),
+            SizeInBytes: constant_view_size(size),
         };
         // SAFETY: a slot of our heap; the memory is the caller's.
         unsafe {
@@ -2736,6 +2822,25 @@ fn twin_uav(
     Some(desc)
 }
 
+/// The size of a constant buffer view the host takes: 256-byte steps, and
+/// at most 4,096 vectors (65,536 bytes, `D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT`).
+/// The title names constant views of more (one of 1,306,368 bytes, in the
+/// world); `CreateConstantBufferView` with such a size is an invalid call,
+/// and NVIDIA removes the device for it (`DXGI_ERROR_INVALID_CALL`), in
+/// the frame the view is made. A shader reads at most 4,096 vectors through
+/// a constant view, so nothing it can read is lost.
+fn constant_view_size(size: u32) -> u32 {
+    const MOST: u32 = 4096 * 16;
+    // The cap before the rounding (fork pull request #1206): a size within
+    // 255 of the largest number would round past it, to 0 in a release
+    // build, and a view of no bytes be made with no line said.
+    if size > MOST {
+        once!(size, "a constant buffer view over 64 KiB, made 64 KiB (the host takes no more)");
+        return MOST;
+    }
+    size.max(1).next_multiple_of(256)
+}
+
 /// Makes the host descriptor for `view` at `at`: the host resource it
 /// views, or `None` if it cannot.
 fn make(view: &View, at: D3D12_CPU_DESCRIPTOR_HANDLE) -> Option<Kept> {
@@ -2754,7 +2859,7 @@ fn make(view: &View, at: D3D12_CPU_DESCRIPTOR_HANDLE) -> Option<Kept> {
             }
             let desc = D3D12_CONSTANT_BUFFER_VIEW_DESC {
                 BufferLocation: gpu,
-                SizeInBytes: size.next_multiple_of(256),
+                SizeInBytes: constant_view_size(size),
             };
             // SAFETY: a slot of our heap; the range lies in the host copy.
             unsafe { device.CreateConstantBufferView(Some(&desc), at) };
@@ -3147,6 +3252,19 @@ fn null_view(at: D3D12_CPU_DESCRIPTOR_HANDLE) {
 mod tests {
     use super::*;
 
+    /// A constant view is made in 256-byte steps and at most 64 KiB, the
+    /// most the host takes (a larger size removes the device on NVIDIA).
+    #[test]
+    fn constant_views_are_at_most_64_kib() {
+        assert_eq!(constant_view_size(16), 256);
+        assert_eq!(constant_view_size(256), 256);
+        assert_eq!(constant_view_size(65_536), 65_536);
+        assert_eq!(constant_view_size(1_306_368), 65_536);
+        assert_eq!(constant_view_size(65_537), 65_536);
+        assert_eq!(constant_view_size(u32::MAX), 65_536);
+        assert_eq!(constant_view_size(u32::MAX - 100), 65_536);
+    }
+
     /// A null texture UAV keeps the title's dimension (3D for the world's
     /// wind field), and is 2D when the title names none.
     #[test]
@@ -3514,18 +3632,18 @@ mod tests {
         assert!(heap.note_buffer(1, Some(&view), false).is_empty());
         let written = [(at, at + 0x1000)];
         // Waiting for its first upload: held, not uploaded, nothing done.
-        assert_eq!(heap.slots_written_under(&written, 50, true), [1, 0, 0]);
+        assert_eq!(heap.slots_written_under(written.to_vec(), 50, true), [1, 0, 0]);
         let (queued, write) = heap.texture_slots_due(u64::MAX, 8).0[0];
         assert_eq!(queued, 1);
         heap.texture_slot_done(1, write, None);
         assert_eq!(slots(u64::MAX), []);
         // Uploaded and out of the queue. Memory elsewhere: nothing.
-        assert_eq!(heap.slots_written_under(&[(at + 0x10_0000, at + 0x10_1000)], 60, true), [0, 0, 0]);
+        assert_eq!(heap.slots_written_under(vec![(at + 0x10_0000, at + 0x10_1000)], 60, true), [0, 0, 0]);
         // Under it, counted only: it stays out of the queue.
-        assert_eq!(heap.slots_written_under(&written, 60, false), [1, 1, 0]);
+        assert_eq!(heap.slots_written_under(written.to_vec(), 60, false), [1, 1, 0]);
         assert_eq!(slots(u64::MAX), []);
         // Under it, asked for: due two frames on, not before.
-        assert_eq!(heap.slots_written_under(&written, 60, true), [1, 1, 1]);
+        assert_eq!(heap.slots_written_under(written.to_vec(), 60, true), [1, 1, 1]);
         assert_eq!(slots(61), []);
         assert_eq!(slots(62), [1]);
     }
@@ -3576,6 +3694,43 @@ mod tests {
         spans.forget(4);
         spans.forget(7);
         assert!(spans.by_start.is_empty() && spans.by_slot.is_empty());
+    }
+
+    #[test]
+    fn batched_ranges_preserve_both_texture_slot_sets() {
+        let mut spans = Spans::default();
+        // Slots 1 and 2 share a texture. Its upper mips overlap the next texture.
+        for (slot, start, end) in [
+            (1, 0x1000, 0x8000),
+            (2, 0x1000, 0x8000),
+            (3, 0x3000, 0x4800),
+            (4, 0x6000, 0x6800),
+            (5, u64::MAX - HEAD, u64::MAX),
+        ] {
+            spans.note(slot, start, end, true);
+        }
+        let ranges = vec![
+            (0x3100, 0x4000),
+            (0x3000, 0x3200),
+            (0x4000, 0x4800),
+            (0x3000, 0x3200),
+            (u64::MAX - 1, u64::MAX),
+        ];
+        let mut batched = ranges.clone();
+        coalesce_ranges(&mut batched);
+        assert_eq!(batched, [(0x3000, 0x4800), (u64::MAX - 1, u64::MAX)]);
+        for lookup in [Spans::slots_in, Spans::slots_holding] {
+            let resolve = |batch: &[(u64, u64)]| -> std::collections::BTreeSet<u32> {
+                batch.iter().flat_map(|&(a, b)| lookup(&spans, a, b)).collect()
+            };
+            assert_eq!(resolve(&ranges), resolve(&batched));
+        }
+        assert_eq!(spans.slots_in(0x3000, 0x4800), [1, 2, 3]);
+        assert_eq!(spans.slots_holding(0x3000, 0x4800), [3]);
+        let mut empty = vec![(0x3000, 0x3000), (0x6000, 0x6100)];
+        let original = empty.clone();
+        coalesce_ranges(&mut empty);
+        assert_eq!(empty, original);
     }
 
     /// Memory the runtime maps under a slot's texture makes the slot due
@@ -3689,6 +3844,31 @@ mod tests {
         heap.release(a, 50);
         assert_eq!(heap.dynamic(50), Some(4));
         assert_eq!(heap.dynamic(40), Some(4 + heap.dynamic - 40));
+    }
+
+    /// Contiguous free dynamic slot ranges that cross the search cursor are found.
+    #[test]
+    fn dynamic_allocation_finds_contiguous_range_crossing_search_cursor() {
+        let Some(heap) = HostHeap::new(false, 4) else {
+            return; // no host GPU
+        };
+        // Fill the entire dynamic range, then position the search cursor at 12
+        // with all slots occupied so the only free run (10..14) actually
+        // crosses the cursor.
+        let a = heap.dynamic(8).unwrap();
+        let b = heap.dynamic(8).unwrap();
+        assert_eq!((a, b), (4, 12));
+        let rest = heap.dynamic - 16;
+        assert_eq!(heap.dynamic(rest), Some(20));
+        heap.release(4, 12);
+        assert_eq!(heap.dynamic(12), Some(4));
+
+        // Release dynamic slots 10..14 (heap slots 14..18, crossing cursor at 12).
+        // Before the fix, a request of 4 slots starting search at 12 scanned
+        // 12..end (2 free) then 0..12 (2 free), missing the contiguous run at 10..14.
+        heap.release(14, 4);
+        let c = heap.dynamic(4);
+        assert_eq!(c, Some(14));
     }
 }
 

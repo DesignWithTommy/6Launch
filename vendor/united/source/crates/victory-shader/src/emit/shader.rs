@@ -24,6 +24,11 @@ pub const ROOT_CBV_SPACE: u32 = 1;
 /// root SRV also tells the host that the buffer views of the whole heap
 /// must be ready when it runs, not only those its tables name.
 pub const SLOT_STRIDES: u8 = 255;
+/// The same table of strides and format kinds as [`SLOT_STRIDES`], bound for
+/// shaders that only inspect views from descriptor tables (`RootType::Table`).
+/// Kept distinct from [`SLOT_STRIDES`] so the host binds the table without
+/// running the full bindless heap buffer sweep.
+pub const SLOT_TABLE_STRIDES: u8 = 252;
 /// The bits of a [`SLOT_STRIDES`] dword that hold the stride.
 pub const VIEW_STRIDE_BITS: u32 = (1 << 30) - 1;
 /// In a [`SLOT_STRIDES`] dword: a typed buffer view of an integer format
@@ -34,21 +39,6 @@ pub const VIEW_INTEGER: u32 = 1 << 31;
 pub const VIEW_SIGNED: u32 = 1 << 30;
 /// Dwords of the [`SLOT_STRIDES`] buffer: heap indices are clamped to it.
 pub const SLOT_STRIDES_COUNT: u32 = 1 << 21;
-
-/// Title addresses of the buffer views of the view heap by slot, for
-/// console code that reads a descriptor's address out of a table at an
-/// index it computes (ray-tracing structures and the programs that walk
-/// them) and finds no root view to ask the host about. Four dwords per
-/// slot ([`SLOT_VIEWS_RECORD_BYTES`]): the title address of the view's first
-/// byte (low, high), its byte length and its element stride. Slots without a
-/// buffer view read zero. Like [`SLOT_STRIDES`], the host readies the
-/// buffer views of the whole heap when a shader has this root SRV.
-pub const SLOT_VIEWS: u8 = 252;
-/// Slots of the [`SLOT_VIEWS`] buffer (heap indices are clamped to it).
-pub const SLOT_VIEWS_COUNT: u32 = SLOT_STRIDES_COUNT;
-/// Bytes of one [`SLOT_VIEWS`] record (four dwords); a power of two, the
-/// shader indexes it by shifting.
-pub const SLOT_VIEWS_RECORD_BYTES: u32 = 16;
 
 /// Title memory by address (`resource::MEMORY`): console code reads and
 /// writes through raw 40-bit addresses it takes from root constants,
@@ -95,21 +85,14 @@ pub const USER_VIEW_ADDRESS: u32 = 0x101;
 /// 4 and c). The shader adds the dword to every byte offset through that
 /// view. Asked for every root UAV.
 pub const USER_VIEW_BIAS: u32 = 0x103;
-/// `RootType::Other` code of a user-data dword the host sets: the number of
-/// the first thread group in x. The console dispatches any number of groups
-/// in one dimension; the host at most 65,535, so a larger dispatch runs in
-/// parts, each with the groups before it here. Asked for by compute programs
-/// that are told the x number alone (the one-dimensional ones).
-pub const USER_GROUP_BASE: u32 = 0x104;
 /// `RootType::Other` code of a user-data dword the host computes: the low
 /// 32 bits of the title address in the root view of root parameter `slot`;
 /// [`USER_ROOT_ADDRESS`] + 1: its bits from 32 up. Programs with a spilled
 /// user-data table (the ray-tracing structure builder's) reach what their
 /// root views name as title memory by address ([`SLOT_MEMORY`]): a root view
 /// has no size, and the host's copy of what it names may end in the middle of
-/// it (a structure of megabytes crosses the 4 MiB windows). 0x104 is taken
-/// by [`USER_GROUP_BASE`].
-pub const USER_ROOT_ADDRESS: u32 = 0x107;
+/// it (a structure of megabytes crosses the 4 MiB windows).
+pub const USER_ROOT_ADDRESS: u32 = 0x104;
 /// `RootType::Other` code of a user-data dword the host sets at a dispatch
 /// counted in threads (the console's `DispatchX`): how many of the threads
 /// numbered along X run (0: all of every group). The metadata's `dword` is
@@ -119,8 +102,8 @@ pub const USER_DISPATCH_THREADS_X: u32 = 0x106;
 
 /// `ShaderFlags` bits (metadata) and their `SFI0` feature bits.
 pub(crate) mod flags {
-    pub const DOUBLES: u64 = 1 << 2;
     pub const RAW_BUFFERS: u64 = 1 << 4;
+    pub const DOUBLES: u64 = 1 << 2;
     pub const STENCIL_REF: u64 = 1 << 11;
     pub const TYPED_UAV_LOADS: u64 = 1 << 13;
     /// Unordered views in a vertex, geometry or mesh program.
@@ -229,9 +212,10 @@ pub(crate) struct Shader {
     pub geometry: Option<Geometry>,
     /// Dwords of user data the shader reads (0: no user-data buffer).
     pub user_data: u32,
-    /// Immediate samplers, bound as `s0..` in [`SAMPLER_SPACE`]; entry `n` is
-    /// `true` when sampler `n` is a comparison sampler.
-    pub sampler_cmp: Vec<bool>,
+    /// Immediate samplers, bound as `s0..` in [`SAMPLER_SPACE`].
+    pub samplers: u32,
+    /// Bit n: immediate sampler n is a comparison sampler.
+    pub cmp_samplers: u64,
     /// Root CBVs read, by root parameter index, with their handles.
     pub root_cbvs: Vec<(u8, V)>,
     /// Root SRVs (raw buffers) read, likewise.
@@ -239,9 +223,6 @@ pub(crate) struct Shader {
     /// Root UAVs (raw buffers) read or written, likewise.
     pub root_uavs: Vec<(u8, V)>,
     pub flags: u64,
-    /// A pixel shader whose writes to views the console orders by primitive (POPS): its
-    /// heap views written or read as UAVs are rasterizer-ordered views.
-    pub ordered: bool,
     /// Heap handles made with a non-uniform index.
     pub nonuniform_handles: u32,
     /// A compute shader with this thread-group size.
@@ -293,12 +274,12 @@ impl Shader {
             mesh: None,
             geometry: None,
             user_data: 0,
-            sampler_cmp: Vec::new(),
+            samplers: 0,
+            cmp_samplers: 0,
             root_cbvs: Vec::new(),
             root_srvs: Vec::new(),
             root_uavs: Vec::new(),
             flags: 0,
-            ordered: false,
             nonuniform_handles: 0,
             threads: None,
             wave_size: None,
@@ -439,8 +420,8 @@ impl Shader {
         h
     }
 
-    /// The handle of immediate sampler `n` (a comparison sampler when
-    /// `self.sampler_cmp[n]` is `true`).
+    /// The handle of immediate sampler `n` (a comparison sampler when its
+    /// bit in `cmp_samplers` is set).
     pub fn sampler_handle(&mut self, block: usize, n: u32) -> V {
         let bind = [
             self.m.i32(n),
@@ -458,7 +439,7 @@ impl Shader {
             217,
             &[bind, i, f],
         );
-        let cmp = if self.sampler_cmp.get(n as usize).copied().unwrap_or(false) {
+        let cmp = if self.cmp_samplers >> n & 1 != 0 {
             0x8000
         } else {
             0
@@ -532,13 +513,6 @@ impl Shader {
         } else {
             flags::RESOURCE_HEAP
         };
-        // (bit 12 of the kind field: a UAV; bit 13: rasterizer-ordered)
-        let props = if self.ordered && !sampler && props.0 & 0x1000 != 0 {
-            self.flags |= flags::ROVS;
-            (props.0 | 0x2000, props.1)
-        } else {
-            props
-        };
         self.nonuniform_handles += u32::from(nonuniform);
         let (s, n) = (self.m.bool(sampler), self.m.bool(nonuniform));
         let h = self.op(
@@ -588,9 +562,7 @@ impl Shader {
                 (flags::ROVS, used.rovs),
                 (flags::WAVE_OPS, used.wave_ops),
                 (flags::INT64, used.int64),
-                (flags::DOUBLES, used.doubles),
                 (flags::TYPED_UAV_LOADS, used.typed_uav_loads),
-                (flags::ROVS, used.rovs),
                 (flags::RESOURCE_HEAP, used.heap_views),
                 (flags::SAMPLER_HEAP, used.heap_samplers),
                 (flags::ATOMIC_TYPED64 | flags::ATOMIC_HEAP64, used.atomic64),
@@ -614,7 +586,7 @@ impl Shader {
             s.m.md_value(c)
         };
         if self.user_data > 0
-            || !self.sampler_cmp.is_empty()
+            || self.samplers > 0
             || !self.root_cbvs.is_empty()
             || !self.root_srvs.is_empty()
             || !self.root_uavs.is_empty()
@@ -739,14 +711,13 @@ impl Shader {
                 uavs = Some(self.m.md_node(list));
             }
             let mut samplers = None;
-            if !self.sampler_cmp.is_empty() {
+            if self.samplers > 0 {
                 let ty = self.m.named_struct("struct.SamplerState", vec![self.t.i32]);
                 let p = self.m.ptr(ty);
                 let u = self.m.undef(p);
                 let mut list = Vec::new();
-                for (idx, &is_cmp) in self.sampler_cmp.clone().iter().enumerate() {
-                    let n = idx as u32;
-                    let kind = u32::from(is_cmp);
+                for n in 0..self.samplers {
+                    let kind = (self.cmp_samplers >> n & 1) as u32;
                     let ops = vec![
                         Some(i32c(&mut self, n)),
                         Some(self.m.md_value(u)),

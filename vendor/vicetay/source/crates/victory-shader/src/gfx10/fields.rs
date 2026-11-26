@@ -785,8 +785,7 @@ fn data_dwords(name: &str) -> u8 {
 }
 
 /// Address dwords of an image opcode: offset, bias, compare, derivatives,
-/// coordinates, then LOD/clamp/mip; the last two packed in pairs with
-/// `a16`, the derivatives in the `_g16` opcodes.
+/// coordinates, then LOD/clamp/mip, packed in pairs with `a16`.
 fn image_addr_dwords(name: &str, dim: u8, a16: bool) -> u8 {
     // (coordinates, derivatives per direction) for 1D 2D 3D CUBE 1D_ARRAY
     // 2D_ARRAY 2D_MSAA 2D_MSAA_ARRAY.
@@ -823,34 +822,9 @@ fn image_addr_dwords(name: &str, dim: u8, a16: bool) -> u8 {
     } else if name.contains("_mip") {
         packed += 1;
     }
-    // `a16` narrows the coordinates and the LOD, clamp or mip. Gradients
-    // have their own opcodes for 16 bits (`_g16`), whatever `a16` says.
-    let derivs = if name.ends_with("_g16") {
-        2 * derivs.div_ceil(2)
+    if a16 {
+        whole + 2 * derivs.div_ceil(2) + packed.div_ceil(2)
     } else {
-        2 * derivs
-    };
-    whole + derivs + if a16 { packed.div_ceil(2) } else { packed }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::image_addr_dwords;
-
-    #[test]
-    fn a16_packs_coordinates_and_g16_packs_gradients() {
-        // 2D: two gradients per direction, two coordinates.
-        assert_eq!(image_addr_dwords("image_sample_d", 1, false), 6);
-        assert_eq!(image_addr_dwords("image_sample_d", 1, true), 5);
-        assert_eq!(image_addr_dwords("image_sample_d_g16", 1, false), 4);
-        assert_eq!(image_addr_dwords("image_sample_d_g16", 1, true), 3);
-        // The clamp packs with the coordinates.
-        assert_eq!(image_addr_dwords("image_sample_d_cl", 1, true), 6);
-        // 3D: three gradients per direction take two dwords when packed.
-        assert_eq!(image_addr_dwords("image_sample_d", 2, true), 8);
-        assert_eq!(image_addr_dwords("image_sample_d_g16", 2, true), 6);
-        // No gradients: a16 alone decides.
-        assert_eq!(image_addr_dwords("image_sample_l", 1, false), 3);
-        assert_eq!(image_addr_dwords("image_sample_l", 1, true), 2);
+        whole + 2 * derivs + packed
     }
 }

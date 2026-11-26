@@ -7,7 +7,7 @@
 //! the parameter the layout declares at user-data index N (16 or above) is
 //! at byte `4 * (N - 16)` of that table. The code reads it with
 //! `s_load_dword*` through that pointer. (Every compute program of the
-//! console's ray-tracing structure builder, `XboxBvhBuilder.dll`, is of this
+//! console's ray-tracing structure builder, a library the title ships, is of this
 //! kind; measured there: 118 of 118 such loads land on a declared parameter.)
 //!
 //! [`user_data`] rewrites those loads away: each dword they read becomes the

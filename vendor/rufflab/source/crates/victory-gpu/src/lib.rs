@@ -17,6 +17,8 @@
 
 #[cfg(windows)]
 mod ambient;
+#[cfg(windows)]
+mod bound;
 #[cfg(all(windows, feature = "diagnostics"))]
 mod capture;
 pub mod console;
@@ -40,6 +42,9 @@ mod inplace;
 pub mod list;
 pub mod object;
 pub mod pipeline;
+#[cfg(windows)]
+mod plaincopy;
+pub mod preload;
 #[cfg(windows)]
 mod primitive;
 pub mod query;

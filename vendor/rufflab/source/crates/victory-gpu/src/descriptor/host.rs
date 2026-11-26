@@ -910,6 +910,28 @@ pub(crate) fn probe_view_limit() {
 /// table past them is made afresh in these slots like any other.
 pub(crate) const DYNAMIC: u32 = 1 << 18;
 
+/// Dynamic slots asked for (`VICTORY_DYNAMIC_SLOTS`; unset: [`DYNAMIC`]).
+/// On uncapped AMD view heaps (2,097,152 slots), takes extra slots only from
+/// the unused headroom past the title's own slots.
+/// Adapted from PastiiJay/klbf-lab (`4e95986`, GPL-3.0-or-later).
+fn dynamic_wanted() -> u32 {
+    static N: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
+    *N.get_or_init(|| {
+        std::env::var("VICTORY_DYNAMIC_SLOTS")
+            .ok()
+            .and_then(|v| v.trim().parse().ok())
+            .unwrap_or(DYNAMIC)
+    })
+}
+
+impl Drop for HostHeap {
+    fn drop(&mut self) {
+        if !self.sampler {
+            crate::draw::forget_heap_ranges(self);
+        }
+    }
+}
+
 impl HostHeap {
     pub(crate) fn new(sampler: bool, count: u32) -> Option<Self> {
         let host = host()?;
@@ -930,7 +952,7 @@ impl HostHeap {
                     })
             }
         };
-        let extra = if sampler { 0 } else { DYNAMIC };
+        let mut extra = if sampler { 0 } else { DYNAMIC };
         // A view heap ends at the null slot shaders clamp view indices to
         // (`probe_view_limit`), whatever the title's own count: the title's
         // slots, then the dynamic ones, then null up to and with that slot.
@@ -942,6 +964,10 @@ impl HostHeap {
         } else {
             victory_shader::emit::view_heap_limit()
         };
+        if !sampler && null != 0 && dynamic_wanted() > DYNAMIC {
+            extra = dynamic_wanted().min(null.saturating_sub(count)).max(DYNAMIC);
+            tracing::info!(extra, count, "dynamic descriptor slots (VICTORY_DYNAMIC_SLOTS)");
+        }
         let (heap, count, size) = if null == 0 {
             match make(count + extra) {
                 Ok(heap) => (heap, count, count + extra),
@@ -1016,8 +1042,8 @@ impl HostHeap {
                     StripeLock(Mutex::new(vec![None; len]))
                 })
                 .collect(),
-            next: Mutex::new((0, vec![false; DYNAMIC as usize])),
-            free: std::sync::atomic::AtomicU32::new(DYNAMIC),
+            next: Mutex::new((0, vec![false; extra as usize])),
+            free: std::sync::atomic::AtomicU32::new(extra),
             too_long: std::sync::atomic::AtomicU32::new(u32::MAX),
             strides,
             buffers: Mutex::default(),
@@ -1131,7 +1157,7 @@ impl HostHeap {
         let mut run = 0;
         let mut found = None;
         let mut last = usize::MAX;
-        for at in starts.take(if enough { DYNAMIC as usize } else { 0 }) {
+        for at in starts.take(if enough { self.dynamic as usize } else { 0 }) {
             // A run cannot wrap past the end.
             if at != last.wrapping_add(1) {
                 run = 0;
@@ -1161,7 +1187,7 @@ impl HostHeap {
         crate::copystat::add(crate::copystat::C::DynamicNs, started.elapsed().as_nanos() as u64);
         taken[first..first + n].fill(true);
         self.free.fetch_sub(n as u32, std::sync::atomic::Ordering::Relaxed);
-        *next = ((first + n) % DYNAMIC as usize) as u32;
+        *next = ((first + n) % self.dynamic as usize) as u32;
         Some(self.count + first as u32)
     }
 
@@ -2054,17 +2080,18 @@ impl HostHeap {
     /// data: a host copy of a buffer is made on first use.
     pub(crate) fn mirror(&self, index: u32, handle: u64, for_draw: bool) -> Option<View> {
         if index >= self.count {
-            // Diagnostic (NVIDIA heap cap): the highest title slot past the
-            // host heap seen so far.
-            static HIGHEST: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-            if HIGHEST.fetch_max(index, std::sync::atomic::Ordering::Relaxed) < index {
+            // Diagnostic (heap cap, VIctory#2634): the title walks slots above
+            // the host heap in increasing order, so logging each new high-water
+            // mark emitted ~200,000 lines on the recording thread. Once suffices.
+            static ONCE: std::sync::Once = std::sync::Once::new();
+            ONCE.call_once(|| {
                 tracing::warn!(
                     index,
                     count = self.count,
                     for_draw,
-                    "title slot past the host heap"
+                    "title slot past the host heap: slots above the host heap's count are not mirrored"
                 );
-            }
+            });
             return None;
         }
         // SAFETY: the handle is a descriptor slot in title memory.
@@ -2907,7 +2934,8 @@ fn make(view: &View, at: D3D12_CPU_DESCRIPTOR_HANDLE) -> Option<Kept> {
             }
             let desc = D3D12_CONSTANT_BUFFER_VIEW_DESC {
                 BufferLocation: gpu,
-                SizeInBytes: size.next_multiple_of(256),
+                // Zero-byte CBVs stay 0 (avoids floor flicker); cap at D3D12's 64 KiB max.
+                SizeInBytes: size.min(65_536).next_multiple_of(256),
             };
             // SAFETY: a slot of our heap; the range lies in the host copy.
             unsafe { device.CreateConstantBufferView(Some(&desc), at) };
@@ -2969,6 +2997,14 @@ fn make(view: &View, at: D3D12_CPU_DESCRIPTOR_HANDLE) -> Option<Kept> {
                         },
                     };
                     crate::tiles::show_from(desc.get_or_insert(whole), first, u32::from(own.MipLevels));
+                }
+                let dropped = crate::resource::dropped(resource);
+                if dropped > 0
+                    && let Some(d) = desc.as_mut()
+                {
+                    // SAFETY: a live host texture.
+                    let host_mips = u32::from(unsafe { texture.GetDesc() }.MipLevels);
+                    shift_view_levels(dropped, host_mips, d);
                 }
                 // SAFETY: a live texture and a slot of our heap.
                 unsafe {
@@ -3270,6 +3306,37 @@ fn null_like(words: &[u32; 10], at: D3D12_CPU_DESCRIPTOR_HANDLE) {
         host.device
             .CreateShaderResourceView(None::<&ID3D12Resource>, Some(&desc), at)
     };
+}
+
+/// Shifts a shader view's mip levels down when the host texture omits its
+/// `dropped` largest mips (`crate::resource::drop_levels`).
+fn shift_view_levels(dropped: u32, host_mips: u32, desc: &mut D3D12_SHADER_RESOURCE_VIEW_DESC) {
+    if dropped == 0 || host_mips == 0 {
+        return;
+    }
+    let shift = crate::resource::shift_levels;
+    // SAFETY: the union member the view's dimension names.
+    unsafe {
+        match desc.ViewDimension {
+            D3D12_SRV_DIMENSION_TEXTURE2D => {
+                let t = &mut desc.Anonymous.Texture2D;
+                shift(dropped, host_mips, &mut t.MostDetailedMip, &mut t.MipLevels, &mut t.ResourceMinLODClamp);
+            }
+            D3D12_SRV_DIMENSION_TEXTURE2DARRAY => {
+                let t = &mut desc.Anonymous.Texture2DArray;
+                shift(dropped, host_mips, &mut t.MostDetailedMip, &mut t.MipLevels, &mut t.ResourceMinLODClamp);
+            }
+            D3D12_SRV_DIMENSION_TEXTURECUBE => {
+                let t = &mut desc.Anonymous.TextureCube;
+                shift(dropped, host_mips, &mut t.MostDetailedMip, &mut t.MipLevels, &mut t.ResourceMinLODClamp);
+            }
+            D3D12_SRV_DIMENSION_TEXTURECUBEARRAY => {
+                let t = &mut desc.Anonymous.TextureCubeArray;
+                shift(dropped, host_mips, &mut t.MostDetailedMip, &mut t.MipLevels, &mut t.ResourceMinLODClamp);
+            }
+            _ => {}
+        }
+    }
 }
 
 /// A view that reads zeros, for slots whose view the host cannot make.

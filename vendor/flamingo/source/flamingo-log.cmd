@@ -50,6 +50,14 @@ set VICTORY_WIDE_TEXTURES=1
 set VICTORY_VIEW_GUARD=0
 set FLAMINGO_BVH_MISS=1
 set FLAMINGO_OSD=2
+rem Textures picked by index are uploaded by a thread of their own (about +30 % in the world)
+set VICTORY_HEAP_WORKER=1
+rem A floor of indirect light where the title's ray-traced light would be (shade not black)
+set VICTORY_AMBIENT=0.6
+rem The title's distant-object impostors (flat billboards for far trees and buildings) draw as
+rem huge panels on this layer, and the water reflects them as dark blocks: they are left out,
+rem so far trees and some far buildings are missing. Unset it to see them again.
+set VICTORY_SKIP_PIPELINES=7115e46a79c78f98,59b1ba494f18c894,b8ca32a6899b87fb,659fe9cae59dbd88
 set "CONSOLE=series-x"
 if "%FLAMINGO_SERIES_S%"=="1" set "CONSOLE=series-s"
 >> "%LOG%" echo profile %CONSOLE%

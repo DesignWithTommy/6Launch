@@ -18,6 +18,9 @@ use crate::object::{
 use crate::queue::Written;
 use crate::resource::PAGEABLE_IIDS;
 
+#[cfg(windows)]
+pub(crate) mod thin;
+
 const ALLOCATOR_IIDS: [Iid; 4] = [
     guid(
         0x6102dee4,
@@ -114,7 +117,7 @@ struct List {
     /// Ours, after the console layout: memory handed out by
     /// [`allocate_upload`], kept until the list is reset; the host list the
     /// calls record into (decision 0007), and the draw state the title set.
-    uploads: std::sync::Mutex<Vec<Vec<u8>>>,
+    uploads: std::sync::Mutex<Vec<Upload>>,
     #[cfg(windows)]
     host: Option<crate::host::HostList>,
     #[cfg(windows)]
@@ -127,6 +130,10 @@ struct List {
     /// at them before it runs `host`.
     #[cfg(windows)]
     gate: Vec<ValueWait>,
+    /// With `VICTORY_THIN=1`, of a list the title has: what it wrote down
+    /// ([`thin`]; then there is no `host`).
+    #[cfg(windows)]
+    thin: thin::Front,
 }
 
 /// One part of a title list cut at its waits: the waits the queue stands
@@ -151,8 +158,6 @@ fn with_state(this: This, f: impl FnOnce(&crate::host::HostList, &mut crate::dra
     f(list, &mut state.lock().unwrap_or_else(|e| e.into_inner()));
     #[cfg(feature = "diagnostics")]
     crate::copystat::recorded(started);
-    #[cfg(feature = "diagnostics")]
-    crate::profile::seen(crate::profile::Seen::Record);
 }
 
 /// The submission of `lists` has run: each gives its descriptor tables'
@@ -189,7 +194,7 @@ pub(crate) fn host_list<'a>(this: This) -> Option<&'a crate::host::HostList> {
 #[cfg(windows)]
 pub(crate) struct Detached {
     host: crate::host::HostList,
-    _uploads: Vec<Vec<u8>>,
+    _uploads: Vec<Upload>,
     _state: crate::draw::State,
 }
 
@@ -220,15 +225,13 @@ unsafe impl Send for Idle {}
 #[cfg(windows)]
 static IDLE: std::sync::Mutex<(Vec<Idle>, u64)> = std::sync::Mutex::new((Vec::new(), 0));
 
-/// The most host lists kept idle, and the most upload memory they may keep
+/// The most host lists kept idle (128 were too few: flights land several at
+/// a time, so lists were thrown away and others made in the same frame, with
+/// their preludes and buffers, 12 % of the submitting thread in the opening,
+/// profile cpu-1), and the most upload memory they may keep
 /// between them (a list keeps scratch chunks over a reset only while lists
 /// do not share them, `VICTORY_SCRATCH_POOL=0`).
 #[cfg(windows)]
-// (512 since run 221: with submissions prepared by a thread of ours the
-// title has its lists back at once and resets them while the flights of
-// the frame before are still in the air, so more than 128 are out at a
-// time: 80 host lists were made and as many thrown away every frame,
-// 8 ms to make and more to free, on the thread that submits.)
 const IDLE_MOST: (usize, u64) = (512, 256 << 20);
 
 /// Whether host lists that have run are used again (on by default;
@@ -564,11 +567,29 @@ fn new_list(
         return E_INVALIDARG;
     }
     tracing::debug!(kind, "command list");
+    #[cfg(windows)]
+    if thin::on() {
+        let mut list = boxed(kind, pipeline, true);
+        list.thin.begin(kind, pipeline);
+        return object::hand_out(LIST, list, iid, &LIST_IIDS, out);
+    }
+    object::hand_out(LIST, boxed(kind, pipeline, false), iid, &LIST_IIDS, out)
+}
+
+/// A list; with `thin` one whose calls are written down (it has no host list).
+fn boxed(kind: u32, pipeline: This, thin: bool) -> Box<List> {
+    #[cfg(not(windows))]
+    let _ = thin;
     let list = Box::new(List {
-        object: if crate::device::newer() {
-            Object::new(&NEWER_LIST_FUNCTIONS)
-        } else {
-            Object::new(&LIST_FUNCTIONS)
+        object: match (crate::device::newer(), thin) {
+            (true, false) => Object::new(&NEWER_LIST_FUNCTIONS),
+            (false, false) => Object::new(&LIST_FUNCTIONS),
+            #[cfg(windows)]
+            (true, true) => Object::new(&NEWER_THIN_FUNCTIONS),
+            #[cfg(windows)]
+            (false, true) => Object::new(&THIN_FUNCTIONS),
+            #[cfg(not(windows))]
+            _ => Object::new(&LIST_FUNCTIONS),
         },
         kind,
         put: [0; 5],
@@ -579,7 +600,7 @@ fn new_list(
         newer: [0; 256],
         uploads: Default::default(),
         #[cfg(windows)]
-        host: crate::host::host().and_then(|h| match h.new_list() {
+        host: crate::host::host().filter(|_| !thin).and_then(|h| match h.new_list() {
             Ok(list) => Some(list),
             Err(e) => {
                 tracing::warn!(error = %e, "no host command list");
@@ -596,10 +617,12 @@ fn new_list(
         earlier: Vec::new(),
         #[cfg(windows)]
         gate: Vec::new(),
+        #[cfg(windows)]
+        thin: Default::default(),
     });
     #[cfg(not(windows))]
     let _ = pipeline;
-    object::hand_out(LIST, list, iid, &LIST_IIDS, out)
+    list
 }
 
 extern "system" fn allocator_query(this: This, iid: *const Iid, out: *mut This) -> HRESULT {
@@ -625,6 +648,7 @@ extern "system" fn list_type(this: This) -> u32 {
     unsafe { (*this.cast::<List>()).kind }
 }
 extern "system" fn close(this: This) -> HRESULT {
+    let _called = crate::timeline::span("the title's Close");
     #[cfg(windows)]
     if let Some(host) = host_list(this) {
         host.close();
@@ -635,6 +659,7 @@ extern "system" fn reset(this: This, allocator: This, pipeline: This) -> HRESULT
     if allocator.is_null() {
         return E_INVALIDARG;
     }
+    let _called = crate::timeline::span("the title's list Reset");
     // A wait recorded and never submitted goes with the recording.
     VALUE_WAITS
         .lock()
@@ -659,8 +684,9 @@ extern "system" fn reset(this: This, allocator: This, pipeline: This) -> HRESULT
         host.reset();
         state.reset(pipeline);
     });
+    crate::pipeline::bound(pipeline);
     #[cfg(not(windows))]
-    let _ = (this, pipeline);
+    let _ = this;
     S_OK
 }
 
@@ -749,6 +775,9 @@ extern "system" fn barrier(this: This, count: u32, barriers: *const Barrier) -> 
     if let Some(list) = host_list(this)
         && !barriers.is_null()
     {
+        if count > 0 {
+            with_state(this, |_, state| state.synced());
+        }
         // SAFETY: the title passes `count` barriers.
         let barriers = unsafe { std::slice::from_raw_parts(barriers, count as usize) };
         let mut host: Vec<Barrier> = barriers
@@ -812,6 +841,20 @@ fn buffer_range(buffer: This, offset: u64, len: u64) -> Option<*mut u8> {
     Some(unsafe { data.add(offset as usize) })
 }
 
+/// A copy of title memory that `list` records: on the card at its place in
+/// the list ([`crate::host::HostList::place_copy`]), or at submission.
+#[cfg(windows)]
+fn buffer_copy(this: This, list: &crate::host::HostList, to: *mut u8, from: *const u8, len: usize) {
+    if len == 0 {
+        return;
+    }
+    if list.place_copy(to as usize, from as usize, len) {
+        with_state(this, |_, state| state.copied());
+    } else {
+        list.defer_copy(to, from, len);
+    }
+}
+
 /// Buffer to buffer: both are host memory, copied at submission.
 extern "system" fn copy_buffer_region(
     this: This,
@@ -826,7 +869,7 @@ extern "system" fn copy_buffer_region(
         && let Some(to) = buffer_range(dst, dst_offset, len)
         && let Some(from) = buffer_range(src, src_offset, len)
     {
-        list.defer_copy(to, from, len as usize);
+        buffer_copy(this, list, to, from, len as usize);
     }
     #[cfg(not(windows))]
     let _ = (this, dst, dst_offset, src, src_offset, len);
@@ -863,19 +906,6 @@ extern "system" fn copy_resource(this: This, dst: This, src: This) {
             crate::resource::host_resource(src),
         ) {
             if unlike(dst, src) {
-                return;
-            }
-            let host_dst = crate::resource::host_copy(dst);
-            let host_src = crate::resource::host_copy(src);
-            if let (Some(hd), Some(hs)) = (host_dst.as_ref(), host_src.as_ref())
-                && hd.mip_drop != hs.mip_drop
-            {
-                static ONCE: std::sync::Once = std::sync::Once::new();
-                ONCE.call_once(|| {
-                    tracing::warn!(
-                        "copy_resource between textures with different mip_drop skipped"
-                    );
-                });
                 return;
             }
             // Two title textures over the same memory have one host
@@ -923,7 +953,7 @@ extern "system" fn copy_resource(this: This, dst: This, src: This) {
             crate::resource::buffer_bytes(dst),
             crate::resource::buffer_bytes(src),
         ) {
-            list.defer_copy(to, from, a.min(b) as usize);
+            buffer_copy(this, list, to, from, a.min(b) as usize);
         }
     }
     #[cfg(not(windows))]
@@ -1006,28 +1036,7 @@ extern "system" fn copy_texture_region(
         if unlike(dst.resource, src.resource) {
             return;
         }
-        let mut to_sub = dst.footprint.offset as u32;
-        if dst.kind != FOOTPRINT
-            && let Some(host_dst) = crate::resource::host_copy(dst.resource)
-        {
-            let Some(host_sub) = host_dst.host_subresource(to_sub) else {
-                return;
-            };
-            to_sub = host_sub;
-        }
-        let mut from_sub = src.footprint.offset as u32;
-        if src.kind != FOOTPRINT
-            && let Some(host_src) = crate::resource::host_copy(src.resource)
-        {
-            let Some(host_sub) = host_src.host_subresource(from_sub) else {
-                return;
-            };
-            from_sub = host_sub;
-        }
         let mut from = src;
-        if src.kind != FOOTPRINT {
-            from.footprint.offset = u64::from(from_sub);
-        }
         // Both sides are the same subresource of one host texture (set below).
         let mut same = false;
         let _upload; // keeps the source alive while this call records it
@@ -1040,12 +1049,20 @@ extern "system" fn copy_texture_region(
             let Some(data) = buffer_range(src.resource, src.footprint.offset, bytes) else {
                 return;
             };
-            let Some((buffer, staging)) = list.upload(host, bytes) else {
-                return;
+            let buffer = match list.place_source(data as usize, bytes as usize) {
+                // What shaders wrote to it, at this place of the list.
+                Some(buffer) => buffer,
+                None => {
+                    let Some((buffer, staging)) = list.upload(host, bytes) else {
+                        return;
+                    };
+                    // The list owns this mapped D3D12 upload buffer. Wine can
+                    // report its address as MEM_FREE, so use the host-upload
+                    // path.
+                    list.defer_fill_buffer(&buffer, staging, data, bytes as usize);
+                    buffer
+                }
             };
-            // The list owns this mapped D3D12 upload buffer. Wine can report
-            // its address as MEM_FREE, so use the host-upload path.
-            list.defer_fill(staging, data, bytes as usize);
             from.resource = buffer.as_raw().cast_const().cast();
             from.footprint.offset = 0;
             #[cfg(feature = "diagnostics")]
@@ -1065,7 +1082,7 @@ extern "system" fn copy_texture_region(
             same = texture.as_raw() == to.as_raw()
                 && src.kind != FOOTPRINT
                 && dst.kind != FOOTPRINT
-                && from_sub == to_sub;
+                && src.footprint.offset as u32 == dst.footprint.offset as u32;
             list.twin_use(src.resource, false, false);
             if crate::texture::title_written(texture) {
                 crate::texture::upload(list, src.resource, texture);
@@ -1078,6 +1095,39 @@ extern "system" fn copy_texture_region(
         // A depth texture shaders also write: what they wrote, first (the
         // source above too).
         list.twin_use(dst.resource, false, true);
+        // The first copy into a texture of the title's: what it does not
+        // write is zeros, as in a texture that was an allocation of its own
+        // (`VICTORY_COPY_OVER_TITLE=title`: what title memory holds, which
+        // may be another texture's: specks on the waitress's forehead were
+        // left in run n04). (The host
+        // copy is cut from a block and held whatever lay there, and no
+        // upload is made once a copy wrote it: the atlas the title copies
+        // its baked decorations into, a 2048x2048 BC3 texture of which a
+        // bake writes 256x256 at most, was drawn over a character's face
+        // with other textures' bytes wherever nothing was baked, runs n01 and
+        // textures-1.)
+        static OVER: std::sync::OnceLock<u8> = std::sync::OnceLock::new();
+        let over = *OVER.get_or_init(|| match std::env::var("VICTORY_COPY_OVER_TITLE").as_deref() {
+            Ok("0") => 0,
+            Ok("title") => 1,
+            _ => 2,
+        });
+        if over != 0 && crate::texture::title_written(to) && !crate::texture::host_wrote(dst.resource as usize) {
+            // One a list uploaded, or a draw sampled, holds the title's.
+            if over == 2 && !list.used(dst.resource as usize) && !crate::texture::is_staged(dst.resource) {
+                if let Some(host) = crate::host::host() {
+                    ensure_state(list, dst.resource, COPY_DEST);
+                    let _ = list.first_use(dst.resource as usize);
+                    crate::texture::zeros(list, host, to);
+                }
+            } else {
+                crate::texture::upload(list, dst.resource, to);
+            }
+            // (Done before the title's copy writes over it.)
+            if list.used(dst.resource as usize) {
+                ensure_state(list, dst.resource, COPY_SOURCE);
+            }
+        }
         // A destination made level by level gets the level's memory ahead
         // of this list (`crate::tiles`): the title's bake copies each level
         // of its result into a block-compressed texture of that kind, and
@@ -1091,9 +1141,6 @@ extern "system" fn copy_texture_region(
         ensure_state(list, dst.resource, COPY_DEST);
         let mut to_location = dst;
         to_location.resource = to.as_raw().cast_const().cast();
-        if dst.kind != FOOTPRINT {
-            to_location.footprint.offset = u64::from(to_sub);
-        }
         let host_box = (!source_box.is_null()).then(|| source_box.cast::<D3D12_BOX>());
         #[cfg(feature = "diagnostics")]
         {
@@ -1229,22 +1276,6 @@ extern "system" fn resolve(
             crate::resource::host_resource(src),
         )
     {
-        let dst_sub = if let Some(hd) = crate::resource::host_copy(dst) {
-            let Some(mapped) = hd.host_subresource(dst_sub) else {
-                return;
-            };
-            mapped
-        } else {
-            dst_sub
-        };
-        let src_sub = if let Some(hs) = crate::resource::host_copy(src) {
-            let Some(mapped) = hs.host_subresource(src_sub) else {
-                return;
-            };
-            mapped
-        } else {
-            src_sub
-        };
         use windows::Win32::Foundation::RECT;
         use windows::Win32::Graphics::Direct3D12::{
             D3D12_RESOLVE_MODE_AVERAGE, ID3D12GraphicsCommandList1,
@@ -1270,15 +1301,7 @@ extern "system" fn resolve(
         unsafe {
             let (a, b) = (to.GetDesc(), from.GetDesc());
             let format = if crate::resource::stands_in(dst) { a.Format } else { DXGI_FORMAT(format as i32) };
-            let dst_mips = u32::from(a.MipLevels).max(1);
-            let src_mips = u32::from(b.MipLevels).max(1);
-            let dst_mip = dst_sub % dst_mips;
-            let src_mip = src_sub % src_mips;
-            let dst_w = (a.Width >> dst_mip).max(1);
-            let dst_h = (u64::from(a.Height) >> dst_mip).max(1);
-            let src_w = (b.Width >> src_mip).max(1);
-            let src_h = (u64::from(b.Height) >> src_mip).max(1);
-            if (dst_w, dst_h) == (src_w, src_h) {
+            if (a.Width, a.Height) == (b.Width, b.Height) {
                 list.list
                     .ResolveSubresource(to, dst_sub, from, src_sub, format);
             } else if let Ok(list1) = list.list.cast::<ID3D12GraphicsCommandList1>() {
@@ -1286,8 +1309,8 @@ extern "system" fn resolve(
                 let rect = RECT {
                     left: 0,
                     top: 0,
-                    right: dst_w.min(src_w) as i32,
-                    bottom: dst_h.min(src_h) as i32,
+                    right: a.Width.min(b.Width) as i32,
+                    bottom: a.Height.min(b.Height) as i32,
                 };
                 list1.ResolveSubresourceRegion(
                     to,
@@ -1417,6 +1440,10 @@ extern "system" fn copy_memory(this: This, dst: u64, src: u64, len: u64, _flags:
         && src != 0
     {
         let len = len as usize;
+        if list.place_copy(dst as usize, src as usize, len) {
+            with_state(this, |_, state| state.copied());
+            return;
+        }
         list.defer(move || {
             if crate::texture::committed(src as *const u8, len)
                 && crate::texture::committed(dst as *const u8, len)
@@ -1435,18 +1462,15 @@ extern "system" fn driver_hint(_: This, _feature: u64, _value: u64) -> u64 {
     0
 }
 
-/// `DispatchX(x, y, z, flags)`: a dispatch with console flags, bits of the
-/// hardware's dispatch initiator (the ray-tracing builder dispatches this
-/// way). With bit 5, `USE_THREAD_DIMENSIONS`, `x`, `y` and `z` count
-/// threads, not groups; the host has no use for the others.
+/// `DispatchX(x, y, z, flags)`: a dispatch with console flags, of which the
+/// host follows one: the counts are threads, not groups (`draw.rs`
+/// `THREAD_DIMENSIONS`; the ray-tracing structure builder dispatches this way).
 extern "system" fn dispatch_x(this: This, x: u32, y: u32, z: u32, flags: u32) {
+    count_dispatch();
     #[cfg(windows)]
-    state::dispatch_x(this, x, y, z, flags & 0x20 != 0);
+    with_state(this, |list, s| s.dispatch(list, x, y, z, flags));
     #[cfg(not(windows))]
-    {
-        let _ = (this, x, y, z, flags);
-        count_dispatch();
-    }
+    let _ = (this, x, y, z, flags);
 }
 
 /// `BeginQuery`/`EndQuery(heap, type, index)`: queries are answered when
@@ -1483,7 +1507,10 @@ extern "system" fn resolve_queries(
         PIPELINE_STATISTICS => (Written::Value(0), 88),
         _ => (Written::Value(0), 16),
     };
-    if offset + u64::from(count) * bytes > size {
+    let Some(end) = offset.checked_add(u64::from(count) * bytes) else {
+        return;
+    };
+    if end > size {
         return;
     }
     for i in 0..u64::from(count) {
@@ -1517,15 +1544,66 @@ extern "system" fn set_pipeline(this: This, pipeline: This) {
 }
 
 /// Pipeline syncs: waits for earlier work and cache flushes, at the top or
-/// bottom of the pipe `(flags, control, address, size)`. Host lists order
-/// their own work and every submission is waited for, so there is nothing
-/// to do.
-extern "system" fn sync(_: This, _flags: u32, _control: u32, _address: u64, _size: u64) {}
+/// bottom of the pipe `(flags, control, address, size)`. The host orders
+/// nothing between dispatches by itself: what shaders wrote is waited for
+/// here as at the title's barriers (the ray-tracing structure builder has
+/// no other wait between its stages).
+/// (Arguments may be what earlier shaders wrote from here on:
+/// `State::synced`.)
+extern "system" fn sync(this: This, flags: u32, control: u32, address: u64, size: u64) {
+    #[cfg(windows)]
+    {
+        with_state(this, |_, state| state.synced());
+        if let Some(list) = host_list(this) {
+            use windows::Win32::Graphics::Direct3D12::D3D12_RESOURCE_BARRIER;
+            #[cfg(feature = "diagnostics")]
+            {
+                // The shapes of the title's calls, each once.
+                static SEEN: std::sync::Mutex<Vec<(u32, u32, bool)>> = std::sync::Mutex::new(Vec::new());
+                let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
+                let shape = (flags, control, address == 0);
+                if seen.len() < 64 && !seen.contains(&shape) {
+                    seen.push(shape);
+                    tracing::info!(
+                        flags = format_args!("{flags:#x}"),
+                        control = format_args!("{control:#x}"),
+                        address = format_args!("{address:#x}"),
+                        size = format_args!("{size:#x}"),
+                        "a pipeline sync"
+                    );
+                }
+                crate::copystat::add(crate::copystat::C::WaitsForGroups, 1);
+            }
+            // SAFETY: the same layout; no resource named.
+            let barrier = unsafe { std::mem::transmute::<Barrier, D3D12_RESOURCE_BARRIER>(UAV_BARRIER) };
+            // SAFETY: an open list.
+            unsafe { list.list.ResourceBarrier(&[barrier]) };
+        }
+    }
+    let _ = (this, flags, control, address, size);
+}
 
 /// Reset with console flags `(allocator, pipeline, flags)`; the flags only
 /// tune the console's command memory.
 extern "system" fn reset_x(this: This, allocator: This, pipeline: This, _flags: u32) -> HRESULT {
     reset(this, allocator, pipeline)
+}
+
+#[cfg(windows)]
+use crate::upload::Upload;
+
+/// The memory of [`allocate_upload`] where no host GPU reads it by address.
+#[cfg(not(windows))]
+struct Upload(Vec<u8>);
+
+#[cfg(not(windows))]
+impl Upload {
+    fn new(len: usize) -> Option<Upload> {
+        Some(Upload(vec![0; len]))
+    }
+    fn start(&mut self) -> *mut u8 {
+        self.0.as_mut_ptr()
+    }
 }
 
 /// Newer lists' 0x4a0 `(size, alignment) -> pointer`: memory the list
@@ -1541,20 +1619,20 @@ extern "system" fn allocate_upload(this: This, size: u64, alignment: u64) -> *mu
     if this.is_null() || !align.is_power_of_two() {
         return std::ptr::null_mut();
     }
-    let mut block = vec![0u8; len];
-    let start = block.as_mut_ptr();
+    let Some(mut block) = Upload::new(len) else {
+        return std::ptr::null_mut();
+    };
+    let start = block.start();
     // SAFETY: the offset is below `align`, so `size` bytes fit after it.
     let at = unsafe { start.add(start.align_offset(align)) };
     // SAFETY: the title passes one of our lists.
     let uploads = unsafe { &(*this.cast::<List>()).uploads };
-    // Moving the vector keeps its heap block where it is.
     uploads.lock().unwrap_or_else(|e| e.into_inner()).push(block);
     at
 }
 
-/// Draw state the host has no use for (root signatures, which the draw
-/// state only notes, ours coming with the pipeline; depth order and
-/// shading rate hints): any arguments,
+/// Draw state the host has no use for (root signatures: ours come with
+/// the pipeline; depth order and shading rate hints): any arguments,
 /// nothing returned.
 extern "system" fn ignored_state(_: This) {}
 
@@ -1605,12 +1683,6 @@ mod state {
     }
     pub(super) extern "system" fn heaps(this: This, count: u32, heaps: *const This) {
         with_state(this, |_, s| s.set_heaps(items(heaps, count)));
-    }
-    pub(super) extern "system" fn compute_root_signature(this: This, signature: This) {
-        with_state(this, |_, s| s.set_root_signature(true, signature));
-    }
-    pub(super) extern "system" fn graphics_root_signature(this: This, signature: This) {
-        with_state(this, |_, s| s.set_root_signature(false, signature));
     }
     pub(super) extern "system" fn compute_table(this: This, slot: u32, handle: u64) {
         with_state(this, |_, s| s.set_table(true, slot, handle));
@@ -1676,40 +1748,6 @@ mod state {
             }
         });
     }
-    pub(super) const MAX_RENDER_TARGETS: usize =
-        windows::Win32::Graphics::Direct3D12::D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT as usize;
-    const RTV_STRIDE: u64 = 128;
-
-    /// Expands `(count, handles, one_range)` into at most 8 descriptor handles
-    /// without dereferencing `handles` when `count == 0`, stepping from a null
-    /// base handle, or overflowing `u64`.
-    pub(super) fn target_handles(
-        count: u32,
-        handles: *const u64,
-        one_range: i32,
-    ) -> ([u64; MAX_RENDER_TARGETS], usize) {
-        let n = (count as usize).min(MAX_RENDER_TARGETS);
-        let mut out = [0u64; MAX_RENDER_TARGETS];
-        if n == 0 || handles.is_null() {
-            return (out, 0);
-        }
-        if one_range != 0 {
-            // SAFETY: `n > 0` and `handles` is non-null: the title passes the first handle.
-            let first = unsafe { *handles };
-            if first != 0 {
-                for (i, slot) in out[..n].iter_mut().enumerate() {
-                    *slot = (i as u64)
-                        .checked_mul(RTV_STRIDE)
-                        .and_then(|off| first.checked_add(off))
-                        .unwrap_or(0);
-                }
-            }
-        } else {
-            out[..n].copy_from_slice(items(handles, n as u32));
-        }
-        (out, n)
-    }
-
     /// `(count, handles, one range, depth)`: with one range, the handles
     /// follow the first at the render target view size (128 bytes).
     pub(super) extern "system" fn targets(
@@ -1719,10 +1757,16 @@ mod state {
         one_range: i32,
         depth: *const u64,
     ) {
-        let (handles, len) = target_handles(count, handles, one_range);
+        let handles: Vec<u64> = if one_range != 0 && !handles.is_null() {
+            // SAFETY: the title passes the first handle.
+            let first = unsafe { *handles };
+            (0..u64::from(count)).map(|i| first + 128 * i).collect()
+        } else {
+            items(handles, count).to_vec()
+        };
         // SAFETY: the title passes a handle or null.
         let depth = unsafe { depth.as_ref() }.copied().unwrap_or(0);
-        with_state(this, |list, s| s.set_targets(list, &handles[..len], depth));
+        with_state(this, |list, s| s.set_targets(list, &handles, depth));
     }
     pub(super) extern "system" fn draw(
         this: This,
@@ -1737,12 +1781,8 @@ mod state {
         });
     }
     pub(super) extern "system" fn dispatch(this: This, x: u32, y: u32, z: u32) {
-        dispatch_x(this, x, y, z, false);
-    }
-    /// A dispatch whose counts are threads (`threads`) or groups.
-    pub(super) fn dispatch_x(this: This, x: u32, y: u32, z: u32, threads: bool) {
         super::count_dispatch();
-        with_state(this, |list, s| s.dispatch(list, x, y, z, threads));
+        with_state(this, |list, s| s.dispatch(list, x, y, z, 0));
     }
     /// `DispatchMesh(x, y, z)` (the PC method of List6); the title's mesh
     /// programs take `x` groups only.
@@ -1798,12 +1838,10 @@ mod state {
     pub(super) use super::ignored_state as blend_factor;
     pub(super) use super::ignored_state as compute_constant;
     pub(super) use super::ignored_state as compute_constants;
-    pub(super) use super::ignored_state as compute_root_signature;
     pub(super) use super::ignored_state as compute_table;
     pub(super) use super::ignored_state as compute_view;
     pub(super) use super::ignored_state as graphics_constant;
     pub(super) use super::ignored_state as graphics_constants;
-    pub(super) use super::ignored_state as graphics_root_signature;
     pub(super) use super::ignored_state as graphics_table;
     pub(super) use super::ignored_state as graphics_view;
     pub(super) use super::ignored_state as heaps;
@@ -2108,6 +2146,7 @@ extern "system" fn barrier_groups(this: This, count: u32, _groups: *const u8) {
         && let Some(list) = host_list(this)
     {
         use windows::Win32::Graphics::Direct3D12::D3D12_RESOURCE_BARRIER;
+        with_state(this, |_, state| state.synced());
         // SAFETY: the same layout; no resource named.
         let barrier = unsafe { std::mem::transmute::<Barrier, D3D12_RESOURCE_BARRIER>(UAV_BARRIER) };
         // SAFETY: an open list.
@@ -2234,8 +2273,8 @@ const METHODS: [(usize, *const ()); 52] = [
     (25, set_pipeline as *const ()),              // 0xc8
     (26, barrier as *const ()),                   // 0xd0
     (32, state::heaps as *const ()),              // 0x100
-    (33, state::compute_root_signature as *const ()), // 0x108
-    (34, state::graphics_root_signature as *const ()), // 0x110
+    (33, ignored_state as *const ()),             // 0x108 compute root signature
+    (34, ignored_state as *const ()),             // 0x110 graphics root signature
     (35, state::compute_table as *const ()),      // 0x118
     (36, state::graphics_table as *const ()),     // 0x120
     (37, state::compute_constant as *const ()),   // 0x128
@@ -2327,6 +2366,11 @@ const fn list_table(newer: bool) -> [*const (); 160] {
 /// titles add.
 static LIST_FUNCTIONS: Table<160> = Table(list_table(false));
 static NEWER_LIST_FUNCTIONS: Table<160> = Table(list_table(true));
+/// Of lists whose calls are written down.
+#[cfg(windows)]
+static THIN_FUNCTIONS: Table<160> = Table(thin::table(false));
+#[cfg(windows)]
+static NEWER_THIN_FUNCTIONS: Table<160> = Table(thin::table(true));
 
 #[cfg(test)]
 mod tests {
@@ -2375,535 +2419,27 @@ mod tests {
         assert_eq!(release(allocator), 0);
     }
 
-    #[cfg(windows)]
+    /// An offset near `u64::MAX` must not overflow and write outside the
+    /// query destination buffer.
     #[test]
-    fn om_set_render_targets_guards_handles_and_draws_single_range_mrt() {
-        use std::sync::atomic::{AtomicU32, Ordering};
-        use windows::Win32::Foundation::RECT;
-        use windows::Win32::Graphics::Direct3D::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-        use windows::Win32::Graphics::Direct3D::Fxc::D3DCompile;
-        use windows::Win32::Graphics::Direct3D::ID3DBlob;
-        use windows::Win32::Graphics::Direct3D12::*;
-        use windows::Win32::Graphics::Dxgi::Common::*;
-        use windows::Win32::Graphics::Dxgi::*;
-        use windows::core::{Interface, PCSTR, s};
-
-        // 1. Pure handle-expansion invariants: empty with unaligned non-null pointer,
-        //    null base in single-range mode, near-u64::MAX overflow, and >8 clamping.
-        let invalid_ptr = 0xdead_beef_0001usize as *const u64;
-        assert_eq!(state::target_handles(0, invalid_ptr, 1).1, 0);
-        assert_eq!(state::target_handles(0, invalid_ptr, 0).1, 0);
-        assert_eq!(state::target_handles(3, std::ptr::null(), 1).1, 0);
-
-        let zero_first = 0u64;
-        let (null_out, null_len) = state::target_handles(4, &zero_first, 1);
-        assert_eq!(&null_out[..null_len], &[0, 0, 0, 0]);
-
-        let near_max = u64::MAX - 64;
-        let (ovf_out, ovf_len) = state::target_handles(4, &near_max, 1);
-        assert_eq!(&ovf_out[..ovf_len], &[near_max, 0, 0, 0]);
-
-        let base = 0x1000u64;
-        let (clamped_single, single_len) = state::target_handles(12, &base, 1);
-        assert_eq!(single_len, state::MAX_RENDER_TARGETS);
-        assert_eq!(
-            clamped_single,
-            [
-                0x1000, 0x1080, 0x1100, 0x1180, 0x1200, 0x1280, 0x1300, 0x1380
-            ]
-        );
-
-        let twelve = [10u64, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120];
-        let (clamped_array, array_len) = state::target_handles(12, twelve.as_ptr(), 0);
-        assert_eq!(array_len, state::MAX_RENDER_TARGETS);
-        assert_eq!(clamped_array, [10, 20, 30, 40, 50, 60, 70, 80]);
-
-        // 2. End-to-end GPU verification: single-range MRT draw (3 targets + DSV),
-        //    followed by count == 0 with an unaligned invalid pointer for a depth-only
-        //    pass, null single-range unbind, and >8 array clamping.
-        static DEBUG_ERRORS: AtomicU32 = AtomicU32::new(0);
-        unsafe extern "system" fn on_debug_message(
-            _: D3D12_MESSAGE_CATEGORY,
-            severity: D3D12_MESSAGE_SEVERITY,
-            id: D3D12_MESSAGE_ID,
-            desc: PCSTR,
-            _: *mut std::ffi::c_void,
-        ) {
-            if severity.0 <= D3D12_MESSAGE_SEVERITY_ERROR.0
-                && id != D3D12_MESSAGE_ID_CREATEPIPELINELIBRARY_INVALIDLIBRARYBLOB
-            {
-                DEBUG_ERRORS.fetch_add(1, Ordering::Relaxed);
-                // SAFETY: D3D12 provides a valid NUL-terminated string during the callback.
-                let msg = unsafe { desc.to_string() }.unwrap_or_default();
-                eprintln!("D3D12 debug error (id={}): {msg}", id.0);
-            }
-        }
-
-        struct DebugGuard(Option<(ID3D12InfoQueue1, u32)>);
-        impl Drop for DebugGuard {
-            fn drop(&mut self) {
-                if let Some((ref q, cookie)) = self.0 {
-                    // SAFETY: cookie belongs to `q`.
-                    let _ = unsafe { q.UnregisterMessageCallback(cookie) };
-                }
-            }
-        }
-
-        struct Held(This);
-        impl Drop for Held {
-            fn drop(&mut self) {
-                slot::<extern "system" fn(This) -> u32>(self.0, 0x10)(self.0);
-            }
-        }
-
-        struct HeapHeld(This);
-        impl Drop for HeapHeld {
-            fn drop(&mut self) {
-                slot::<extern "system" fn(This) -> u32>(self.0, 0x10)(self.0);
-            }
-        }
-
-        let Some(host) = crate::host::host() else {
-            return;
-        };
-        DEBUG_ERRORS.store(0, Ordering::Relaxed);
-        // SAFETY: plain DXGI adapter query for test log traceability.
-        if let Ok(desc) = unsafe {
-            CreateDXGIFactory2::<IDXGIFactory4>(DXGI_CREATE_FACTORY_FLAGS(0))
-                .and_then(|f| f.EnumAdapterByLuid::<IDXGIAdapter1>(host.device.GetAdapterLuid()))
-                .and_then(|a| a.GetDesc1())
-        } {
-            eprintln!(
-                "om_set_render_targets adapter: {} ({:04x}:{:04x}, flags={:#x})",
-                String::from_utf16_lossy(&desc.Description).trim_end_matches('\0'),
-                desc.VendorId,
-                desc.DeviceId,
-                desc.Flags
-            );
-        }
-        let _dbg = DebugGuard(host.device.cast::<ID3D12InfoQueue1>().ok().and_then(|q| {
-            let mut cookie = 0;
-            // SAFETY: static callback function, unregistered on drop.
-            unsafe {
-                q.RegisterMessageCallback(
-                    Some(on_debug_message),
-                    D3D12_MESSAGE_CALLBACK_FLAG_NONE,
-                    std::ptr::null_mut(),
-                    &mut cookie,
-                )
-            }
-            .ok()
-            .map(|()| (q, cookie))
-        }));
-
-        let compile = |hlsl: &str, entry: PCSTR, target: PCSTR| -> ID3DBlob {
-            let mut blob: Option<ID3DBlob> = None;
-            // SAFETY: static HLSL source and valid output blob pointer.
-            unsafe {
-                D3DCompile(
-                    hlsl.as_ptr().cast(),
-                    hlsl.len(),
-                    s!("mrt_probe"),
-                    None,
-                    None,
-                    entry,
-                    target,
-                    0,
-                    0,
-                    &mut blob,
-                    None,
-                )
-            }
-            .expect("compile synthetic shader");
-            blob.unwrap()
-        };
-
-        const SHADER: &str = r#"
-            [RootSignature("")]
-            float4 vs_mrt(uint vid : SV_VertexID) : SV_Position {
-                float2 p = float2((vid << 1) & 2, vid & 2);
-                return float4(p * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.75, 1.0);
-            }
-            float4 vs_depth_only(uint vid : SV_VertexID) : SV_Position {
-                float2 p = float2((vid << 1) & 2, vid & 2);
-                return float4(p * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.25, 1.0);
-            }
-            struct MrtOut {
-                float4 rt0 : SV_Target0;
-                float4 rt1 : SV_Target1;
-                float4 rt2 : SV_Target2;
-            };
-            MrtOut ps_mrt() {
-                MrtOut o;
-                o.rt0 = float4(1.0, 0.0, 0.0, 1.0);
-                o.rt1 = float4(0.0, 1.0, 0.0, 1.0);
-                o.rt2 = float4(0.0, 0.0, 1.0, 1.0);
-                return o;
-            }
-        "#;
-        let vs_mrt = compile(SHADER, s!("vs_mrt"), s!("vs_5_0"));
-        let vs_depth = compile(SHADER, s!("vs_depth_only"), s!("vs_5_0"));
-        let ps_mrt = compile(SHADER, s!("ps_mrt"), s!("ps_5_0"));
-
-        // SAFETY: compiled DXBC blobs contain valid bytecode and root signature.
-        let (root, mrt_pso, depth_pso) = unsafe {
-            let vs_bytes = std::slice::from_raw_parts(
-                vs_mrt.GetBufferPointer().cast::<u8>(),
-                vs_mrt.GetBufferSize(),
-            );
-            let vs_d_bytes = std::slice::from_raw_parts(
-                vs_depth.GetBufferPointer().cast::<u8>(),
-                vs_depth.GetBufferSize(),
-            );
-            let ps_bytes = std::slice::from_raw_parts(
-                ps_mrt.GetBufferPointer().cast::<u8>(),
-                ps_mrt.GetBufferSize(),
-            );
-            let root: ID3D12RootSignature = host.device.CreateRootSignature(0, vs_bytes).unwrap();
-            let mut rtv_formats = [DXGI_FORMAT_UNKNOWN; 8];
-            rtv_formats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-            rtv_formats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
-            rtv_formats[2] = DXGI_FORMAT_R8G8B8A8_UNORM;
-            let raster = D3D12_RASTERIZER_DESC {
-                FillMode: D3D12_FILL_MODE_SOLID,
-                CullMode: D3D12_CULL_MODE_NONE,
-                DepthClipEnable: true.into(),
-                ..Default::default()
-            };
-            let blend = D3D12_BLEND_DESC {
-                RenderTarget: [D3D12_RENDER_TARGET_BLEND_DESC {
-                    RenderTargetWriteMask: D3D12_COLOR_WRITE_ENABLE_ALL.0 as u8,
-                    ..Default::default()
-                }; 8],
-                ..Default::default()
-            };
-            let depth_state = D3D12_DEPTH_STENCIL_DESC {
-                DepthEnable: true.into(),
-                DepthWriteMask: D3D12_DEPTH_WRITE_MASK_ALL,
-                DepthFunc: D3D12_COMPARISON_FUNC_LESS,
-                ..Default::default()
-            };
-            let mrt_pso: ID3D12PipelineState = host
-                .device
-                .CreateGraphicsPipelineState(&D3D12_GRAPHICS_PIPELINE_STATE_DESC {
-                    pRootSignature: std::mem::transmute_copy(&root),
-                    VS: D3D12_SHADER_BYTECODE {
-                        pShaderBytecode: vs_bytes.as_ptr().cast(),
-                        BytecodeLength: vs_bytes.len(),
-                    },
-                    PS: D3D12_SHADER_BYTECODE {
-                        pShaderBytecode: ps_bytes.as_ptr().cast(),
-                        BytecodeLength: ps_bytes.len(),
-                    },
-                    BlendState: blend,
-                    SampleMask: u32::MAX,
-                    RasterizerState: raster,
-                    DepthStencilState: depth_state,
-                    PrimitiveTopologyType: D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-                    NumRenderTargets: 3,
-                    RTVFormats: rtv_formats,
-                    DSVFormat: DXGI_FORMAT_D32_FLOAT,
-                    SampleDesc: DXGI_SAMPLE_DESC {
-                        Count: 1,
-                        Quality: 0,
-                    },
-                    ..Default::default()
-                })
-                .unwrap();
-            let depth_pso: ID3D12PipelineState = host
-                .device
-                .CreateGraphicsPipelineState(&D3D12_GRAPHICS_PIPELINE_STATE_DESC {
-                    pRootSignature: std::mem::transmute_copy(&root),
-                    VS: D3D12_SHADER_BYTECODE {
-                        pShaderBytecode: vs_d_bytes.as_ptr().cast(),
-                        BytecodeLength: vs_d_bytes.len(),
-                    },
-                    BlendState: blend,
-                    SampleMask: u32::MAX,
-                    RasterizerState: raster,
-                    DepthStencilState: depth_state,
-                    PrimitiveTopologyType: D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-                    NumRenderTargets: 0,
-                    DSVFormat: DXGI_FORMAT_D32_FLOAT,
-                    SampleDesc: DXGI_SAMPLE_DESC {
-                        Count: 1,
-                        Quality: 0,
-                    },
-                    ..Default::default()
-                })
-                .unwrap();
-            (root, mrt_pso, depth_pso)
-        };
-
-        let make_tex = |format: DXGI_FORMAT, flags: D3D12_RESOURCE_FLAGS| -> Held {
-            let heap = D3D12_HEAP_PROPERTIES {
-                Type: D3D12_HEAP_TYPE_DEFAULT,
-                ..Default::default()
-            };
-            let desc = D3D12_RESOURCE_DESC {
-                Dimension: D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-                Width: 4,
-                Height: 4,
-                DepthOrArraySize: 1,
-                MipLevels: 1,
-                Format: format,
-                SampleDesc: DXGI_SAMPLE_DESC {
-                    Count: 1,
-                    Quality: 0,
-                },
-                Flags: flags,
-                ..Default::default()
-            };
-            let iid = ID3D12Resource::IID;
-            let mut out = std::ptr::null();
-            assert_eq!(
-                crate::resource::create_committed(
-                    std::ptr::null(),
-                    (&raw const heap).cast(),
-                    0,
-                    (&raw const desc).cast(),
-                    D3D12_RESOURCE_STATE_COMMON.0 as u32,
-                    std::ptr::null(),
-                    (&raw const iid).cast(),
-                    &mut out,
-                ),
-                S_OK
-            );
-            Held(out)
-        };
-
-        let rts = [
-            make_tex(
-                DXGI_FORMAT_R8G8B8A8_UNORM,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-            ),
-            make_tex(
-                DXGI_FORMAT_R8G8B8A8_UNORM,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-            ),
-            make_tex(
-                DXGI_FORMAT_R8G8B8A8_UNORM,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-            ),
-        ];
-        let depth_tex = make_tex(
-            DXGI_FORMAT_D32_FLOAT,
-            D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE,
-        );
-
-        let heap_iid = crate::object::guid(
-            0x8efb471d,
-            0x616c,
-            0x4f49,
-            [0x90, 0xf7, 0x12, 0x7b, 0xb7, 0x63, 0xfa, 0x51],
-        );
-        let make_desc_heap = |kind: u32, count: u32| -> (HeapHeld, u64) {
-            // Trailing zeroed placement words ensure `create_heap` allocates its own backing.
-            let raw_desc = [u64::from(kind) | (u64::from(count) << 32), 0, 0, 0];
-            let mut heap = std::ptr::null();
-            assert_eq!(
-                crate::descriptor::create_heap(
-                    std::ptr::null(),
-                    raw_desc.as_ptr().cast(),
-                    &heap_iid,
-                    &mut heap,
-                ),
-                S_OK
-            );
-            let start = crate::descriptor::heap(heap).start;
-            (HeapHeld(heap), start)
-        };
-        let (_rtv_heap, rtv_start) = make_desc_heap(2, 4);
-        let (_dsv_heap, dsv_start) = make_desc_heap(3, 1);
-        for (i, rt) in rts.iter().enumerate() {
-            crate::descriptor::create_rtv(
-                std::ptr::null(),
-                rt.0,
-                std::ptr::null(),
-                rtv_start + (i as u64) * 128,
-            );
-        }
-        crate::descriptor::create_dsv(std::ptr::null(), depth_tex.0, std::ptr::null(), dsv_start);
-
+    fn resolve_queries_rejects_overflowing_offset() {
         let null = std::ptr::null();
-        let mut alloc = null;
+        let mut allocator = null;
         assert_eq!(
-            create_allocator(null, 0, &ALLOCATOR_IIDS[0], &mut alloc),
+            create_allocator(null, 0, &ALLOCATOR_IIDS[0], &mut allocator),
             S_OK
         );
-        let alloc = Held(alloc);
         let mut list = null;
         assert_eq!(
-            create_list(null, 0, 0, alloc.0, null, &LIST_IIDS[1], &mut list),
+            create_list(null, 0, 0, allocator, null, &LIST_IIDS[1], &mut list),
             S_OK
         );
-        let list = Held(list);
-        let recorded = host_list(list.0).unwrap();
-        recorded.keep(&root);
-        recorded.keep(&mrt_pso);
-        recorded.keep(&depth_pso);
-
-        for rt in &rts {
-            ensure_state(recorded, rt.0, D3D12_RESOURCE_STATE_RENDER_TARGET.0 as u32);
+        let buffer = crate::resource::test_buffer(64);
+        // Used to overflow `offset + count * 8` (panic in debug, wrap in release).
+        resolve_queries(list, null, 0, 0, 2, buffer, u64::MAX - 8);
+        let release = |o: This| slot::<extern "system" fn(This) -> u32>(o, 0x10)(o);
+        for object in [buffer, list, allocator] {
+            assert_eq!(release(object), 0);
         }
-        ensure_state(
-            recorded,
-            depth_tex.0,
-            D3D12_RESOURCE_STATE_DEPTH_WRITE.0 as u32,
-        );
-        clear_dsv(list.0, dsv_start, 1, 1.0, 0, 0, std::ptr::null());
-
-        type OmSetRenderTargetsFn = extern "system" fn(This, u32, *const u64, i32, *const u64);
-        let om_set = slot::<OmSetRenderTargetsFn>(list.0, 0x190);
-
-        // Pass 1: bind 3 contiguous RTVs via single-range descriptor handle + DSV.
-        om_set(list.0, 3, &rtv_start, 1, &dsv_start);
-        let vp = D3D12_VIEWPORT {
-            Width: 4.0,
-            Height: 4.0,
-            MaxDepth: 1.0,
-            ..Default::default()
-        };
-        let sc = RECT {
-            left: 0,
-            top: 0,
-            right: 4,
-            bottom: 4,
-        };
-        // SAFETY: open command list with bound RTVs/DSV and valid PSO.
-        unsafe {
-            recorded.list.RSSetViewports(&[vp]);
-            recorded.list.RSSetScissorRects(&[sc]);
-            recorded
-                .list
-                .IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            recorded.list.SetGraphicsRootSignature(&root);
-            recorded.list.SetPipelineState(&mrt_pso);
-            recorded.list.DrawInstanced(3, 1, 0, 0);
-        }
-
-        // Pass 2: count == 0 with unaligned invalid non-null pointer in single-range mode
-        // must not dereference `invalid_ptr`, unbinds RTVs, and keeps DSV active for depth draw.
-        om_set(list.0, 0, invalid_ptr, 1, &dsv_start);
-        // SAFETY: open command list with 0 RTVs and bound DSV matching `depth_pso`.
-        unsafe {
-            recorded.list.SetPipelineState(&depth_pso);
-            recorded.list.DrawInstanced(3, 1, 0, 0);
-        }
-
-        // Null single-range base and >8 non-single-range array must both succeed cleanly.
-        om_set(list.0, 4, &zero_first, 1, std::ptr::null());
-        let mut padded = [0u64; 12];
-        padded[0] = rtv_start;
-        om_set(list.0, 12, padded.as_ptr(), 0, std::ptr::null());
-
-        let read_tex = |tex: &Held, fmt: DXGI_FORMAT| -> ID3D12Resource {
-            ensure_state(recorded, tex.0, D3D12_RESOURCE_STATE_COPY_SOURCE.0 as u32);
-            let host_tex = crate::resource::host_resource(tex.0).unwrap();
-            let mut rb: Option<ID3D12Resource> = None;
-            // SAFETY: plain readback buffer creation and texture copy recording.
-            unsafe {
-                host.device
-                    .CreateCommittedResource(
-                        &D3D12_HEAP_PROPERTIES {
-                            Type: D3D12_HEAP_TYPE_READBACK,
-                            ..Default::default()
-                        },
-                        D3D12_HEAP_FLAG_NONE,
-                        &D3D12_RESOURCE_DESC {
-                            Dimension: D3D12_RESOURCE_DIMENSION_BUFFER,
-                            Width: 1024,
-                            Height: 1,
-                            DepthOrArraySize: 1,
-                            MipLevels: 1,
-                            SampleDesc: DXGI_SAMPLE_DESC {
-                                Count: 1,
-                                Quality: 0,
-                            },
-                            Layout: D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-                            ..Default::default()
-                        },
-                        D3D12_RESOURCE_STATE_COPY_DEST,
-                        None,
-                        &mut rb,
-                    )
-                    .unwrap();
-                let rb = rb.unwrap();
-                let dst_loc = D3D12_TEXTURE_COPY_LOCATION {
-                    pResource: std::mem::transmute_copy(&rb),
-                    Type: D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-                    Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 {
-                        PlacedFootprint: D3D12_PLACED_SUBRESOURCE_FOOTPRINT {
-                            Offset: 0,
-                            Footprint: D3D12_SUBRESOURCE_FOOTPRINT {
-                                Format: fmt,
-                                Width: 4,
-                                Height: 4,
-                                Depth: 1,
-                                RowPitch: 256,
-                            },
-                        },
-                    },
-                };
-                let src_loc = D3D12_TEXTURE_COPY_LOCATION {
-                    pResource: std::mem::transmute_copy(host_tex),
-                    Type: D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-                    Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 {
-                        SubresourceIndex: 0,
-                    },
-                };
-                recorded
-                    .list
-                    .CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, None);
-                rb
-            }
-        };
-
-        let rbs = [
-            read_tex(&rts[0], DXGI_FORMAT_R8G8B8A8_UNORM),
-            read_tex(&rts[1], DXGI_FORMAT_R8G8B8A8_UNORM),
-            read_tex(&rts[2], DXGI_FORMAT_R8G8B8A8_UNORM),
-        ];
-        let depth_rb = read_tex(&depth_tex, DXGI_FORMAT_D32_FLOAT);
-        assert_eq!(close(list.0), S_OK);
-        host.execute(&[recorded]);
-
-        let expected_colors = [[255u8, 0, 0, 255], [0, 255, 0, 255], [0, 0, 255, 255]];
-        for (rb, want) in rbs.iter().zip(expected_colors) {
-            let mut ptr = std::ptr::null_mut();
-            // SAFETY: submission finished; `rb` holds 4 rows at 256-byte pitch.
-            unsafe {
-                rb.Map(0, None, Some(&mut ptr)).unwrap();
-                for y in 0..4usize {
-                    for x in 0..4usize {
-                        let px = ptr
-                            .cast::<u8>()
-                            .add(y * 256 + x * 4)
-                            .cast::<[u8; 4]>()
-                            .read_unaligned();
-                        assert_eq!(px, want);
-                    }
-                }
-                rb.Unmap(0, None);
-            }
-        }
-
-        let mut dptr = std::ptr::null_mut();
-        // SAFETY: submission finished; `depth_rb` holds 4 rows of f32 at 256-byte pitch.
-        unsafe {
-            depth_rb.Map(0, None, Some(&mut dptr)).unwrap();
-            for y in 0..4usize {
-                for x in 0..4usize {
-                    let d = dptr
-                        .cast::<u8>()
-                        .add(y * 256 + x * 4)
-                        .cast::<f32>()
-                        .read_unaligned();
-                    assert!((d - 0.25).abs() < 1e-6, "unexpected depth {d}");
-                }
-            }
-            depth_rb.Unmap(0, None);
-        }
-        assert_eq!(DEBUG_ERRORS.load(Ordering::Relaxed), 0);
     }
 }

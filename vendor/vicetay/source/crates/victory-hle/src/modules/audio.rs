@@ -497,10 +497,9 @@ impl Xma {
         let start = Instant::now();
         let mut active = 0;
         for index in 0..self.voices.len() as u32 {
-            if let (Some(context), Some(voice)) = (
-                self.context(index),
-                &mut *lock(&self.voices[index as usize]),
-            ) {
+            if let (Some(context), Some(voice)) =
+                (self.context(index), &mut *lock(&self.voices[index as usize]))
+            {
                 pump(context, voice);
                 active += 1;
             }
@@ -518,7 +517,16 @@ fn pump(context: Context, voice: &mut Voice) {
         return;
     }
     while context.field(1, 31, 1) == 1 {
-        if voice.pcm.len() < SAMPLES_PER_BLOCK && !decode(context, voice) {
+        // A skipped frame or an input boundary can advance the decoder without
+        // producing samples. Publish only complete blocks, except the final
+        // padded tail. Limit empty steps so a broken looping voice cannot hold
+        // its lock or stall other voices for the whole decoding pass.
+        for _ in 0..8 {
+            if voice.pcm.len() >= SAMPLES_PER_BLOCK || !decode(context, voice) {
+                break;
+            }
+        }
+        if voice.pcm.is_empty() || (voice.pcm.len() < SAMPLES_PER_BLOCK && !voice.ended) {
             return;
         }
         // The write block is the title's too: taken modulo the ring before
@@ -550,12 +558,21 @@ fn pump(context: Context, voice: &mut Voice) {
 /// Decodes the next frame of the current input into `voice.pcm`; false
 /// when there is nothing left to decode.
 fn decode(context: Context, voice: &mut Voice) -> bool {
+    let valid = context.field(0, 20, 2);
     if voice.ended {
-        return false;
+        // The title can refill either input while the context stays enabled.
+        // Flush the previous tail once and leave the ring idle until a valid
+        // buffer is published. The decoder resets its overlap when flushed.
+        if valid == 0 {
+            return false;
+        }
+        voice.ended = false;
+        if context.field(2, 26, 5) == INPUT_INVALID {
+            context.set_field(2, 26, 6, 0);
+        }
     }
     let channels = context.channels();
     let mut current = context.field(4, 31, 1);
-    let valid = context.field(0, 20, 2);
     if valid & (1 << current) == 0 {
         if valid & (1 << (1 - current)) == 0 {
             // Out of input: the overlap tail, then nothing.
@@ -662,10 +679,7 @@ fn dump_input(index: u32, context: Context) {
     );
     let _ = std::fs::create_dir_all(&dir);
     let _ = std::fs::write(dir.join(format!("{n:02}-{index}.ctx")), words);
-    let _ = std::fs::write(
-        dir.join(format!("{n:02}-{index}.xma")),
-        input.unwrap_or_default(),
-    );
+    let _ = std::fs::write(dir.join(format!("{n:02}-{index}.xma")), input.unwrap_or_default());
 }
 
 /// Starts the decoding thread on the first enabled voice, and has it fill
@@ -1175,10 +1189,7 @@ mod tests {
         // Blocks 2, 3 and 0 written (silence), 1 left for the title, and
         // nothing past the ring.
         assert_eq!((write, writable), (1, 0));
-        assert!(
-            ring[0x400..].iter().all(|&b| b == 0x55),
-            "written past the ring"
-        );
+        assert!(ring[0x400..].iter().all(|&b| b == 0x55), "written past the ring");
         let block = |n: usize| &ring[n * 0x100..(n + 1) * 0x100];
         assert!([0, 2, 3].iter().all(|&n| block(n).iter().all(|&b| b == 0)));
         assert!(block(1).iter().all(|&b| b == 0x55));

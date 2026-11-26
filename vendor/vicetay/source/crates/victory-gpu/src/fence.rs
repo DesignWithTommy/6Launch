@@ -39,44 +39,40 @@ struct Fence {
     waiters: Mutex<Vec<(u64, usize)>>,
 }
 
-/// The fences that may have events waiting. A list can write a fence's
-/// value at its GPU address, which is no call of ours: the events of these
-/// are looked at wherever such a write may have landed ([`wake_reached`]).
-/// Locked before a fence's `waiters`.
-static WAITED: Mutex<Vec<usize>> = Mutex::new(Vec::new());
-
-impl Drop for Fence {
-    fn drop(&mut self) {
-        let at = std::ptr::from_ref::<Fence>(self) as usize;
-        let mut waited = WAITED.lock().unwrap_or_else(|e| e.into_inner());
-        waited.retain(|&f| f != at);
-    }
-}
-
-/// Sets the events whose fences have reached their values by a write to the
-/// fence's memory (a list's bottom-of-pipe write), as [`set`] does for a
-/// signal. Called where the queues look at their own fence waits again.
-pub(crate) fn wake_reached() {
-    let mut waited = WAITED.lock().unwrap_or_else(|e| e.into_inner());
-    waited.retain(|&f| {
-        // SAFETY: a live fence: one released is taken off the list.
-        let fence = unsafe { &*(f as *const Fence) };
-        let mut waiters = fence.waiters.lock().unwrap_or_else(|e| e.into_inner());
-        let value = fence.value.load(Ordering::Acquire);
-        waiters.retain(|&(wanted, event)| {
-            let reached = wanted <= value;
-            if reached {
-                set_event(event);
-            }
-            !reached
-        });
-        !waiters.is_empty()
-    });
-}
-
 fn fence<'a>(this: This) -> &'a Fence {
     // SAFETY: called from fence methods only.
     unsafe { &*this.cast::<Fence>() }
+}
+
+/// Keeps a fence alive until the queue finishes using it.
+#[cfg(windows)]
+#[derive(PartialEq, Eq)]
+pub(crate) struct FenceRef(usize);
+
+#[cfg(windows)]
+impl FenceRef {
+    pub(crate) fn hold(this: This) -> Self {
+        object::add_ref(this);
+        Self(this as usize)
+    }
+
+    pub(crate) fn as_this(&self) -> This {
+        self.0 as This
+    }
+}
+
+#[cfg(windows)]
+impl Clone for FenceRef {
+    fn clone(&self) -> Self {
+        Self::hold(self.as_this())
+    }
+}
+
+#[cfg(windows)]
+impl Drop for FenceRef {
+    fn drop(&mut self) {
+        release(self.as_this());
+    }
 }
 
 pub(crate) extern "system" fn create(
@@ -120,9 +116,15 @@ extern "system" fn release(this: This) -> u32 {
 pub(crate) extern "system" fn completed(this: This) -> u64 {
     fence(this).value.load(Ordering::Acquire)
 }
+/// The title's `GetCompletedValue`.
+extern "system" fn completed_called(this: This) -> u64 {
+    let value = completed(this);
+    #[cfg(all(windows, feature = "diagnostics"))]
+    crate::timeline::polled(this as usize, value);
+    value
+}
 extern "system" fn set_event_on_completion(this: This, value: u64, event: *mut c_void) -> HRESULT {
     let fence = fence(this);
-    let mut waited = WAITED.lock().unwrap_or_else(|e| e.into_inner());
     let mut waiters = fence.waiters.lock().unwrap_or_else(|e| e.into_inner());
     if fence.value.load(Ordering::Acquire) >= value {
         if !event.is_null() {
@@ -130,6 +132,8 @@ extern "system" fn set_event_on_completion(this: This, value: u64, event: *mut c
         }
         return S_OK;
     }
+    #[cfg(all(windows, feature = "diagnostics"))]
+    crate::timeline::told("an event asked for", this as usize, value);
     if event.is_null() {
         // With submissions sent to the card and not waited for
         // (`crate::host::late`) the signal may be behind them: they are
@@ -137,12 +141,37 @@ extern "system" fn set_event_on_completion(this: This, value: u64, event: *mut c
         #[cfg(windows)]
         if crate::host::late() {
             drop(waiters);
-            drop(waited);
+            crate::queue::before_sync();
             crate::host::settle_for_fence();
             if fence.value.load(Ordering::Acquire) >= value {
                 return S_OK;
             }
-            tracing::warn!(value, "blocking fence wait not implemented");
+            let deadline = std::time::Instant::now() + std::time::Duration::from_millis(250);
+            loop {
+                let current = fence.value.load(Ordering::Acquire);
+                if current >= value {
+                    return S_OK;
+                }
+                let now = std::time::Instant::now();
+                if now >= deadline {
+                    break;
+                }
+                let ms = (deadline - now).as_millis().min(10) as u32;
+                // SAFETY: wait on the atomic u64 until woken by WakeByAddressAll or timeout.
+                unsafe {
+                    windows_sys::Win32::System::Threading::WaitOnAddress(
+                        (&raw const fence.value).cast(),
+                        (&raw const current).cast(),
+                        size_of::<u64>(),
+                        ms.max(1),
+                    );
+                }
+                crate::queue::release_held(false);
+            }
+            if fence.value.load(Ordering::Acquire) >= value {
+                return S_OK;
+            }
+            tracing::warn!(value, "blocking fence wait timed out");
             return E_NOTIMPL;
         }
         // shortcut: a null event means "block until reached"; nothing can
@@ -151,14 +180,13 @@ extern "system" fn set_event_on_completion(this: This, value: u64, event: *mut c
         return E_NOTIMPL;
     }
     waiters.push((value, event as usize));
-    if !waited.contains(&(this as usize)) {
-        waited.push(this as usize);
-    }
     S_OK
 }
 /// Moves the fence to `value` and sets the events that waited for it.
 pub(crate) fn set(this: This, value: u64) {
     let fence = fence(this);
+    #[cfg(all(windows, feature = "diagnostics"))]
+    crate::timeline::told("a fence set", this as usize, value);
     let mut waiters = fence.waiters.lock().unwrap_or_else(|e| e.into_inner());
     fence.value.store(value, Ordering::Release);
     waiters.retain(|&(wanted, event)| {
@@ -168,8 +196,15 @@ pub(crate) fn set(this: This, value: u64) {
         }
         !reached
     });
+    drop(waiters);
+    #[cfg(windows)]
+    // SAFETY: wake any guest thread polling/blocking via WaitOnAddress on the fence's GPU VA.
+    unsafe {
+        windows_sys::Win32::System::Threading::WakeByAddressAll((&raw const fence.value).cast());
+    }
 }
 pub(crate) extern "system" fn signal(this: This, value: u64) -> HRESULT {
+    let _called = crate::timeline::span("a fence set");
     set(this, value);
     // A queue may have waited for it: what it held runs now.
     #[cfg(windows)]
@@ -192,7 +227,7 @@ static FUNCTIONS: Table<24> = {
     f[0] = query as *const ();
     f[2] = release as *const ();
     f[7] = object::parent_device as *const (); // 0x38
-    f[8] = completed as *const (); // 0x40
+    f[8] = completed_called as *const (); // 0x40
     f[9] = set_event_on_completion as *const (); // 0x48
     f[10] = signal as *const (); // 0x50
     f[11] = creation_flags as *const (); // 0x58
@@ -204,6 +239,19 @@ static FUNCTIONS: Table<24> = {
 mod tests {
     use super::*;
     use crate::object::slot;
+
+    #[cfg(windows)]
+    #[test]
+    fn queued_references_keep_the_fence_alive_after_release() {
+        let mut f = std::ptr::null();
+        assert_eq!(create(std::ptr::null(), 1, 0, &FENCE_IIDS[0], &mut f), S_OK);
+        let queued = FenceRef::hold(f);
+        let waiting = queued.clone();
+        assert_eq!(release(f), 2);
+        drop(waiting);
+        set(queued.as_this(), 5);
+        assert_eq!(completed(queued.as_this()), 5);
+    }
 
     #[cfg(windows)]
     #[test]
@@ -233,27 +281,9 @@ mod tests {
         let at = slot::<extern "system" fn(This) -> u64>(f, 0x60)(f);
         // SAFETY: the fence's value.
         assert_eq!(unsafe { *(at as *const u64) }, 5);
-        // A list writes the value at that address: the events waiting for
-        // it are set where such a write may have landed.
-        assert_eq!(wait(f, 8, event), S_OK);
-        wake_reached();
-        // SAFETY: as above.
-        assert_ne!(unsafe { WaitForSingleObject(event, 0) }, WAIT_OBJECT_0);
-        // SAFETY: the fence's value.
-        unsafe { (at as *mut u64).write(8) };
-        wake_reached();
-        // SAFETY: as above.
-        assert_eq!(unsafe { WaitForSingleObject(event, 0) }, WAIT_OBJECT_0);
-        // Once: the waiter is gone.
-        wake_reached();
-        // SAFETY: as above.
-        assert_ne!(unsafe { WaitForSingleObject(event, 0) }, WAIT_OBJECT_0);
-        // A fence released with a waiter is not looked at again.
-        assert_eq!(wait(f, 20, event), S_OK);
         // SAFETY: ours.
         unsafe { CloseHandle(event) };
         assert_eq!(slot::<extern "system" fn(This) -> u32>(f, 0x10)(f), 0);
-        wake_reached();
     }
 
     #[test]
@@ -288,5 +318,4 @@ mod tests {
         assert_eq!(slot::<Release>(queried, 0x10)(queried), 1);
         assert_eq!(slot::<Release>(f, 0x10)(f), 0);
     }
-
 }

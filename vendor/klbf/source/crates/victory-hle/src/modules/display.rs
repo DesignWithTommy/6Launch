@@ -185,10 +185,13 @@ mod tests {
         type Acquire = extern "system" fn(This, *mut *mut c_void) -> HRESULT;
         type Close = extern "system" fn(This, *mut c_void);
         let mut handle = std::ptr::null_mut();
-        assert_eq!(
-            method::<Acquire>(&SHELL_OBJECT, 0x20)(&SHELL_OBJECT, &mut handle),
-            S_OK
-        );
+        let hr = method::<Acquire>(&SHELL_OBJECT, 0x20)(&SHELL_OBJECT, &mut handle);
+        // A session with no display (a service, SSH) has no display power
+        // request: ERROR_NOT_SUPPORTED.
+        if hr == 0x8007_0032_u32 as HRESULT {
+            return;
+        }
+        assert_eq!(hr, S_OK);
         assert!(!handle.is_null());
         method::<Close>(&SHELL_OBJECT, 0x28)(&SHELL_OBJECT, handle);
     }

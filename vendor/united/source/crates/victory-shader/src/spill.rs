@@ -29,7 +29,6 @@ const FIRST: u32 = 16;
 pub fn build(native: &NativeProgram) -> Result<Program, ShaderError> {
     let mut p = ir::build(&native.patched_code(), native.wave64, native.vgprs)?;
     user_data(&mut p, native);
-    crate::merged::prepare(&mut p, native);
     Ok(p)
 }
 
@@ -162,7 +161,7 @@ pub fn user_data(p: &mut Program, native: &NativeProgram) -> usize {
         'insts: for (i, inst) in block.insts.iter().enumerate() {
             let Fields::Smem {
                 data: Some(Operand::Scalar { code: first, .. }),
-                base: Some(Operand::Scalar { code: base, .. }),
+                base: Operand::Scalar { code: base, .. },
                 offset,
                 soffset,
                 ..

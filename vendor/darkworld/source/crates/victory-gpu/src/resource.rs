@@ -495,6 +495,7 @@ fn twin_texture(
         TWINS[1].fetch_add(1, Relaxed);
         return None;
     };
+    crate::cardmem::enter(&texture, crate::cardmem::Owner::DepthTwins);
     crate::host::name(&texture, || {
         format!("depth twin {}x{} f{}", d.width, d.height, d.format)
     });
@@ -519,7 +520,7 @@ fn twin_texture(
                 Some(&mut bytes),
             );
         }
-        let Some(buffer) = host.uav_buffer(bytes) else {
+        let Some(buffer) = host.uav_buffer(bytes, crate::cardmem::Owner::DepthTwins) else {
             TWINS[1].fetch_add(1, Relaxed);
             return None;
         };
@@ -555,6 +556,7 @@ fn twin_texture(
             tracing::warn!(error = %e, desc = ?d, "no twin for a depth plane");
         }
         texture.map(|texture| {
+            crate::cardmem::enter(&texture, crate::cardmem::Owner::DepthTwins);
             crate::host::name(&texture, || {
                 format!("depth plane twin {}x{} f{}", d.width, d.height, d.format)
             });
@@ -1377,6 +1379,14 @@ fn hosted(this: This, make: bool) -> Option<Made> {
             None => HostTexture::new(texture, state),
         };
         host.filled = fills(&r.desc);
+        crate::cardmem::enter(
+            &host.texture,
+            match (host.tiled.is_some(), host.filled) {
+                (true, _) => crate::cardmem::Owner::Reserved,
+                (false, true) => crate::cardmem::Owner::TitleTextures,
+                (false, false) => crate::cardmem::Owner::HostTargets,
+            },
+        );
         if host.filled {
             KINDS[0].fetch_add(1, Relaxed);
             KINDS[1].fetch_add(host.bytes, Relaxed);
@@ -1391,7 +1401,7 @@ fn hosted(this: This, make: bool) -> Option<Made> {
         // are made before the next submission runs.
         crate::descriptor::texture_made(this as usize);
     }
-    r.host.used.store(crate::host::moment(), Relaxed);
+    crate::host::stamp(&r.host.used);
     made.clone()
 }
 
@@ -1436,12 +1446,14 @@ pub(crate) fn room() -> bool {
         return true;
     }
     match crate::host::host().and_then(|h| h.video_memory()) {
-        // What is kept for card copies of title buffers not made yet
-        // (`crate::shadow::card_room_kept`) and for the render targets a
+        // What is kept for card copies of title buffers and for windows'
+        // card sides not made yet (`crate::shadow::card_room_kept`,
+        // `crate::shadow::window_room_kept`) and for the render targets a
         // world makes in its first frame ([`targets_room_kept`]) counts as
         // used.
         Some([budget, used, ..]) => {
-            used + crate::shadow::card_room_kept() + targets_room_kept() < budget / 100 * room_percent()
+            used + crate::shadow::card_room_kept() + crate::shadow::window_room_kept() + targets_room_kept()
+                < budget / 100 * room_percent()
         }
         None => filled < WITHOUT_BUDGET,
     }
@@ -3332,7 +3344,7 @@ mod tests {
                 pattern[row * 256 + b] = (1 + row * 8 + b) as u8;
             }
         }
-        let (upload, data) = host.upload_buffer(2048).unwrap();
+        let (upload, data) = host.upload_buffer(2048, crate::cardmem::Owner::Staging).unwrap();
         // SAFETY: the buffer's mapping, 2048 bytes.
         unsafe {
             std::ptr::copy_nonoverlapping(pattern.as_ptr(), data, 1024);
@@ -3500,7 +3512,7 @@ mod tests {
                 pattern[row * 256 + b] = (1 + row * 4 + b) as u8;
             }
         }
-        let (upload, data) = host.upload_buffer(1024).unwrap();
+        let (upload, data) = host.upload_buffer(1024, crate::cardmem::Owner::Staging).unwrap();
         // SAFETY: the buffer's mapping, 1024 bytes.
         unsafe { std::ptr::copy_nonoverlapping(pattern.as_ptr(), data, 1024) };
         let readback_heap = D3D12_HEAP_PROPERTIES {
@@ -3696,7 +3708,7 @@ mod tests {
             let at = i / 4 * 256 + i % 4 * 2;
             pattern[at..at + 2].copy_from_slice(&class.to_le_bytes());
         }
-        let (upload, data) = host.upload_buffer(1024).unwrap();
+        let (upload, data) = host.upload_buffer(1024, crate::cardmem::Owner::Staging).unwrap();
         // SAFETY: the buffer's mapping, 1024 bytes.
         unsafe { std::ptr::copy_nonoverlapping(pattern.as_ptr(), data, 1024) };
         let buffer = |kind: D3D12_HEAP_TYPE, state: D3D12_RESOURCE_STATES| {

@@ -1,9 +1,11 @@
 <p align="center"><img src="docs/klbf/logo.svg" width="120" alt="KLBF Lab"></p>
 <h1 align="center">KLBF Lab</h1>
 <p align="center">
-  <img src="https://img.shields.io/badge/version-Lab%2035-1f46c8" alt="version: Lab 35">
-  <img src="https://img.shields.io/badge/prologue-~7%20fps-1f46c8" alt="prologue: about 7 fps">
+  <a href="https://github.com/PastiiJay/klbf-lab/tree/beta-2"><img src="https://img.shields.io/badge/real%20play-14.0%20fps%20avg%2C%2037%20min-2ea44f" alt="real play: 14.0 fps average over 37 minutes"></a>
+  <img src="https://img.shields.io/badge/stable%20code%20on%20main-Lab%2035-1f46c8" alt="stable code on main: Lab 35">
   <img src="https://img.shields.io/badge/license-GPL--3.0-555" alt="GPL-3.0">
+  <a href="https://github.com/PastiiJay/klbf-lab/tree/beta-2"><img src="https://img.shields.io/badge/new%20test%20build-Lab%2063%20(beta--2)-2ea44f" alt="new test build: Lab 63 on beta-2"></a>
+  <a href="docs/klbf/MEASUREMENT.md"><img src="https://img.shields.io/badge/fps-shared%20measurement%20method-2ea44f" alt="shared measurement method"></a>
 </p>
 
 <p align="center"><b>Played from a new game to the open world: the first character's prologue and the second character's first mission completed, free roam from the second character's house, on an AMD Radeon RX 9070 XT.</b></p>
@@ -15,7 +17,61 @@ This is the one version we recommend. It is meant for every graphics card; so fa
 > [!TIP]
 > **Playing on Linux / Proton?** Our Linux work is led by community member **[@zocram4cc](https://github.com/zocram4cc)**: see his Wine/Proton fixes ([#34](https://github.com/PastiiJay/klbf-lab/pull/34), [#35](https://github.com/PastiiJay/klbf-lab/pull/35)), the [Linux notes in the guide](docs/GUIDE.md#linux--proton-community-notes) and the RX 7800 XT report by [@Adiker](https://github.com/Adiker) ([#19](https://github.com/PastiiJay/klbf-lab/issues/19)). Post Linux results in an issue and tag @zocram4cc.
 
-## Status (2026-11-25, Lab 35)
+## New test build: Lab 63 on [`beta-2`](https://github.com/PastiiJay/klbf-lab/tree/beta-2) (26 Nov 2026)
+
+> **🧪🌴 New: KLBF Lab Bench · Bayside Morning v1.** A 5-minute hands-off test from the same spot for everyone, input locked, with a certified postcard at the end. [How to run it](docs/klbf/BENCH-BM-V1.md) · [Results by hardware](docs/klbf/BAYSIDE-MORNING-V1.md). Lab 63 also fixes dark faces in shade and skips the intro movie on request.
+>
+> <!-- latest-run-start -->
+> **Latest run:** 2026-11-26 · [vShotv](https://github.com/vShotv) · [PastiiJay/klbf-lab@bedecd6](https://github.com/PastiiJay/klbf-lab/tree/bedecd6) · NVIDIA GeForce RTX 4070 / AMD Ryzen 5 7600 6-Core Processor · 8.3 fps avg (median 8.9, 1 % low 2.4) · profile X, none · [card](https://github.com/user-attachments/assets/f3299aa6-89af-46b1-91a2-b7288f44b22f) · [JSON](docs/klbf/bench/bm-v1/KLBF-Bench-BM-v1-20261126-2011-eb51f9b4.json)
+>
+> <a href="https://github.com/user-attachments/assets/f3299aa6-89af-46b1-91a2-b7288f44b22f"><img src="https://github.com/user-attachments/assets/f3299aa6-89af-46b1-91a2-b7288f44b22f" width="560" alt="KLBF Lab Bench card"></a>
+> <!-- latest-run-end -->
+
+> **📏 A shared frame-rate standard.** Numbers between projects cannot be compared today (empty seas, menus, one lucky second). We propose one method for everyone: same starting save, same route, three tables (frame rate seen in the world, stability index, average performance index). **[Read the method](docs/klbf/MEASUREMENT.md)**, use it, and post your numbers.
+
+Lab 61 (the build these figures were measured on), a test build on the **[`beta-2` branch](https://github.com/PastiiJay/klbf-lab/tree/beta-2)**: correct faces and hair, many more frames per second, and a launcher (`play.ps1`). Measured in a real play session with a controller on an RX 9070 XT 16 GB, Ryzen 7 9800X3D, 32 GB RAM, Series S profile + FSR 4, following the shared method. No cherry-picked numbers: these come from ordinary play.
+
+**Frame rate seen in the world** (peaks by situation)
+
+| Situation | fps |
+|---|---|
+| Standing still, looking at the sky | up to 27 |
+| On foot in a quiet area (by a lake or a river) | up to 23 |
+| Standing still in traffic, busy neighbourhood | up to 17 |
+| On foot on a motorway slip road | up to 16 |
+| On foot in a busy neighbourhood | up to 14 |
+| Driving over a bridge above water | up to 17 |
+| Driving a truck at moderate speed | up to 15 |
+| Driving fast through streets (the world streams in) | up to 12 |
+
+<!-- live-start -->
+**Stability index**: how the frame rate is spread over a real play session still running, **37 minutes so far without a crash** (385 samples, on foot and driving; updated every 5 minutes of play):
+
+| fps | Share of the time |
+|---|---|
+| 18 and more | 16 % |
+| 15–18 | 28 % |
+| 12–15 | 30 % |
+| 9–12 | 15 % |
+| 5–9 | 5 % |
+| under 5 (freezes) | 6 % |
+
+**Average performance index**, same session: average 14.0 fps, median 14.5, 5 % low 1.8, 1 % low 0.4 (the lows are the freezes).
+<!-- live-end -->
+
+Known issues:
+- Occasional freezes when the card or PC memory fills (try `-LowMemory`).
+- Some shadows flicker near trees; very distant trees sometimes flash black.
+- Water surfaces are not drawn (the water is invisible or see-through), and lake water sometimes flickers; swimming still works.
+- Mirrors stay black (they need ray tracing).
+- Car windows (glass) are not drawn: you can break into a car but the glass is invisible.
+- Resolution is Series S, upscaled.
+
+
+<details>
+<summary><b>Older status: Lab 35 (25 Nov 2026), the stable code on this branch</b></summary>
+
+### Status (2026-11-25, Lab 35)
 
 Tested on one machine: AMD Radeon RX 9070 XT 16 GB (Adrenalin 32.0.32029.2010), AMD Ryzen 7 9800X3D, 32 GB RAM, Windows 11. Self-reported, one machine so far.
 
@@ -34,9 +90,11 @@ Tested on one machine: AMD Radeon RX 9070 XT 16 GB (Adrenalin 32.0.32029.2010), 
 
 > **Stability policy:** we never publish a build that crashed in our tests. Every session length shown here is when **we** stopped, to get back to work on the project or because a test run reached its planned end, not a crash.
 
-### Why AMD FSR
+#### Why AMD FSR
 
 The recommended settings render the world at 1280×720 and upscale it to 1920×1080 with **AMD FSR** (FidelityFX Super Resolution). The game itself does the same on console: it ships with its own FSR upscaler and calls it every frame. KLBF Lab hands that call to AMD's official FidelityFX SDK on the PC, so the picture is upscaled the way the game expects, and the frame rate goes up by about a third. FSR works on AMD, NVIDIA and Intel cards. Native resolution without FSR is listed too (~5 fps).
+
+</details>
 
 ## Built by KLBF Lab
 
@@ -142,8 +200,7 @@ These are a few runs on one machine: other cards and drivers may behave differen
 ### Step by step
 
 1. **Install the tools:** [Rust](https://rustup.rs) and Git. You also need your own copy of the game's Xbox Series files on disk, and 32 GB of RAM or a large Windows page file (a run commits about 20 GB).
-2. **Get the code and build it:** `git clone https://github.com/PastiiJay/klbf-lab` (or `git clone -b beta https://github.com/PastiiJay/klbf-lab` for the test build), `cd klbf-lab`, then `cargo build --release`. The program is `target
-eleaseictory.exe`.
+2. **Get the code and build it:** `git clone https://github.com/PastiiJay/klbf-lab` (or `git clone -b beta https://github.com/PastiiJay/klbf-lab` for the test build), `cd klbf-lab`, then `cargo build --release`. The program is `target\release\victory.exe`.
 3. **Get the FidelityFX SDK** (see the box above) for the recommended Series S settings.
 4. **Pre-build the pipelines, once.** This compiles all of the game's shaders for your graphics card ahead of time, so the game doesn't stutter or crash on them while you play. It takes about 10 to 20 minutes. If it crashes (the AMD driver sometimes does), just run the same command again: it resumes and remembers the shaders that crashed. Run it again after updating KLBF Lab. Set the same variables as for playing first (step 5), then:
 
@@ -171,7 +228,7 @@ target\release\victory.exe run --console series-s <game dir>\<the title's exe> -
 `--console series-s` makes the title render at 1280×720, and AMD FSR (from the official [FidelityFX SDK](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK)) upscales it to 1920×1080: that is the ~7 fps setting. Without `--console series-s` the title renders at its native resolution (~5 fps here).
 
 > [!TIP]
-> With the recommended settings the start screen and the main menu stay **black**: the title is running behind it. Press **A** on the controller (or **Enter** on the keyboard, with the game window focused) to get past them; the picture appears once the world loads. Plug the controller in **before** starting: plugging it in during play pauses the title.
+> With the recommended settings the start screen and the main menu stay **black**: the title is running behind it. Press **A** on the controller to get past them (the keyboard works on the start screen, but the account picker only answers the controller, [#69](https://github.com/PastiiJay/klbf-lab/issues/69)); the picture appears once the world loads. Plug the controller in **before** starting: plugging it in during play pauses the title.
 
 If the device is lost about a minute after the world starts loading (reported on an RX 9070 non-XT, [#6](https://github.com/PastiiJay/klbf-lab-beta/issues/6)), try `VICTORY_LATE_WAIT=0`.
 

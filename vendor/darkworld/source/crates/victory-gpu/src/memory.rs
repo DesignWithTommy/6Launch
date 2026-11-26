@@ -95,7 +95,7 @@ impl Memory {
     fn new() -> Option<Memory> {
         let host = host()?;
         let make = |dwords: u64, what: &str| {
-            let (buffer, data) = host.shared_buffer(dwords * 4)?;
+            let (buffer, data) = host.shared_buffer(dwords * 4, crate::cardmem::Owner::PcOther)?;
             crate::host::name(&buffer, || format!("title memory by address: {what}"));
             // SAFETY: a fresh mapping of at least that many bytes.
             unsafe { std::ptr::write_bytes(data, 0, (dwords * 4) as usize) };
@@ -281,13 +281,13 @@ pub(crate) fn ready(
         None => {
             // Held for the heap's life: not given back with a list's slots.
             let base = heap.dynamic(COPIES + 1)?;
-            heap.null_raw_uav_at(base);
+            heap.null_raw_uav_at(base, true);
             (base, 0)
         }
     };
     for (n, shadow) in m.copies.iter().enumerate().skip(made as usize) {
         let (_, len) = shadow.span();
-        heap.raw_uav_at(base + 1 + n as u32, &shadow.buffer, 0, len);
+        heap.raw_uav_at(base + 1 + n as u32, &shadow.buffer, 0, len, true);
     }
     m.heaps.insert(key, (base, m.copies.len() as u32));
     // Once per list, and for copies numbered since: the builder alone

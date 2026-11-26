@@ -63,14 +63,9 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    pub(crate) fn new(offset: usize, encoding: Encoding, opcode: u16, words: Vec<u32>) -> Self {
-        Self {
-            offset,
-            encoding,
-            opcode,
-            words,
-            name: name(encoding, opcode),
-        }
+    /// An instruction of these words, its name resolved.
+    pub fn new(offset: usize, encoding: Encoding, opcode: u16, words: Vec<u32>) -> Self {
+        Self { offset, encoding, opcode, words, name: name(encoding, opcode) }
     }
 
     /// AMD's name for the opcode, if it is in our table.
@@ -297,12 +292,13 @@ fn instruction(code: &[u8], offset: usize) -> Result<Instruction, ShaderError> {
         }
     };
     let opcode = opcode as u16;
-    Ok(Instruction::new(
+    Ok(Instruction {
         offset,
         encoding,
         opcode,
-        (0..len).map(word).collect::<Result<_, _>>()?,
-    ))
+        words: (0..len).map(word).collect::<Result<_, _>>()?,
+        name: name(encoding, opcode),
+    })
 }
 
 fn name(encoding: Encoding, opcode: u16) -> Option<&'static str> {

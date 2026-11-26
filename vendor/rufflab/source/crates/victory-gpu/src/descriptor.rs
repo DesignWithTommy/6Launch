@@ -124,14 +124,15 @@ const SAMPLERS: u32 = 1;
 const SHADER_VISIBLE: u32 = 1;
 
 /// Shader-visible heaps by address range, for mirroring descriptor writes:
-/// start, end, heap.
+/// start, end, heap. Uses `RwLock` so concurrent draw-recording threads never
+/// serialize behind `sync_heaps` or one another (`Marvisak/VIctory#2821`).
 #[cfg(windows)]
-static SHADER_HEAPS: std::sync::Mutex<Vec<(u64, u64, usize)>> = std::sync::Mutex::new(Vec::new());
+static SHADER_HEAPS: std::sync::RwLock<Vec<(u64, u64, usize)>> = std::sync::RwLock::new(Vec::new());
 
 /// The shader-visible heap holding `handle`, and the descriptor's index.
 #[cfg(windows)]
 fn shader_slot<'a>(handle: u64) -> Option<(&'a Heap, u32)> {
-    let heaps = SHADER_HEAPS.lock().unwrap_or_else(|e| e.into_inner());
+    let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
     let &(_, _, at) = heaps
         .iter()
         .find(|&&(start, end, _)| (start..end).contains(&handle))?;
@@ -176,11 +177,12 @@ pub(crate) fn sync_heaps() {
         return;
     }
     let started = std::time::Instant::now();
-    let (mut pages, mut looked, mut mirrored) = (0u64, 0u64, 0u64);
-    let mut page_bytes: Vec<u8> = Vec::new();
-    let heaps = SHADER_HEAPS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut pages = 0u64;
+    let mut looked = 0u64;
+    let mut mirrored = 0u64;
+    let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
     for &(start, end, at) in heaps.iter() {
-        // SAFETY: registered heaps are live (removed when dropped).
+        // SAFETY: registered heaps are live (removed when dropped under write lock).
         let heap = unsafe { &*(at as *const Heap) };
         let (Some(Some(host)), Some(written), Some(step)) =
             (heap.host.get(), &heap.written, increment(heap.desc.kind))
@@ -191,17 +193,26 @@ pub(crate) fn sync_heaps() {
         // Capped host heaps have no counterparts for the title slots reserved
         // for per-draw tables; raw writes there must not be mirrored.
         let mirrored_count = heap.desc.count.min(host.count());
+        let mut work: Vec<(usize, usize)> = Vec::new();
         for (range_from, range_end) in written.take(start as usize, end as usize) {
             let mut page = range_from & !(crate::watch::PAGE - 1);
             while page < range_end {
                 let from = page.max(range_from);
                 let to = (page + crate::watch::PAGE).min(range_end);
+                work.push((from, to));
+                page += crate::watch::PAGE;
+            }
+        }
+        let process = |chunk: &[(usize, usize)]| -> (u64, u64, u64) {
+            let (mut p, mut l, mut m) = (0u64, 0u64, 0u64);
+            let mut page_bytes: Vec<u8> = Vec::with_capacity(crate::watch::PAGE);
+            for &(from, to) in chunk {
                 // The page's records are read through the kernel, into a
                 // copy: a page the title unmaps meanwhile fails the read
                 // where 2,048 reads in place would fault.
                 page_bytes.resize(to - from, 0);
                 if crate::host::read_into(from as *const u8, &mut page_bytes) {
-                    pages += 1;
+                    p += 1;
                     let slots = changed_slots(from, to, start as usize, step, mirrored_count);
                     for index in slots {
                         let handle = start + index * step;
@@ -213,16 +224,40 @@ pub(crate) fn sync_heaps() {
                         let Some(record) = page_bytes.get(at..at + step as usize) else {
                             continue;
                         };
-                        looked += 1;
+                        l += 1;
                         // Only a record that is not the one last seen there
                         // (`HostHeap::mirror_copied`).
                         if host.mirror_copied(index as u32, handle, record) {
-                            mirrored += 1;
+                            m += 1;
                         }
                     }
                 }
-                page += crate::watch::PAGE;
             }
+            (p, l, m)
+        };
+        if work.len() >= 16 {
+            let threads = std::thread::available_parallelism()
+                .map_or(4, |n| (n.get() / 2).clamp(2, 6))
+                .min(work.len() / 8)
+                .max(1);
+            let chunk_len = work.len().div_ceil(threads);
+            let totals: Vec<(u64, u64, u64)> = std::thread::scope(|s| {
+                let handles: Vec<_> = work
+                    .chunks(chunk_len)
+                    .map(|c| s.spawn(move || process(c)))
+                    .collect();
+                handles.into_iter().map(|h| h.join().unwrap_or((0, 0, 0))).collect()
+            });
+            for (p, l, m) in totals {
+                pages += p;
+                looked += l;
+                mirrored += m;
+            }
+        } else {
+            let (p, l, m) = process(&work);
+            pages += p;
+            looked += l;
+            mirrored += m;
         }
     }
     drop(heaps);
@@ -277,7 +312,7 @@ fn changed_slots(
 /// `heap`, if that heap still exists.
 #[cfg(windows)]
 pub(crate) fn release_dynamic(heap: usize, first: u32, n: u32) {
-    let heaps = SHADER_HEAPS.lock().unwrap_or_else(|e| e.into_inner());
+    let heaps = SHADER_HEAPS.read().unwrap_or_else(|e| e.into_inner());
     if heaps.iter().any(|&(_, _, h)| h == heap)
         // SAFETY: registered heaps are live (removed when dropped).
         && let Some(Some(host)) = unsafe { &*(heap as *const Heap) }.host.get()
@@ -290,7 +325,7 @@ pub(crate) fn release_dynamic(heap: usize, first: u32, n: u32) {
 impl Drop for Heap {
     fn drop(&mut self) {
         let at = std::ptr::from_ref::<Heap>(self) as usize;
-        let mut heaps = SHADER_HEAPS.lock().unwrap_or_else(|e| e.into_inner());
+        let mut heaps = SHADER_HEAPS.write().unwrap_or_else(|e| e.into_inner());
         heaps.retain(|&(_, _, h)| h != at);
     }
 }
@@ -320,6 +355,15 @@ const RTV_TAG: u32 = u32::from_le_bytes(*b"vRTV");
 const _: () = assert!(size_of::<RtvRecord>() <= 112);
 
 impl RtvRecord {
+    /// All the view it records is made from: records with equal keys have
+    /// equal views (of the same host texture) (`VICTORY_BIND_CACHE`, `ca1d519`).
+    #[cfg(windows)]
+    pub(crate) fn key(&self) -> (usize, [u32; 7]) {
+        let mut words = [self.described; 7];
+        words[1..].copy_from_slice(&self.desc);
+        (self.resource as usize, words)
+    }
+
     /// The view description in the host's type (the same layout).
     #[cfg(windows)]
     pub(crate) fn desc(
@@ -1096,7 +1140,7 @@ pub(crate) extern "system" fn create_heap(
     #[cfg(windows)]
     if visible {
         let at = std::ptr::from_ref::<Heap>(&heap) as usize;
-        let mut heaps = SHADER_HEAPS.lock().unwrap_or_else(|e| e.into_inner());
+        let mut heaps = SHADER_HEAPS.write().unwrap_or_else(|e| e.into_inner());
         heaps.push((start, start + size, at));
     }
     #[cfg(not(windows))]
@@ -1249,6 +1293,108 @@ mod tests {
             assert!(!host.made(5));
             sync_heaps();
             assert!(host.made(5));
+        }
+        slot::<extern "system" fn(This) -> u32>(h, 0x10)(h);
+        // SAFETY: this allocation belongs to the test.
+        unsafe { VirtualFree(memory, 0, MEM_RELEASE) };
+    }
+
+    /// Exercises the multi-threaded branch of `sync_heaps()` (`work.len() >= 16`)
+    /// across 32 dirty pages of a placed CBV/SRV/UAV heap and verifies every
+    /// written slot is mirrored without drops or clobbering untouched slots.
+    #[cfg(windows)]
+    #[test]
+    fn parallel_sync_heaps_mirrors_many_dirty_pages() {
+        use windows_sys::Win32::System::Memory::{
+            MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_READWRITE, VirtualAlloc, VirtualFree,
+        };
+        const MEM_WRITE_WATCH: u32 = 0x20_0000;
+        const PAGES: usize = 32;
+        const STEP: usize = 32;
+        let bytes = PAGES * crate::watch::PAGE;
+        let slots_per_page = crate::watch::PAGE / STEP;
+        let count = (bytes / STEP) as u32;
+        let memory = unsafe {
+            VirtualAlloc(
+                std::ptr::null(),
+                bytes,
+                MEM_RESERVE | MEM_COMMIT | MEM_WRITE_WATCH,
+                PAGE_READWRITE,
+            )
+        };
+        assert!(!memory.is_null());
+        let desc = HeapDesc {
+            kind: 0, // CBV_SRV_UAV
+            count,
+            flags: SHADER_VISIBLE,
+            nodes: 1,
+        };
+        let placement = Placement {
+            address: memory as u64,
+            size: bytes as u64,
+        };
+        let mut h: This = std::ptr::null();
+        assert_eq!(create(desc, placement, &mut h), S_OK);
+        if let Some(host) = heap(h).host() {
+            let mut src = [0u64; 4];
+            let src_at = src.as_mut_ptr() as u64;
+            let mut written_slots = Vec::new();
+            // Null SRVs (`View::Shader(0, None)`) are non-buffer views so
+            // `sync_heaps()` (`for_draw = false`) mirrors them immediately.
+            create_srv(std::ptr::null(), std::ptr::null(), std::ptr::null(), src_at);
+            for p in 0..PAGES {
+                let base = p * slots_per_page;
+                for off in [0usize, 7, slots_per_page - 1] {
+                    let idx = base + off;
+                    // SAFETY: `idx * STEP + STEP <= bytes`.
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            src_at as *const u8,
+                            memory.cast::<u8>().add(idx * STEP),
+                            STEP,
+                        );
+                    }
+                    written_slots.push(idx as u32);
+                }
+            }
+            for &idx in &written_slots {
+                assert!(!host.made(idx), "slot {idx} should not be mirrored before sync_heaps");
+            }
+            sync_heaps();
+            for &idx in &written_slots {
+                assert!(host.made(idx), "slot {idx} was missed by parallel sync_heaps");
+            }
+            // Untouched neighbor slots must remain unmade.
+            for p in 0..PAGES {
+                let untouched = (p * slots_per_page + 3) as u32;
+                assert!(!host.made(untouched), "untouched slot {untouched} unexpectedly mirrored");
+            }
+            // Second pass with no new writes must stay idempotent and clean.
+            sync_heaps();
+            // Third pass after mutating a subset of pages again with null UAVs.
+            create_uav(
+                std::ptr::null(),
+                std::ptr::null(),
+                std::ptr::null(),
+                std::ptr::null(),
+                src_at,
+            );
+            for p in (0..PAGES).step_by(2) {
+                let idx = p * slots_per_page + 5;
+                // SAFETY: `idx * STEP + STEP <= bytes`.
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        src_at as *const u8,
+                        memory.cast::<u8>().add(idx * STEP),
+                        STEP,
+                    );
+                }
+            }
+            sync_heaps();
+            for p in (0..PAGES).step_by(2) {
+                let idx = (p * slots_per_page + 5) as u32;
+                assert!(host.made(idx), "updated slot {idx} was missed on second parallel sync");
+            }
         }
         slot::<extern "system" fn(This) -> u32>(h, 0x10)(h);
         // SAFETY: this allocation belongs to the test.

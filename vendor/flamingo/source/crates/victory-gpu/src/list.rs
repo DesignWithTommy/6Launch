@@ -195,6 +195,11 @@ pub(crate) struct Detached {
 
 #[cfg(windows)]
 impl Detached {
+    /// A closed list of ours, to run among a title's.
+    pub(crate) fn ours(host: crate::host::HostList) -> Self {
+        Detached { host, _uploads: Vec::new(), _state: Default::default() }
+    }
+
     pub(crate) fn host(&self) -> &crate::host::HostList {
         &self.host
     }
@@ -242,7 +247,7 @@ fn pools() -> bool {
 /// A host list open for recording: one that has run, as a title's list is
 /// after its reset, or a new one.
 #[cfg(windows)]
-fn fresh_list() -> Option<crate::host::HostList> {
+pub(crate) fn fresh_list() -> Option<crate::host::HostList> {
     let idle = {
         let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
         let taken = idle.0.pop();
@@ -657,6 +662,18 @@ extern "system" fn reset(this: This, allocator: This, pipeline: This) -> HRESULT
     #[cfg(windows)]
     with_state(this, |host, state| {
         host.reset();
+        // Flamingo, a test switch: `FLAMINGO_LIST_BARRIER=1` opens every list with a
+        // barrier on every shader write. The lists of a submission go to the card in one
+        // call, which orders no shader writes between them, and the title's passes reuse
+        // memory from one list to the next (its characters' culling records).
+        static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        if *ON.get_or_init(|| std::env::var_os("FLAMINGO_LIST_BARRIER").is_some_and(|v| v == "1")) {
+            use windows::Win32::Graphics::Direct3D12::D3D12_RESOURCE_BARRIER;
+            // SAFETY: the same layout; no resource named.
+            let barrier = unsafe { std::mem::transmute::<Barrier, D3D12_RESOURCE_BARRIER>(UAV_BARRIER) };
+            // SAFETY: the list was just reset and is open.
+            unsafe { host.list.ResourceBarrier(&[barrier]) };
+        }
         state.reset(pipeline);
     });
     #[cfg(not(windows))]
@@ -1456,10 +1473,31 @@ extern "system" fn set_pipeline(this: This, pipeline: This) {
 }
 
 /// Pipeline syncs: waits for earlier work and cache flushes, at the top or
-/// bottom of the pipe `(flags, control, address, size)`. Host lists order
-/// their own work and every submission is waited for, so there is nothing
-/// to do.
-extern "system" fn sync(_: This, _flags: u32, _control: u32, _address: u64, _size: u64) {}
+/// bottom of the pipe `(flags, control, address, size)`.
+/// Flamingo: a host list does not order its own dispatches (a later one may
+/// run alongside an earlier one and read what it has not written yet), so a
+/// sync is one barrier on every shader write, as the title's barriers are
+/// (`barrier_groups`). `FLAMINGO_SYNC_BARRIER=0`: nothing, as before.
+extern "system" fn sync(this: This, flags: u32, control: u32, address: u64, size: u64) {
+    static CALLS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    if CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed) < 16 {
+        tracing::info!(flags = format_args!("{flags:#x}"), control = format_args!("{control:#x}"), address = format_args!("{address:#x}"), size, "a pipeline sync");
+    }
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if !*ON.get_or_init(|| std::env::var_os("FLAMINGO_SYNC_BARRIER").is_none_or(|v| v != "0")) {
+        return;
+    }
+    #[cfg(windows)]
+    if let Some(list) = host_list(this) {
+        use windows::Win32::Graphics::Direct3D12::D3D12_RESOURCE_BARRIER;
+        // SAFETY: the same layout; no resource named.
+        let barrier = unsafe { std::mem::transmute::<Barrier, D3D12_RESOURCE_BARRIER>(UAV_BARRIER) };
+        // SAFETY: an open list.
+        unsafe { list.list.ResourceBarrier(&[barrier]) };
+    }
+    #[cfg(not(windows))]
+    let _ = this;
+}
 
 /// Reset with console flags `(allocator, pipeline, flags)`; the flags only
 /// tune the console's command memory.

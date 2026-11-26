@@ -7,10 +7,9 @@
 //! barycentrics; `v_interp_mov` reads one vertex's value. After the 32-bit
 //! export patch ([`NativeProgram::patched_code`]) exports carry plain
 //! 32-bit values: `mrt<n>` is render target n, `mrtz` depth, stencil and
-//! sample mask, `null` nothing. A pixel survives if its EXEC bit is set at
-//! the last export that has the valid-mask bit (`vm`): that export's guard
-//! after structurisation. An export without `vm` leaves the survival mask
-//! as it was (the `done` bit only marks the program's last export).
+//! sample mask, `null` nothing. A lane whose EXEC bit is clear at the
+//! export that ends the program (`done`) is discarded: that export's guard
+//! after structurisation.
 //!
 //! Vertex shaders that run as the hardware VS get the vertex id in v0, the
 //! primitive id in v2 and the instance id in v3; the fetch shader loads
@@ -177,13 +176,8 @@ pub struct Export {
     pub values: [Option<Value>; 4],
     /// Two f16 values per dword.
     pub compressed: bool,
-    /// The program's last export. Only a hint to the hardware: it decides
-    /// no pixel's fate.
+    /// The program's last export (for pixels: kills the lanes not in EXEC).
     pub done: bool,
-    /// The valid-mask bit: a pixel export with it set makes EXEC, where the
-    /// export runs, the mask of the pixels that survive. One without it
-    /// leaves that mask as it was.
-    pub vm: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -430,7 +424,7 @@ pub fn raise(p: &Program, native: &NativeProgram) -> Result<Io, ShaderError> {
                     src,
                     compr,
                     done,
-                    vm,
+                    ..
                 } => {
                     let target = match *target {
                         t @ 0..=7 => Target::Color(t),
@@ -463,7 +457,6 @@ pub fn raise(p: &Program, native: &NativeProgram) -> Result<Io, ShaderError> {
                         values,
                         compressed: *compr,
                         done: *done,
-                        vm: *vm,
                     });
                 }
                 _ => {}

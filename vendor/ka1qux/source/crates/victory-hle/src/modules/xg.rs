@@ -49,7 +49,7 @@ const TEXTURE_3D: u32 = 4;
 
 /// The mode the console's library picks for a description: linear for 1D,
 /// the XOR render and depth modes for targets, else 4 KiB standard
-/// (the title's texture files without a mode of their own use it).
+/// (`.ttpf` textures without a mode of their own use it).
 ///
 /// shortcut: the rule of the library's older optimal-mode function (any
 /// size, 2D, 3D and cubes alike); `XGSuggestSwizzleMode` itself is newer
@@ -540,7 +540,7 @@ extern "system" fn tiling(
 
 /// Slot 0x30 `(plane, mip, x, y, z or slice, sample, bit position)`: an
 /// element's byte offset from the texture's start. The title reads
-/// texels of a 128x4 `4KB_S` texture on the CPU through it (title+0x5151c90);
+/// texels of a 128x4 `4KB_S` texture on the CPU through it;
 /// an error returned as an offset made it read wild memory. 0 if outside.
 extern "system" fn element_offset(
     this: This,
@@ -665,6 +665,10 @@ mod tests {
         d.flags = ALLOW_DEPTH_STENCIL;
         XGSuggestSwizzleMode(&d, 0, &mut out);
         assert_eq!(out, 0x118);
+        // A 1D texture has no tiled layout, whatever its use.
+        d.dimension = TEXTURE_1D;
+        XGSuggestSwizzleMode(&d, 0, &mut out);
+        assert_eq!(out, 0x100);
     }
 
     /// The title's calls: layout, then a copy in and out of each mip.

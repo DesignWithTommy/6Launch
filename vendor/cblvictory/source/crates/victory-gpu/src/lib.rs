@@ -15,6 +15,8 @@
 //! share, [`console`] which console model the title sees. Planned:
 //! `present` (swap chain).
 
+#[cfg(windows)]
+mod ambient;
 #[cfg(all(windows, feature = "diagnostics"))]
 mod capture;
 #[cfg(windows)]
@@ -26,6 +28,8 @@ pub mod descriptor;
 pub mod device;
 #[cfg(windows)]
 mod drvwatch;
+#[cfg(windows)]
+mod spread;
 #[cfg(windows)]
 mod draw;
 pub mod dxgi;
@@ -41,6 +45,7 @@ mod present_stats;
 mod indirect;
 #[cfg(windows)]
 mod inplace;
+mod launch;
 pub mod list;
 pub mod object;
 pub mod pipeline;
@@ -71,6 +76,8 @@ pub mod signature;
 mod texture;
 #[cfg(windows)]
 mod watch;
+#[cfg(windows)]
+mod texback;
 
 #[cfg(windows)]
 pub use host::on_failure;

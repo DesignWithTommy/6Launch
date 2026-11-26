@@ -61,25 +61,14 @@ pub(crate) struct Shader {
     /// The first 8 bytes of its BLAKE3, as logged.
     pub(crate) hash: String,
     container: Vec<u8>,
+    /// Its part in the stand-in for the indirect light.
     #[cfg(windows)]
-    translated: OnceLock<Option<Translated>>,
-    /// Whether its code walks the ray-tracing structures, once looked at
-    /// ([`Shader::walks`]).
-    #[cfg(windows)]
-    walks: OnceLock<bool>,
-    /// Its result gets the least indirect light ([`crate::ambient`]).
-    #[cfg(windows)]
-    pub(crate) resolves_light: bool,
-    /// It draws the sky as the title reflects it ([`crate::ambient::SKY`]).
-    #[cfg(windows)]
-    pub(crate) draws_sky: bool,
-    /// It writes the title's reflections for the last time in a frame
-    /// ([`crate::ambient::REFLECTED`]).
-    #[cfg(windows)]
-    pub(crate) ends_reflections: bool,
+    pub(crate) ambient: Option<crate::ambient::Role>,
     /// A pixel program of the title's decoration bake ([`bakes`]).
     #[cfg(windows)]
     pub(crate) bakes: bool,
+    #[cfg(windows)]
+    translated: OnceLock<Option<Translated>>,
 }
 
 impl std::fmt::Debug for Shader {
@@ -114,38 +103,6 @@ pub(crate) fn kept() -> [u64; 7] {
     ]
 }
 
-/// Whether a container is the program whose result gets the least
-/// indirect light ([`crate::ambient::PROGRAM`], by its name inside).
-#[cfg(windows)]
-fn resolves_light(bytes: &[u8]) -> bool {
-    named(bytes, crate::ambient::PROGRAM)
-}
-
-/// Whether a container holds `name` (a program's name inside it).
-#[cfg(windows)]
-fn named(bytes: &[u8], name: &[u8]) -> bool {
-    bytes.windows(name.len()).any(|w| w == name)
-}
-
-/// Whether a container is a pixel program of the title's decoration bake,
-/// by its name inside (`PS_DecorationBlend_*`, `PS_BakeDecorations_*`: 51
-/// of them; a list of four hashes missed the one the cutscene's faces were
-/// baked with, and those faces came out black).
-#[cfg(windows)]
-fn bakes(bytes: &[u8]) -> bool {
-    [&b"PS_DecorationBlend_"[..], b"PS_BakeDecorations_"]
-        .iter()
-        .any(|name| bytes.windows(name.len()).any(|w| w == *name))
-}
-
-#[cfg(all(test, windows))]
-#[test]
-fn bake_programs_are_known_by_name() {
-    assert!(bakes(b"..\0PS_DecorationBlend_0011_ff00f5de_Wrapped\0.."));
-    assert!(bakes(b"PS_BakeDecorations_0100_583f45fe_Wrapped"));
-    assert!(!bakes(b"PS_DeferredPedTexturedNC_6a40bffd_Wrapped"));
-}
-
 /// The shared container for `bytes`.
 fn shader(stage: &'static str, bytes: &[u8]) -> Arc<Shader> {
     let full = blake3::hash(bytes);
@@ -161,56 +118,31 @@ fn shader(stage: &'static str, bytes: &[u8]) -> Arc<Shader> {
                 hash: full.to_hex()[..16].to_owned(),
                 container: bytes.to_vec(),
                 #[cfg(windows)]
-                translated: OnceLock::new(),
-                #[cfg(windows)]
-                walks: OnceLock::new(),
-                #[cfg(windows)]
-                resolves_light: resolves_light(bytes),
-                #[cfg(windows)]
-                draws_sky: named(bytes, crate::ambient::SKY),
-                #[cfg(windows)]
-                ends_reflections: named(bytes, crate::ambient::REFLECTED),
+                ambient: (stage == "compute").then(|| crate::ambient::role(bytes)).flatten(),
                 #[cfg(windows)]
                 bakes: bakes(bytes),
+                #[cfg(windows)]
+                translated: OnceLock::new(),
             })
         })
         .clone()
-}
-
-/// Puts the translation of a container of the title's into the cache on
-/// disk, and with `compute` its host pipeline into the driver's library,
-/// before any run wants them (`victory warm`). Whether it translated, and
-/// whether it has a pipeline (`None`: not asked for).
-#[cfg(windows)]
-pub fn warm(stage: &'static str, container: &[u8], compute: bool) -> (bool, Option<bool>) {
-    let full = blake3::hash(container);
-    // Not through the table, which lets nothing go.
-    let shader = Arc::new(Shader {
-        stage,
-        hash: full.to_hex()[..16].to_owned(),
-        container: container.to_vec(),
-        translated: OnceLock::new(),
-        walks: OnceLock::new(),
-        resolves_light: resolves_light(container),
-        draws_sky: named(container, crate::ambient::SKY),
-        ends_reflections: named(container, crate::ambient::REFLECTED),
-        bakes: bakes(container),
-    });
-    let translated = shader.translated().is_some();
-    let made = (translated && compute).then(|| make::warm(vec![shader]));
-    (translated, made)
 }
 
 /// A translated shader and the console resources its code reads.
 #[cfg(windows)]
 pub(crate) struct Translated {
     pub(crate) host: victory_shader::emit::HostShader,
+    /// A compute program's threads in a group.
+    pub(crate) threads: Option<[u32; 3]>,
     pub(crate) used: Vec<victory_shader::UsedResource>,
     /// Whether the shader's code can store to buffer memory ([`stores`]);
     /// true when its code is not known.
     pub(crate) stores: bool,
-    /// A compute shader's thread-group size (zeros for the others).
-    pub(crate) threads: [u32; 3],
+    /// Whether it can store through raw addresses ([`stores_by_address`]).
+    pub(crate) stores_by_address: bool,
+    /// Whether it stores through a view it picks from the heap by an index,
+    /// once asked (`crate::picked`).
+    pub(crate) picks: std::sync::atomic::AtomicU8,
 }
 
 #[cfg(windows)]
@@ -258,29 +190,51 @@ impl Shader {
 }
 
 #[cfg(windows)]
+impl Shader {
+    /// The console programs of the container; `None` if they are not known.
+    pub(crate) fn programs(&self) -> Option<Vec<victory_shader::NativeProgram>> {
+        use victory_shader::{Container, FourCC};
+        let c = Container::parse(&self.container).ok()?;
+        let part = c.part(FourCC::DXIL).or(c.part(FourCC::ACCC))?;
+        victory_shader::native_programs(part.data).ok()
+    }
+}
+
+#[cfg(windows)]
 fn translate(container: &[u8]) -> Result<Translated, String> {
     use victory_shader::{Container, FourCC, HwStage};
     // The translation depends on it (a view index past a capped heap).
     crate::descriptor::host::probe_view_limit();
     let c = Container::parse(container).map_err(|e| e.to_string())?;
-    let programs = match c.part(FourCC::DXIL) {
+    let programs = match c.part(FourCC::DXIL).or(c.part(FourCC::ACCC)) {
         Some(part) => victory_shader::native_programs(part.data).map_err(|e| e.to_string())?,
         None => Vec::new(),
     };
     let host = crate::shader_cache::host_shader(container)?;
     let stores = programs.is_empty() || programs.iter().any(stores);
-    let program = programs.into_iter().find(|p| {
-        matches!(
-            p.stage,
-            HwStage::Vs | HwStage::Ps | HwStage::Ms | HwStage::Cs
-        )
+    let threads = programs.iter().find_map(|p| match &p.io {
+        victory_shader::native::StageIo::Cs(cs) if cs.threads.iter().all(|&n| n > 0) => Some(cs.threads),
+        _ => None,
     });
-    let threads = match program.as_ref().map(|p| &p.io) {
-        Some(victory_shader::native::StageIo::Cs(cs)) => cs.threads,
-        _ => [0; 3],
-    };
-    let used = program.map(|p| p.used).unwrap_or_default();
-    Ok(Translated { host, used, stores, threads })
+    let stores_by_address = programs.is_empty() || programs.iter().any(stores_by_address);
+    let used = programs
+        .into_iter()
+        .find(|p| {
+            matches!(
+                p.stage,
+                HwStage::Vs | HwStage::Ps | HwStage::Ms | HwStage::Cs
+            )
+        })
+        .map(|p| p.used)
+        .unwrap_or_default();
+    Ok(Translated {
+        host,
+        threads,
+        used,
+        stores,
+        stores_by_address,
+        picks: Default::default(),
+    })
 }
 
 /// The compute pipelines of the console's ray-tracing structure builder
@@ -296,8 +250,11 @@ fn translate(container: &[u8]) -> Result<Translated, String> {
 /// So a builder dispatch runs only while every builder pipeline the title
 /// has created has a host pipeline; the first builder dispatch makes them
 /// all on the spot instead of over the next frames (a stage "still being
-/// made" would be a dropped stage). One that cannot be made turns the
-/// builder off for the rest of the run.
+/// made" would be a dropped stage). While one cannot be made the builder
+/// is off; it is looked at again when the title creates another. A stage
+/// that could not be bound stops the stages after it for the rest of that
+/// frame and the next ([`builder_rests`]); it turned the builder off for the
+/// rest of the run at first.
 ///
 /// shortcut: and only with `VICTORY_BVH_BUILDER=1`, until a run has shown
 /// the whole builder and the host side of title memory by address
@@ -308,15 +265,18 @@ struct Builder {
     pipelines: Vec<Arc<make::Pending>>,
     /// Every one of `pipelines` has a host pipeline.
     whole: bool,
-    /// One could not be made.
-    off: bool,
+    /// One could not be made, of so many (0: none).
+    off: usize,
+    /// No stage runs before this frame.
+    rests: u64,
 }
 
 #[cfg(windows)]
 static BUILDER: Mutex<Builder> = Mutex::new(Builder {
     pipelines: Vec::new(),
     whole: false,
-    off: false,
+    off: 0,
+    rests: 0,
 });
 
 /// Whether `shaders` are a pipeline of the structure builder.
@@ -335,6 +295,99 @@ fn of_builder(shaders: &[Arc<Shader>]) -> bool {
         .is_some_and(|programs| programs.iter().any(victory_shader::spill::is_spilled))
 }
 
+/// Whether a compute container is one of the title's `bvh_skinning`
+/// programs: they pose every animated mesh (and its motion) once more, only
+/// for the ray-tracing structures. With every ray a miss
+/// (`VICTORY_RT_MISS=1`) and the structure builder off, nothing reads what
+/// they write, and they were the largest share of the card's time in a
+/// cutscene (~6 ms a dispatch, hundreds a frame).
+///
+/// The container holds its entry point's name, not the effect's: all 30
+/// entry points named `CSComputeSkinning*` in the title's shader file are
+/// `bvh_skinning`'s; the picture's own skinning is `CS_PedStandardSkinning*`,
+/// `CS_PosOnlyLodSkinning*` and the cloth's `computeclothSkinning`.
+///
+/// Two more kinds only serve rays (after codec-d/cool_fox `make.rs`):
+/// `CS_RaytracingResolve*` shades what a ray hit (some 1,000 programs) and
+/// `CS_ScreenProbes_ActivateRays*` picks the screen probes that cast rays.
+///
+/// And the tracing itself against the structures, with the hair's geometry
+/// made for them (8 % of the card's time in the opening cutscene): the
+/// `bvh_skinning_smh` program `CSGenerateHairVB`, the screen probes'
+/// `CS_ScreenProbes_TraceRays*_BVH*` and the reflections'
+/// `CS_RaytraceVBuffer*`. Their `Fallback` and `Voxels` forms march through
+/// the title's voxels, not the structures, and light the picture: they run.
+#[cfg(windows)]
+fn for_rays(bytes: &[u8]) -> RayOnly {
+    let has = |name: &[u8]| bytes.windows(name.len()).any(|w| w == name);
+    if has(b"CSComputeSkinning") || has(b"CSGenerateHairVB") {
+        RayOnly::Skin
+    } else if has(b"CS_RaytracingResolve") {
+        RayOnly::Resolve
+    } else if has(b"CS_ScreenProbes_ActivateRays") {
+        RayOnly::Activate
+    } else if (has(b"CS_ScreenProbes_TraceRays") && has(b"_BVH")) || (has(b"CS_RaytraceVBuffer") && !has(b"Voxels")) {
+        RayOnly::Trace
+    } else {
+        RayOnly::No
+    }
+}
+
+/// What a compute pipeline does only for rays ([`for_rays`]).
+#[cfg(windows)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum RayOnly {
+    No,
+    Skin,
+    Resolve,
+    Activate,
+    Trace,
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn ray_programs_are_known_by_name() {
+    assert_eq!(for_rays(b"..\0CSComputeSkinningRigidVelocity_1c34db0a_Wrapped\0.."), RayOnly::Skin);
+    assert_eq!(for_rays(b"..\0CS_PedStandardSkinning_3_00aa11bb_Wrapped\0.."), RayOnly::No);
+    assert_eq!(for_rays(b"computeclothSkinning"), RayOnly::No);
+    assert_eq!(for_rays(b"..\0CS_RaytracingResolve_Opaque_12345678_Wrapped\0.."), RayOnly::Resolve);
+    assert_eq!(for_rays(b"..\0CS_ScreenProbes_ActivateRays_0_Wrapped\0.."), RayOnly::Activate);
+    assert_eq!(for_rays(b"..\0CSGenerateHairVB_c88a8f19_Wrapped\0.."), RayOnly::Skin);
+    assert_eq!(for_rays(b"..\0CS_ScreenProbes_TraceRays_RayBinning_BVH_Mixed\0.."), RayOnly::Trace);
+    assert_eq!(for_rays(b"..\0CS_ScreenProbes_TraceRays_Voxels\0.."), RayOnly::No);
+    assert_eq!(for_rays(b"..\0CS_ScreenProbes_TraceRays_Fallback\0.."), RayOnly::No);
+    assert_eq!(for_rays(b"..\0CS_RaytraceVBuffer_ShaderBinning_WithFar\0.."), RayOnly::Trace);
+    assert_eq!(for_rays(b"..\0CS_RaytraceVBuffer_Voxels_RayBinning\0.."), RayOnly::No);
+}
+
+/// Whether a dispatch of `this` is left out because it only serves rays,
+/// and nothing they could hit is there: every ray is a miss
+/// (`VICTORY_RT_MISS=1`) and the structure builder is off. Each kind runs
+/// anyway with its switch: `VICTORY_RT_SKIN=1`, `VICTORY_RT_RESOLVE=1`, `VICTORY_RT_TRACE=1`,
+/// `VICTORY_ACTIVATE_RAYS=1`.
+#[cfg(windows)]
+pub(crate) fn skips_rt_skin(this: This) -> bool {
+    fn off(switch: &str) -> bool {
+        victory_shader::emit::rt_miss()
+            && std::env::var_os("VICTORY_BVH_BUILDER").is_none_or(|v| v != "1")
+            && std::env::var_os(switch).is_none_or(|v| v != "1")
+    }
+    static SKIN: OnceLock<bool> = OnceLock::new();
+    static RESOLVE: OnceLock<bool> = OnceLock::new();
+    static ACTIVATE: OnceLock<bool> = OnceLock::new();
+    static TRACE: OnceLock<bool> = OnceLock::new();
+    if this.is_null() {
+        return false;
+    }
+    match pipeline(this).rt_only {
+        RayOnly::No => false,
+        RayOnly::Skin => *SKIN.get_or_init(|| off("VICTORY_RT_SKIN")),
+        RayOnly::Resolve => *RESOLVE.get_or_init(|| off("VICTORY_RT_RESOLVE")),
+        RayOnly::Activate => *ACTIVATE.get_or_init(|| off("VICTORY_ACTIVATE_RAYS")),
+        RayOnly::Trace => *TRACE.get_or_init(|| off("VICTORY_RT_TRACE")),
+    }
+}
+
 /// `VICTORY_BVH_QUARANTINE=1`: what the structure builder's stages store
 /// stays in the host's copies and is not copied back into title memory. A
 /// check for a first run of the whole builder: a stage that stores where
@@ -349,100 +402,21 @@ pub(crate) fn builder_quarantined(this: This) -> bool {
     is_builder(this) && *ON.get_or_init(|| std::env::var_os("VICTORY_BVH_QUARANTINE").is_some_and(|v| v == "1"))
 }
 
-#[cfg(windows)]
-impl Shader {
-    /// Whether the program walks the ray-tracing structures: its code has
-    /// an `image_bvh_intersect_ray` or `image_bvh64_intersect_ray`. Looked
-    /// at once, when a dispatch first asks.
-    fn walks(&self) -> bool {
-        *self.walks.get_or_init(|| container_walks(&self.container))
-    }
-}
-
-/// Whether a console container's code tests rays against the nodes of a
-/// ray-tracing structure.
-#[cfg(windows)]
-fn container_walks(container: &[u8]) -> bool {
-    use victory_shader::{Container, FourCC};
-    let Ok(c) = Container::parse(container) else {
-        return false;
-    };
-    c.part(FourCC::DXIL)
-        .and_then(|part| victory_shader::native_programs(part.data).ok())
-        .is_some_and(|programs| programs.iter().any(|p| code_walks(&p.code)))
-}
-
-/// Whether native code has a ray-tracing node test.
-#[cfg(windows)]
-fn code_walks(code: &[u8]) -> bool {
-    victory_shader::gfx10::decode(code).is_ok_and(|code| code.iter().any(|i| i.name().is_some_and(|n| n.starts_with("image_bvh"))))
-}
-
-/// Dispatches held back by [`walk_held`] since the last frame line.
-#[cfg(windows)]
-pub(crate) static WALKS_HELD: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-
-/// Whether a dispatch with the title's pipeline `this` is held back
-/// because its program walks ray-tracing structures nothing has built
-/// (`VICTORY_BVH_HOLD=1`; off by default).
-///
-/// The structure builder does not run (see [`Builder`]: only with
-/// `VICTORY_BVH_BUILDER=1`, and then only whole, which a host of 32-lane
-/// waves does not manage yet). The title's ray-traced passes run all the
-/// same: 64 programs of its shader pack test rays against structure nodes
-/// (ray-traced shadows, screen probes, reflections, the irradiance cache;
-/// one of them, `CS_IrradianceCache_ShadowTrace_WithFar` f607780aa8e502d0,
-/// from the first world frame on in every run). Each walks, in a loop the
-/// title bounds at 65,535 steps a wave, whatever bytes lie where the
-/// structure would be: what it returns is not a picture of the scene, and
-/// how long it runs depends on those bytes. Upstream's pull request 2311
-/// measured a card hung in exactly that dispatch on an NVIDIA card, every
-/// run, and both card losses of ours since the draw windows' own fault was
-/// fixed (runs 208 and 224) came within a second of the first use of the
-/// programs that shade those rays' hits (`CS_RaytracingResolve`).
-///
-/// With the switch such a dispatch is dropped until the builder has run
-/// whole. What the passes would have written stays as the title left it
-/// (their targets are not cleared by us): the picture has to be looked at.
-#[cfg(windows)]
-pub(crate) fn walk_held(this: This) -> bool {
-    static ON: OnceLock<bool> = OnceLock::new();
-    if this.is_null() || !*ON.get_or_init(|| std::env::var_os("VICTORY_BVH_HOLD").is_some_and(|v| v == "1")) {
-        return false;
-    }
-    let p = pipeline(this);
-    if !p.shaders.iter().any(|s| s.stage == "compute" && s.walks()) {
-        return false;
-    }
-    // (Asked only for the few programs that walk: the lock is the builder's.)
-    if BUILDER.lock().unwrap_or_else(|e| e.into_inner()).whole {
-        return false;
-    }
-    if WALKS_HELD.fetch_add(1, std::sync::atomic::Ordering::Relaxed) == 0 {
-        static ONCE: std::sync::Once = std::sync::Once::new();
-        ONCE.call_once(|| {
-            tracing::info!(
-                shaders = ?p.shaders,
-                "a dispatch of a program that walks ray-tracing structures is held back: the structure builder has not                  built them (VICTORY_BVH_HOLD=1); the first one"
-            );
-        });
-    }
-    true
-}
-
 /// Whether the title's pipeline `this` is one of the structure builder's.
 #[cfg(windows)]
 pub(crate) fn is_builder(this: This) -> bool {
     !this.is_null() && pipeline(this).builder
 }
 
-/// A stage of the builder was dropped after all: none runs from here on.
+/// A stage of the builder was dropped after all: none runs for the rest of
+/// this frame and the next (what it fed is not there).
 #[cfg(windows)]
-pub(crate) fn builder_off(why: &'static str) {
+pub(crate) fn builder_rests(why: &'static str) {
     let mut b = BUILDER.lock().unwrap_or_else(|e| e.into_inner());
-    if !b.off {
-        b.off = true;
-        tracing::warn!(why, "the ray-tracing structure builder is turned off for the rest of the run: its stages run all or none");
+    b.rests = crate::frame::current() + 2;
+    static SAID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    if SAID.fetch_add(1, std::sync::atomic::Ordering::Relaxed) < 20 {
+        tracing::warn!(why, "the ray-tracing structure builder rests for this frame and the next: its stages run all or none");
     }
 }
 
@@ -455,22 +429,24 @@ pub(crate) fn builder_runs() -> bool {
         return false;
     }
     let mut b = BUILDER.lock().unwrap_or_else(|e| e.into_inner());
-    if b.off {
+    if b.off == b.pipelines.len() || crate::frame::current() < b.rests {
         return false;
     }
     if b.whole {
         return true;
     }
-    let missing = b.pipelines.iter().filter(|p| !make::now(p)).count();
-    if missing > 0 {
-        b.off = true;
+    let missing: Vec<String> = b.pipelines.iter().filter(|p| !make::now(p)).map(|p| make::hashes(p)).collect();
+    if !missing.is_empty() {
+        b.off = b.pipelines.len();
         tracing::warn!(
-            missing,
+            missing = missing.len(),
             of = b.pipelines.len(),
+            which = ?missing,
             "the ray-tracing structure builder stays off: not all of its programs have a host pipeline, and its stages run all or none"
         );
         return false;
     }
+    b.off = 0;
     tracing::info!(
         pipelines = b.pipelines.len(),
         "the ray-tracing structure builder runs: all of its programs have host pipelines"
@@ -508,6 +484,23 @@ fn stores(program: &victory_shader::NativeProgram) -> bool {
     })
 }
 
+/// Whether a console program can store to memory through raw addresses
+/// (`crate::memory`): a flat or global store or atomic, or code that does
+/// not decode. The programs that only walk ray-tracing structures do not,
+/// whatever they store through views.
+#[cfg(windows)]
+fn stores_by_address(program: &victory_shader::NativeProgram) -> bool {
+    use victory_shader::gfx10::{Encoding, decode};
+    let Ok(code) = decode(&program.code) else {
+        return true;
+    };
+    code.iter().any(|i| {
+        matches!(i.encoding, Encoding::Flat | Encoding::Global)
+            && i.name()
+                .is_none_or(|n| (n.contains("store") || n.contains("atomic")) && !n.contains("scratch"))
+    })
+}
+
 #[repr(C)]
 struct Pipeline {
     object: Object,
@@ -523,6 +516,10 @@ struct Pipeline {
     /// One of the ray-tracing structure builder's ([`Builder`]).
     #[cfg(windows)]
     builder: bool,
+    /// One of the title's passes that only serve rays
+    /// ([`for_rays`]).
+    #[cfg(windows)]
+    rt_only: RayOnly,
 }
 const _: () = assert!(offset_of!(Pipeline, packet) == 0x10);
 
@@ -671,6 +668,8 @@ fn hand_out(
     #[cfg(windows)]
     let host = Arc::new(make::Pending::new(shaders.clone(), graphics));
     #[cfg(windows)]
+    known::note(host.key(), &shaders, host.graphics.as_deref());
+    #[cfg(windows)]
     make::early(&host);
     #[cfg(windows)]
     let builder = of_builder(&shaders);
@@ -688,6 +687,8 @@ fn hand_out(
         host,
         #[cfg(windows)]
         builder,
+        #[cfg(windows)]
+        rt_only: shaders.iter().filter(|s| s.stage == "compute").map(|s| for_rays(&s.container)).find(|k| *k != RayOnly::No).unwrap_or(RayOnly::No),
         shaders,
         bound: std::sync::atomic::AtomicBool::new(false),
     });
@@ -858,15 +859,9 @@ static FUNCTIONS: Table<24> = {
 #[cfg(windows)]
 pub(crate) mod host;
 #[cfg(windows)]
-mod library;
-
-/// Host pipelines created and loaded from the library since the start
-/// (`crate::framelog`).
+pub mod known;
 #[cfg(windows)]
-pub(crate) fn frame_log_counts() -> (u64, u64) {
-    use std::sync::atomic::Ordering::Relaxed;
-    (library::MADE.load(Relaxed), library::LOADED.load(Relaxed))
-}
+mod library;
 #[cfg(windows)]
 mod make;
 
@@ -1015,4 +1010,25 @@ mod tests {
             );
         }
     }
+}
+
+/// Whether a container is a pixel program of the title's decoration bake,
+/// by its name inside (`PS_DecorationBlend_*`, `PS_BakeDecorations_*`: 51
+/// of them). A list of four hashes ([`crate::draw`]'s) missed the one the
+/// cutscene's faces are baked with (`PS_DecorationBlend_0011`,
+/// fcee612943c008e0): its sources were not on the card and the face came
+/// out black.
+#[cfg(windows)]
+fn bakes(bytes: &[u8]) -> bool {
+    [&b"PS_DecorationBlend_"[..], b"PS_BakeDecorations_"]
+        .iter()
+        .any(|name| bytes.windows(name.len()).any(|w| w == *name))
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn bake_programs_are_known_by_name() {
+    assert!(bakes(b"..\0PS_DecorationBlend_0011_ff00f5de_Wrapped\0.."));
+    assert!(bakes(b"PS_BakeDecorations_0100_583f45fe_Wrapped"));
+    assert!(!bakes(b"PS_PedSkin_0001"));
 }

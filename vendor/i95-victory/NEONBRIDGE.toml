@@ -1,7 +1,7 @@
 # Neonbridge launcher spec for i95-Victory: Kelvaroq's patched victory-fork plus 8 GB fixes (README.md).
 name = "i95-victory"
 fork = "victory-fork"
-about = "i95-Victory b83c1d0: Kelvaroq 0a3c30d + VI-BR-PORT heap marks, TEXTURE_DROP_MIPS, AMBIENT (GPL-3.0); not yet run"
+about = "i95-Victory dfb89ed: Kelvaroq 0a3c30d + VI-BR-PORT heap marks, TEXTURE_DROP_MIPS, AMBIENT (GPL-3.0); not yet run"
 upstream = "https://github.com/DesignWithTommy/i95-Victory"
 build = ["cargo", "build", "--release", "--locked", "-p", "victory", "--bin", "victory"]
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]

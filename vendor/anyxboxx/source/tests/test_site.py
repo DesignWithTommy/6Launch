@@ -10,7 +10,6 @@ SITE = RACINE / "site" / "index.html"
 def test_site_states_the_game_is_not_playable():
     html = SITE.read_text(encoding="utf-8")
     assert "Not yet." in html and "game_scarlett_master.exe" in html
-    assert "leonida/progress.html" not in html
 
 
 def test_hardware_estimate_logic_passes_its_node_tests():

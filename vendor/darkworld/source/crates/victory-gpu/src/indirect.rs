@@ -923,12 +923,12 @@ unsafe impl Sync for WindowCheck {}
 impl WindowCheck {
     pub(crate) fn new() -> Option<WindowCheck> {
         let host = host()?;
-        let (results, data) = host.shared_buffer(256)?;
+        let (results, data) = host.shared_buffer(256, crate::cardmem::Owner::PcOther)?;
         // SAFETY: the mapping holds 256 bytes; nothing runs yet.
         unsafe { std::ptr::write_bytes(data, 0, 256) };
         Some(WindowCheck {
-            args: host.uav_buffer(64 << 10)?,
-            budget: host.uav_buffer(256)?,
+            args: host.uav_buffer(64 << 10, crate::cardmem::Owner::Indirect)?,
+            budget: host.uav_buffer(256, crate::cardmem::Owner::Indirect)?,
             results,
             data: data as usize,
         })
@@ -2171,10 +2171,10 @@ void main() {
         let Ok(list) = host.new_list() else {
             return;
         };
-        let Some((src_buf, src_ptr)) = host.shared_buffer(256 << 10) else {
+        let Some((src_buf, src_ptr)) = host.shared_buffer(256 << 10, crate::cardmem::Owner::PcOther) else {
             return;
         };
-        let Some((count_buf, count_ptr)) = host.shared_buffer(256) else {
+        let Some((count_buf, count_ptr)) = host.shared_buffer(256, crate::cardmem::Owner::PcOther) else {
             return;
         };
         // SAFETY: mapped host buffers.
@@ -2355,13 +2355,13 @@ void main() {
             sig.unwrap()
         };
         // Three records of 65,535 x 16 groups: about half the budget each.
-        let Some((big, big_ptr)) = host.shared_buffer(3 * u64::from(STRIDE)) else {
+        let Some((big, big_ptr)) = host.shared_buffer(3 * u64::from(STRIDE), crate::cardmem::Owner::PcOther) else {
             return;
         };
-        let Some((small, small_ptr)) = host.shared_buffer(u64::from(STRIDE)) else {
+        let Some((small, small_ptr)) = host.shared_buffer(u64::from(STRIDE), crate::cardmem::Owner::PcOther) else {
             return;
         };
-        let Some((hits_buf, hits_ptr)) = host.shared_buffer(256) else {
+        let Some((hits_buf, hits_ptr)) = host.shared_buffer(256, crate::cardmem::Owner::PcOther) else {
             return;
         };
         // SAFETY: mapped buffers of these sizes; nothing runs yet.
@@ -2438,7 +2438,7 @@ void main() {
         let records = [[3u32, 1, 1], [5, 1, 1], [7, 1, 1], [9, 1, 1]];
         let total = records.len() * STEP as usize;
         let (Some((src, src_ptr)), Some((patch, patch_ptr))) =
-            (host.shared_buffer(total as u64), host.shared_buffer(64))
+            (host.shared_buffer(total as u64, crate::cardmem::Owner::PcOther), host.shared_buffer(64, crate::cardmem::Owner::PcOther))
         else {
             return;
         };
@@ -2604,7 +2604,7 @@ void main() {
         let mut sources = Vec::new();
         for groups in windows {
             let total = groups.len() * STEP as usize;
-            let Some((buffer, ptr)) = host.shared_buffer(total as u64) else {
+            let Some((buffer, ptr)) = host.shared_buffer(total as u64, crate::cardmem::Owner::PcOther) else {
                 return;
             };
             let mut bytes = vec![0xffu8; total];
@@ -2618,7 +2618,7 @@ void main() {
             unsafe { std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr, total) };
             sources.push(buffer);
         }
-        let Some((hits_buf, hits_ptr)) = host.shared_buffer(256) else {
+        let Some((hits_buf, hits_ptr)) = host.shared_buffer(256, crate::cardmem::Owner::PcOther) else {
             return;
         };
         let expected: u32 = windows.iter().flat_map(|g| g.iter()).sum();

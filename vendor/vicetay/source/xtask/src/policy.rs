@@ -10,7 +10,8 @@ use std::process::Command;
 
 use anyhow::{Context, Result, bail};
 
-const MAX_FILE_SIZE: usize = 512 * 1024;
+// (The translator's one file is 570 KiB of source.)
+const MAX_FILE_SIZE: usize = 640 * 1024;
 const MAX_ENCODED_RUN: usize = 512;
 
 const ALLOWED_EXTENSIONS: &[&str] = &[
@@ -25,6 +26,18 @@ const ALLOWED_NAMES: &[&str] = &[
     "LICENSE",
     "LICENSE-MIT",
     "LICENSE-APACHE",
+];
+// The benchmark documentation still goes through every content check below.
+const ALLOWED_DOCUMENTATION: &[&str] = &[
+    "docs/.nojekyll",
+    "docs/benchmark-dashboard.css",
+    "docs/benchmark-dashboard.js",
+    "docs/benchmark-data.js",
+    "docs/charts/profile-frame-rate.svg",
+    "docs/charts/profile-frame-timing.svg",
+    "docs/charts/session-frame-rate.svg",
+    "docs/index.html",
+    "scripts/generate-benchmark-charts.mjs",
 ];
 
 /// Paths explicitly exempted, with a reason. Keep this empty if at all possible.
@@ -88,7 +101,7 @@ pub fn run(root: &Path, staged: bool) -> Result<()> {
     )
 }
 
-fn list_files(root: &Path, staged: bool) -> Result<Vec<String>> {
+pub(crate) fn list_files(root: &Path, staged: bool) -> Result<Vec<String>> {
     let git = |args: &[&str]| -> Result<Option<Vec<String>>> {
         let out = Command::new("git")
             .args(args)
@@ -148,6 +161,7 @@ pub fn check(path: &str, content: &[u8]) -> Vec<String> {
     let name = path.rsplit('/').next().unwrap_or(path);
     let ext = name.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase());
     let allowed = ALLOWED_NAMES.contains(&name)
+        || ALLOWED_DOCUMENTATION.contains(&path)
         || ext
             .as_deref()
             .is_some_and(|e| ALLOWED_EXTENSIONS.contains(&e));
@@ -235,6 +249,17 @@ mod tests {
         assert!(check("crates/x/src/lib.rs", b"fn main() {}\n").is_empty());
         assert!(check(".gitignore", b"/target/\n").is_empty());
         assert!(check(".githooks/pre-commit", b"#!/bin/sh\n").is_empty());
+    }
+
+    #[test]
+    fn documentation_paths_keep_the_content_checks() {
+        let svg = br#"<svg xmlns="http://www.w3.org/2000/svg"/>"#;
+        for path in super::ALLOWED_DOCUMENTATION {
+            assert!(check(path, b"original documentation").is_empty());
+            assert!(!check(path, b"DDS \0").is_empty());
+        }
+        assert!(!check("docs/charts/other.svg", svg).is_empty());
+        assert!(!check("docs/unrelated.js", b"let data = 0;").is_empty());
     }
 
     #[test]

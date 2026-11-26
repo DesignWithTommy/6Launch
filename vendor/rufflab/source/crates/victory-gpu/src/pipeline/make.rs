@@ -134,7 +134,7 @@ fn slow(p: &Pending) -> bool {
 /// the hundred then, and a pass the title runs once is lost if its
 /// pipeline is not there. All such waits of a run together are bounded;
 /// the title's GPU watchdog bounds one frame's (30 s).
-const LOADING_FRAME: Duration = Duration::from_secs(4);
+const LOADING_FRAME: Duration = Duration::from_secs(10);
 /// The same for compute pipelines, waited for apart: the passes that unpack
 /// a world's models are dispatched once, and in a run whose pipelines were
 /// all still to be loaded 130 of them were dropped, and with them walls,
@@ -148,18 +148,47 @@ fn loading_left(spent: Duration) -> Duration {
         let seconds = std::env::var("VICTORY_PIPELINE_GATE_S")
             .ok()
             .and_then(|value| value.trim().parse::<u64>().ok())
-            .unwrap_or(120);
+            .unwrap_or(180);
         Duration::from_secs(seconds)
     });
     total.saturating_sub(spent)
 }
 
-/// Pipelines queued and not made yet.
+/// Pipelines queued and not made yet (all kinds, and graphics-only).
 static WAITING: AtomicU64 = AtomicU64::new(0);
+static WAITING_GFX: AtomicU64 = AtomicU64::new(0);
 
 /// Pipelines queued and not made yet (for the frame line).
 pub(crate) fn waiting() -> u64 {
     WAITING.load(Ordering::Relaxed)
+}
+
+/// Graphics pipelines queued or compiling right now.
+pub(crate) fn waiting_gfx() -> u64 {
+    WAITING_GFX.load(Ordering::Relaxed)
+}
+
+/// Waits up to `max_wait` for queued/in-progress graphics pipelines to finish
+/// compiling before the first world frame draws, returning `(remaining_gfx, elapsed)`.
+pub(crate) fn wait_for_graphics_preload(max_wait: Duration) -> (u64, Duration) {
+    let started = Instant::now();
+    if max_wait.is_zero() || WAITING_GFX.load(Ordering::Relaxed) == 0 {
+        return (WAITING_GFX.load(Ordering::Relaxed), Duration::ZERO);
+    }
+    let (lock, done) = &DONE;
+    let mut held = lock.lock().unwrap_or_else(|e| e.into_inner());
+    while WAITING_GFX.load(Ordering::Relaxed) > 0 {
+        let rest = max_wait.saturating_sub(started.elapsed());
+        if rest.is_zero() {
+            break;
+        }
+        held = done
+            .wait_timeout(held, rest.min(Duration::from_millis(100)))
+            .unwrap_or_else(|e| e.into_inner())
+            .0;
+    }
+    drop(held);
+    (WAITING_GFX.load(Ordering::Relaxed), started.elapsed())
 }
 
 /// The host pipeline if it is made (or is made within the frame's budget);
@@ -239,6 +268,10 @@ fn wait(p: &Pending, frame: u64) {
         return;
     }
     let started = Instant::now();
+    // Freeze the title's clock during long loading-gate waits so prologue
+    // cutscenes never skip ahead while newly-encountered pipelines compile.
+    let _freeze = (budget > wait_budget() && crate::preload::enabled())
+        .then(crate::preload::freeze_clock);
     let (lock, done) = &DONE;
     let mut held = lock.lock().unwrap_or_else(|e| e.into_inner());
     while p.made.get().is_none() && !slow(p) {
@@ -277,16 +310,26 @@ const EARLY: u8 = 1;
 const REQUESTED: u8 = 2;
 const MAKING: u8 = 3;
 
+/// Pipelines for the workers, taken in priority order: requested graphics,
+/// requested compute, early graphics, early compute (Marvisak/VIctory#3025).
+/// Compute never takes the last worker (when >= 2 workers exist), so slow
+/// 3-24 s compute compiles never starve millisecond graphics PSOs.
 struct Queue {
-    early: VecDeque<Arc<Pending>>,
-    requested: VecDeque<Arc<Pending>>,
+    early_gfx: VecDeque<Arc<Pending>>,
+    early_compute: VecDeque<Arc<Pending>>,
+    requested_gfx: VecDeque<Arc<Pending>>,
+    requested_compute: VecDeque<Arc<Pending>>,
+    compute_busy: usize,
 }
 
 impl Queue {
     const fn new() -> Self {
         Self {
-            early: VecDeque::new(),
-            requested: VecDeque::new(),
+            early_gfx: VecDeque::new(),
+            early_compute: VecDeque::new(),
+            requested_gfx: VecDeque::new(),
+            requested_compute: VecDeque::new(),
+            compute_busy: 0,
         }
     }
 
@@ -298,27 +341,63 @@ impl Queue {
             return None;
         }
         p.queue_state.store(priority, Ordering::Relaxed);
-        if priority == REQUESTED {
-            self.requested.push_back(p.clone());
-        } else {
-            self.early.push_back(p.clone());
+        let compute = p.graphics.is_none();
+        match (priority == REQUESTED, compute) {
+            (true, false) => self.requested_gfx.push_back(p.clone()),
+            (true, true) => self.requested_compute.push_back(p.clone()),
+            (false, false) => self.early_gfx.push_back(p.clone()),
+            (false, true) => self.early_compute.push_back(p.clone()),
         }
         Some(prev == NOT_QUEUED)
     }
 
-    fn pop(&mut self) -> Option<Arc<Pending>> {
-        let p = self.requested.pop_front().or_else(|| {
-            // An early entry can have been promoted and claimed already.
-            std::iter::from_fn(|| self.early.pop_front())
+    fn pop(&mut self, workers: usize) -> Option<(Arc<Pending>, bool)> {
+        let compute_free = self.compute_busy + 1 < workers.max(2);
+        let pop_req = |q: &mut VecDeque<Arc<Pending>>| -> Option<Arc<Pending>> {
+            std::iter::from_fn(|| q.pop_front())
+                .find(|p| p.queue_state.load(Ordering::Relaxed) < MAKING)
+        };
+        let pop_early = |q: &mut VecDeque<Arc<Pending>>| -> Option<Arc<Pending>> {
+            std::iter::from_fn(|| q.pop_front())
                 .find(|p| p.queue_state.load(Ordering::Relaxed) == EARLY)
-        })?;
-        p.queue_state.store(MAKING, Ordering::Relaxed);
-        Some(p)
+        };
+        if let Some(p) = pop_req(&mut self.requested_gfx) {
+            p.queue_state.store(MAKING, Ordering::Relaxed);
+            return Some((p, false));
+        }
+        if compute_free && let Some(p) = pop_req(&mut self.requested_compute) {
+            p.queue_state.store(MAKING, Ordering::Relaxed);
+            self.compute_busy += 1;
+            return Some((p, true));
+        }
+        if let Some(p) = pop_early(&mut self.early_gfx) {
+            p.queue_state.store(MAKING, Ordering::Relaxed);
+            return Some((p, false));
+        }
+        if compute_free && let Some(p) = pop_early(&mut self.early_compute) {
+            p.queue_state.store(MAKING, Ordering::Relaxed);
+            self.compute_busy += 1;
+            return Some((p, true));
+        }
+        None
+    }
+}
+
+struct ComputeSlot(bool);
+
+impl Drop for ComputeSlot {
+    fn drop(&mut self) {
+        if self.0 {
+            let mut queue = QUEUE.lock().unwrap_or_else(|e| e.into_inner());
+            queue.compute_busy = queue.compute_busy.saturating_sub(1);
+            AVAILABLE.notify_one();
+        }
     }
 }
 
 static QUEUE: Mutex<Queue> = Mutex::new(Queue::new());
 static AVAILABLE: Condvar = Condvar::new();
+static WORKER_COUNT: OnceLock<usize> = OnceLock::new();
 
 /// Start or promote work for a draw without waiting behind the entire early
 /// list. Queue changes and worker claims happen under the same lock.
@@ -335,28 +414,48 @@ fn start(p: &Arc<Pending>, priority: u8) {
     let mut queue = QUEUE.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(new) = queue.push(p, priority) {
         if new {
+            if p.graphics.is_some() {
+                WAITING_GFX.fetch_add(1, Ordering::Relaxed);
+            }
             PEAK.fetch_max(WAITING.fetch_add(1, Ordering::Relaxed) + 1, Ordering::Relaxed);
         }
         AVAILABLE.notify_one();
     }
 }
 
-fn next() -> Arc<Pending> {
+fn next() -> (Arc<Pending>, bool) {
+    let workers = *WORKER_COUNT.get().unwrap_or(&1);
     let mut queue = QUEUE.lock().unwrap_or_else(|e| e.into_inner());
     loop {
-        if let Some(p) = queue.pop() {
-            return p;
+        if let Some(item) = queue.pop(workers) {
+            return item;
         }
         queue = AVAILABLE.wait(queue).unwrap_or_else(|e| e.into_inner());
     }
 }
 
-/// Starts the workers (half the logical processors, 2 to 8) on first use.
+/// Number of pipeline worker threads: `VICTORY_PIPELINE_WORKERS` (clamped
+/// to `1..=16`), or half the logical processors (`2..=8`).
+/// Adapted from Marvisak/VIctory#2752 (`0xKaji`).
+fn worker_count(env: Option<&str>, cpus: usize) -> usize {
+    env.and_then(|v| v.trim().parse::<usize>().ok())
+        .map(|v| v.clamp(1, 16))
+        .unwrap_or_else(|| (cpus / 2).clamp(2, 8))
+}
+
+/// Starts the workers (half the logical processors, 2 to 8, unless
+/// `VICTORY_PIPELINE_WORKERS` overrides it) on first use.
 fn workers() -> bool {
     static RUNNING: OnceLock<bool> = OnceLock::new();
     *RUNNING.get_or_init(|| {
         let mut running = false;
-        let workers = std::thread::available_parallelism().map_or(2, |n| (n.get() / 2).clamp(2, 8));
+        let cpus = std::thread::available_parallelism().map_or(4, |n| n.get());
+        let workers = worker_count(
+            std::env::var("VICTORY_PIPELINE_WORKERS").ok().as_deref(),
+            cpus,
+        );
+        let _ = WORKER_COUNT.set(workers);
+        tracing::info!(workers, "pipeline workers configured");
         for i in 0..workers {
             let spawned = std::thread::Builder::new()
                 .name(format!("victory-pipelines-{i}"))
@@ -368,7 +467,12 @@ fn workers() -> bool {
                         let _ = SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
                     }
                     loop {
-                        next().make();
+                        let (p, compute) = next();
+                        let _slot = ComputeSlot(compute);
+                        p.make();
+                        if !compute {
+                            WAITING_GFX.fetch_sub(1, Ordering::Relaxed);
+                        }
                         if WAITING.fetch_sub(1, Ordering::Relaxed) == 1 {
                             drained();
                         } else {
@@ -449,10 +553,46 @@ mod tests {
         assert_eq!(queue.push(&promoted, REQUESTED), Some(false));
         assert_eq!(queue.push(&promoted, REQUESTED), None);
 
-        assert!(Arc::ptr_eq(&queue.pop().unwrap(), &requested));
-        assert!(Arc::ptr_eq(&queue.pop().unwrap(), &promoted));
+        assert!(Arc::ptr_eq(&queue.pop(4).unwrap().0, &requested));
+        assert!(Arc::ptr_eq(&queue.pop(4).unwrap().0, &promoted));
         assert_eq!(queue.push(&promoted, REQUESTED), None);
-        assert!(Arc::ptr_eq(&queue.pop().unwrap(), &earlier));
-        assert!(queue.pop().is_none());
+        assert!(Arc::ptr_eq(&queue.pop(4).unwrap().0, &earlier));
+        assert!(queue.pop(4).is_none());
+    }
+
+    #[test]
+    fn graphics_go_first_and_compute_leaves_a_worker() {
+        let mut queue = Queue::new();
+        let early_c = Arc::new(Pending::new(Vec::new(), None));
+        let req_c = Arc::new(Pending::new(Vec::new(), None));
+        let early_g = Arc::new(Pending::new(Vec::new(), Some(Box::default())));
+        let req_g = Arc::new(Pending::new(Vec::new(), Some(Box::default())));
+
+        queue.push(&early_c, EARLY);
+        queue.push(&early_g, EARLY);
+        queue.push(&req_c, REQUESTED);
+        queue.push(&req_g, REQUESTED);
+
+        // Graphics first, then 1 compute (out of 2 workers), then early graphics.
+        assert!(Arc::ptr_eq(&queue.pop(2).unwrap().0, &req_g));
+        let (p, is_compute) = queue.pop(2).unwrap();
+        assert!(is_compute && Arc::ptr_eq(&p, &req_c));
+        assert!(Arc::ptr_eq(&queue.pop(2).unwrap().0, &early_g));
+        // Second compute waits while compute_busy == 1 with 2 workers.
+        assert!(queue.pop(2).is_none());
+        // With 1 worker, compute must still be allowed to run.
+        queue.compute_busy = 0;
+        assert!(Arc::ptr_eq(&queue.pop(1).unwrap().0, &early_c));
+    }
+
+    #[test]
+    fn worker_count_respects_override_and_clamps() {
+        assert_eq!(worker_count(None, 16), 8);
+        assert_eq!(worker_count(None, 2), 2);
+        assert_eq!(worker_count(Some("1"), 16), 1);
+        assert_eq!(worker_count(Some("2"), 16), 2);
+        assert_eq!(worker_count(Some("0"), 16), 1);
+        assert_eq!(worker_count(Some("99"), 16), 16);
+        assert_eq!(worker_count(Some("abc"), 16), 8);
     }
 }

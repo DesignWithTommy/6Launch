@@ -1267,6 +1267,8 @@ mod tests {
         let source = b"synthetic pipeline recipe vertex";
         let hash = blake3::hash(source);
         let shader = Arc::new(super::super::Shader {
+            #[cfg(windows)]
+            resolves_light: false,
             stage: "vertex",
             container: source.to_vec(),
             hash: hash.to_hex()[..16].to_owned(),

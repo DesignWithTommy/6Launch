@@ -782,6 +782,9 @@ fn log_memory() {
         mb(card[0]),
         mb(card[3]),
     );
+    if crate::cardmem::on() {
+        tracing::info!("{}", crate::cardmem::line(card[1], card[3]));
+    }
     let targets = crate::resource::targets_census();
     tracing::info!(
         "host copies the sweep never lets go: {} the host renders to or writes {:.0} MB ({} of them placed {:.0} MB);          of them {} have title memory that is not mapped now {:.0} MB, {} were not used for 30 s and are held by no          list and no slot {:.0} MB, {} are both {:.0} MB; and {} copies of textures the title fills that the host          copied into {:.0} MB",
@@ -1012,9 +1015,48 @@ fn submitter(all: &mut Vec<(u32, Submitter)>, id: u32) -> &mut Submitter {
     &mut all[at].1
 }
 
-/// A list call on this thread that began at `started` has returned.
-pub(crate) fn recorded(started: std::time::Instant) {
-    let ns = started.elapsed().as_nanos() as u64;
+/// The time-stamp counter: two readings time every list call
+/// (`recorded`), where two of the performance counter cost 7% of a
+/// recording thread's time.
+#[inline]
+#[allow(unused_unsafe)]
+pub(crate) fn ticks() -> u64 {
+    // SAFETY: reading the time-stamp counter has no preconditions.
+    unsafe { core::arch::x86_64::_rdtsc() }
+}
+
+/// A reading of the performance counter and the time-stamp counter
+/// together, taken again if something came between them.
+fn ticks_with_instant() -> (std::time::Instant, u64) {
+    loop {
+        let before = ticks();
+        let at = std::time::Instant::now();
+        let after = ticks();
+        if after.wrapping_sub(before) < 100_000 {
+            return (at, before / 2 + after / 2);
+        }
+    }
+}
+
+/// Nanoseconds in `n` ticks of the time-stamp counter, whose rate is
+/// measured once against the performance counter, over 10 ms.
+fn ticks_ns(n: u64) -> u64 {
+    static SCALE: std::sync::LazyLock<u64> = std::sync::LazyLock::new(|| {
+        let (at, from) = ticks_with_instant();
+        while at.elapsed() < std::time::Duration::from_millis(10) {
+            std::hint::spin_loop();
+        }
+        let (to_at, to) = ticks_with_instant();
+        let ns = to_at.duration_since(at).as_nanos();
+        ((ns << 32) / u128::from(to.wrapping_sub(from).max(1))) as u64
+    });
+    ((u128::from(n) * u128::from(*SCALE)) >> 32) as u64
+}
+
+/// A list call on this thread that began at `started` (`ticks`) has
+/// returned.
+pub(crate) fn recorded(started: u64) {
+    let ns = ticks_ns(ticks().wrapping_sub(started));
     add(C::RecordCalls, 1);
     add(C::RecordNs, ns);
     crate::framelog::add(crate::framelog::T::RecordCalls, 1);
@@ -1429,6 +1471,9 @@ pub(crate) fn log(frames: f64) {
         .map(|r| format!("thread {} {:.0} ms in {:.0} calls", r.0, r.1 as f64 / 1e6 / frames, r.2 as f64 / frames))
         .collect();
     tracing::info!("  list calls by thread: {} threads; {}", recorders.len(), busiest.join(", "));
+    if let Some(line) = crate::draw::table_counts_line(frames) {
+        tracing::info!("  {line}");
+    }
     log_memory();
     let ranges = RANGES.lock().unwrap_or_else(|e| e.into_inner()).take();
     let mut ranges: Vec<_> = ranges.into_iter().flatten().collect();
@@ -1446,5 +1491,23 @@ pub(crate) fn log(frames: f64) {
             bytes as f64 / 1e6 / frames,
             us as f64 / 1e3 / frames
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// The time-stamp counter, which times list calls (`recorded`), read
+    /// as nanoseconds: 20 ms of sleep read as 20 ms.
+    #[test]
+    fn ticks_read_as_nanoseconds() {
+        let at = std::time::Instant::now();
+        let from = super::ticks();
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        let to = super::ticks();
+        let real = at.elapsed().as_nanos() as u64;
+        // Converted after both readings: the first conversion measures the
+        // counter's rate, which takes 10 ms of its own.
+        let ns = super::ticks_ns(to.wrapping_sub(from));
+        assert!(ns.abs_diff(real) < real / 20, "{ns} ns read for {real} ns");
     }
 }

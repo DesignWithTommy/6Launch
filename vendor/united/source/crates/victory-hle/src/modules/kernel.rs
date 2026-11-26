@@ -85,8 +85,7 @@ fn title_path(module: *mut c_void) -> Option<String> {
 
 /// `GetModuleFileName`'s contract: copy with a NUL; if it does not fit,
 /// truncate to the buffer, report `ERROR_INSUFFICIENT_BUFFER` and return
-/// the buffer size. A name that fits clears the last error, as the host
-/// does: titles tell a truncated name from a whole one by it.
+/// the buffer size.
 fn copy_truncated<T: Copy + Default>(text: &[T], out: &mut [T]) -> u32 {
     let Some(room) = out.len().checked_sub(1) else {
         host::set_last_error(ERROR_INSUFFICIENT_BUFFER);
@@ -99,11 +98,8 @@ fn copy_truncated<T: Copy + Default>(text: &[T], out: &mut [T]) -> u32 {
         host::set_last_error(ERROR_INSUFFICIENT_BUFFER);
         return out.len() as u32;
     }
-    host::set_last_error(ERROR_SUCCESS);
     n as u32
 }
-
-const ERROR_SUCCESS: u32 = 0;
 
 const ERROR_INSUFFICIENT_BUFFER: u32 = 122;
 
@@ -238,75 +234,29 @@ pub extern "system" fn OutputDebugStringW(text: *const u16) {
     }
 }
 
-/// The line logged when the title ends the process, and the code the host
-/// then exits with. A function so the text and the code are tested without
-/// ending the test process.
-fn title_exit(call: &str, code: u32, from: &str) -> (String, i32) {
-    (
-        format!("title ended the process: call {call}, code {code}, from {from}"),
-        code as i32,
-    )
-}
-
-/// Puts the line on disk before the process goes: the log writes to the
-/// standard error, which is unbuffered, but a flush says so.
-fn flush_log() {
-    use std::io::Write;
-    let _ = std::io::stderr().flush();
-}
-
-/// Logs a title-chosen exit and returns the code the host exits with.
-fn log_title_exit(call: &str, code: u32, from: &str) -> i32 {
-    let (line, code) = title_exit(call, code, from);
-    tracing::warn!("{line}");
-    flush_log();
-    code
-}
-
 /// The CRT's `exit`, through which the title's entry point returns: logs
 /// the code and the caller, then exits on the host.
 pub extern "C" fn exit(code: i32) -> ! {
-    let from = host::callers();
-    host::exit(log_title_exit("exit", code as u32, &from))
+    tracing::warn!(code, from = %host::callers(), "title exits");
+    host::exit(code)
 }
 
-/// The kernel's `ExitProcess`: logged as [`exit`] is, then the host's own
-/// with the title's code (without this export it was bound silently).
-/// Not the CRT's `exit`: that runs the exit table on the calling thread
-/// while the title's other threads live, where an exit function waiting
-/// for a lock the caller or another thread holds hung the process before
-/// anything ended it. Windows ends the other threads first and runs no
-/// exit table of the program; its loader detaches the DLLs it loaded.
-/// shortcut: title images we mapped get no `DLL_PROCESS_DETACH` this way
-/// (`victory_loader`'s detach runs from the CRT's exit only): a title that
-/// needs its images' detach code at a direct `ExitProcess` would need it
-/// called here after the other threads end.
-pub extern "system" fn ExitProcess(code: u32) -> ! {
-    let from = host::callers();
-    log_title_exit("ExitProcess", code, &from);
-    host::exit_process(code)
-}
-
-/// The CRT's `abort` (also reached from `terminate`): logged like [`exit`],
-/// with the CRT's abort code.
+/// The CRT's `abort` (also reached from `terminate`): logged like [`exit`].
 pub extern "C" fn abort() -> ! {
-    let from = host::callers();
-    log_title_exit("abort", 3, &from);
+    tracing::error!(from = %host::callers(), "title aborts");
     host::abort()
 }
 
 /// The CRT's `terminate` and the STL's invalid-argument exit: logged, then
 /// the host's `abort`.
 pub extern "C" fn terminate() -> ! {
-    let from = host::callers();
-    log_title_exit("terminate", 3, &from);
+    tracing::error!(from = %host::callers(), "title calls terminate");
     host::abort()
 }
 
 /// See [`terminate`].
 pub extern "C" fn _invalid_parameter_noinfo_noreturn() -> ! {
-    let from = host::callers();
-    log_title_exit("_invalid_parameter_noinfo_noreturn", 3, &from);
+    tracing::error!(from = %host::callers(), "title passed an invalid parameter");
     host::abort()
 }
 
@@ -335,8 +285,7 @@ extern "system" fn report_unhandled(info: *const c_void) -> i32 {
 /// See [`exit`]; only the current process is logged.
 pub extern "system" fn TerminateProcess(process: *mut c_void, code: u32) -> i32 {
     if process as isize == -1 {
-        let from = host::callers();
-        log_title_exit("TerminateProcess", code, &from);
+        tracing::warn!(code, from = %host::callers(), "title terminates the process");
     }
     host::terminate_process(process, code)
 }
@@ -352,12 +301,11 @@ fn handle(m: &HleModule) -> *mut c_void {
 /// mapped now.
 fn find_module(path: &str, load: bool) -> Option<*mut c_void> {
     let file = path.rsplit(['\\', '/']).next().unwrap_or(path);
-    // As the Windows loader does, a name without extension means a DLL; a
-    // trailing dot says it has none (and is not part of the name).
-    let file = match file.strip_suffix('.') {
-        Some(bare) => bare.to_owned(),
-        None if file.contains('.') => file.to_owned(),
-        None => format!("{file}.dll"),
+    // As the Windows loader does, a name without extension means a DLL.
+    let file = if file.contains('.') {
+        file.to_owned()
+    } else {
+        format!("{file}.dll")
     };
     // Loads go through the title DLL loader first: it waits for a DLL that
     // another thread is still initialising, as the Windows loader lock does.
@@ -515,7 +463,6 @@ pub(crate) fn module() -> HleModule {
             hle_export!(OutputDebugStringA),
             hle_export!(OutputDebugStringW),
             hle_export!(exit),
-            hle_export!(ExitProcess),
             hle_export!(abort),
             hle_export!(terminate),
             hle_export!(_invalid_parameter_noinfo_noreturn),
@@ -616,11 +563,6 @@ mod host {
         unsafe { crt_exit(code) }
     }
 
-    pub(super) fn exit_process(code: u32) -> ! {
-        // SAFETY: see above.
-        unsafe { windows_sys::Win32::System::Threading::ExitProcess(code) }
-    }
-
     pub(super) fn abort() -> ! {
         // SAFETY: see above.
         unsafe { crt_abort() }
@@ -718,10 +660,6 @@ mod host {
         std::process::exit(code)
     }
 
-    pub(super) fn exit_process(code: u32) -> ! {
-        std::process::exit(code as i32)
-    }
-
     pub(super) fn abort() -> ! {
         std::process::abort()
     }
@@ -744,79 +682,6 @@ mod host {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// A title-chosen exit's line names the call, the code and the caller,
-    /// and the code the host exits with. The text is the one the harness
-    /// matches, so it is fixed.
-    #[test]
-    fn a_title_exit_line_names_the_call_code_and_caller() {
-        assert_eq!(
-            title_exit("exit", 127, "game.exe+0x1234"),
-            (
-                "title ended the process: call exit, code 127, from game.exe+0x1234".to_owned(),
-                127
-            )
-        );
-        // An exit code that arrives as a negative i32 keeps its bits.
-        assert_eq!(title_exit("exit", (-1i32) as u32, "").1, -1);
-    }
-
-    /// The title's `ExitProcess` ends the process as Windows does: the
-    /// CRT's exit table does not run on the calling thread while the
-    /// title's other threads live, and the process ends with the title's
-    /// code. Through the CRT's `exit` instead, an exit function that wants
-    /// a lock the caller holds hung the process before anything else ran
-    /// (Sol, integration review). A child process of this test binary
-    /// makes that call; the test waits for it at most 30 seconds.
-    #[cfg(windows)]
-    #[test]
-    fn a_title_exit_process_ends_as_windows_does_with_its_code() {
-        const CHILD: &str = "VICTORY_TEST_EXIT_PROCESS_CHILD";
-        const CODE: u32 = 0x8765_4321;
-        if std::env::var_os(CHILD).is_some() {
-            static HELD: std::sync::Mutex<()> = std::sync::Mutex::new(());
-            extern "C" fn wants_the_lock() {
-                drop(HELD.lock());
-            }
-            unsafe extern "C" {
-                fn atexit(f: extern "C" fn()) -> i32;
-            }
-            let _held = HELD.lock().unwrap();
-            // SAFETY: registers a function with the CRT's exit table.
-            assert_eq!(unsafe { atexit(wants_the_lock) }, 0);
-            // Another thread alive, as the title's are.
-            drop(std::thread::spawn(|| {
-                loop {
-                    std::thread::sleep(std::time::Duration::from_secs(1));
-                }
-            }));
-            ExitProcess(CODE);
-        }
-        let exe = std::env::current_exe().unwrap();
-        let mut child = std::process::Command::new(exe)
-            .args([
-                "--exact",
-                "modules::kernel::tests::a_title_exit_process_ends_as_windows_does_with_its_code",
-                "--nocapture",
-            ])
-            .env(CHILD, "1")
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()
-            .unwrap();
-        let started = std::time::Instant::now();
-        let status = loop {
-            if let Some(status) = child.try_wait().unwrap() {
-                break status;
-            }
-            if started.elapsed() > std::time::Duration::from_secs(30) {
-                let _ = child.kill();
-                panic!("the title's ExitProcess did not end the process in 30 s");
-            }
-            std::thread::sleep(std::time::Duration::from_millis(50));
-        };
-        assert_eq!(status.code().map(|c| c as u32), Some(CODE), "the title's code");
-    }
 
     /// The title's idle and lowest threads run below normal; the others as
     /// it sets them.
@@ -853,50 +718,6 @@ mod tests {
         let mut small = [0u8; 4];
         assert_eq!(GetModuleFileNameA(module, small.as_mut_ptr(), 4), 4);
         assert_eq!(&small, &[b'C', b':', b'\\', 0]);
-    }
-
-    /// The host clears the last error when the name fits (titles tell a
-    /// truncated name from a whole one by it, also after a call that
-    /// filled the buffer exactly); a title image's name does the same.
-    #[cfg(windows)]
-    #[test]
-    fn a_module_name_that_fits_clears_the_last_error() {
-        use windows_sys::Win32::Foundation::{GetLastError, SetLastError};
-        // SAFETY: reads this thread's last error.
-        let last_error = || unsafe { GetLastError() };
-        // SAFETY: sets this thread's last error.
-        let stale = || unsafe { SetLastError(ERROR_INSUFFICIENT_BUFFER) };
-        let (mut wide, mut narrow) = ([0u16; 512], [0u8; 512]);
-
-        // What the host does, for one of its own modules.
-        let kernel32 = host::get_module_handle_w(w("kernel32.dll").as_ptr());
-        stale();
-        assert_ne!(GetModuleFileNameW(kernel32, wide.as_mut_ptr(), 512), 0);
-        assert_eq!(last_error(), 0, "the host, wide");
-        stale();
-        assert_ne!(GetModuleFileNameA(kernel32, narrow.as_mut_ptr(), 512), 0);
-        assert_eq!(last_error(), 0, "the host, narrow");
-
-        let base = 0x7200_0000_0000;
-        runtime::set_image_path(base, std::path::Path::new(r"C:\title\game.exe"));
-        let module = base as *mut c_void;
-        // Too small: the error says so, as before.
-        // SAFETY: this thread's last error.
-        unsafe { SetLastError(0) };
-        assert_eq!(GetModuleFileNameW(module, wide.as_mut_ptr(), 4), 4);
-        assert_eq!(last_error(), ERROR_INSUFFICIENT_BUFFER);
-        // Then with room, the way titles grow their buffer until it fits.
-        assert_eq!(GetModuleFileNameW(module, wide.as_mut_ptr(), 512), 17);
-        assert_eq!(last_error(), 0, "a title image, wide");
-        stale();
-        assert_eq!(GetModuleFileNameA(module, narrow.as_mut_ptr(), 512), 17);
-        assert_eq!(last_error(), 0, "a title image, narrow");
-        // An exact fit is whole too (17 characters and the NUL).
-        stale();
-        assert_eq!(GetModuleFileNameA(module, narrow.as_mut_ptr(), 18), 17);
-        assert_eq!(last_error(), 0);
-        assert_eq!(GetModuleFileNameA(module, narrow.as_mut_ptr(), 17), 17);
-        assert_eq!(last_error(), ERROR_INSUFFICIENT_BUFFER);
     }
 
     /// The title's arguments come right after the program, and the list ends
@@ -945,10 +766,7 @@ mod tests {
         );
         // Host DLLs outside the host policy do not exist for the title.
         assert!(LoadLibraryW(w("wininet.dll").as_ptr()).is_null());
-        // By its full path too: the host's own, or the load would fail whatever the policy says.
-        let urlmon = std::env::var("SystemRoot").unwrap() + r"\System32\urlmon";
-        let urlmon = std::ffi::CString::new(urlmon).unwrap();
-        assert!(LoadLibraryA(urlmon.as_ptr().cast()).is_null());
+        assert!(LoadLibraryA(c"C:\\Windows\\System32\\urlmon".as_ptr().cast()).is_null());
         assert!(GetModuleHandleW(w("WININET.DLL").as_ptr()).is_null());
         assert_eq!(
             // SAFETY: reads this thread's last error.
@@ -993,21 +811,6 @@ mod tests {
         let runtime = LoadLibraryA(c"xgameruntime.dll".as_ptr().cast());
         assert!(!runtime.is_null());
         assert_eq!(GetModuleHandleW(w("XGameRuntime.dll").as_ptr()), runtime);
-    }
-
-    /// A trailing dot means the name has no extension: no `.dll` is added.
-    #[test]
-    fn a_module_name_with_a_trailing_dot_gets_no_dll_appended() {
-        let (bare, dll) = (0x7400_0000_0000usize, 0x7500_0000_0000usize);
-        runtime::set_image_path(bare, std::path::Path::new(r"C:\title\plain"));
-        runtime::set_image_path(dll, std::path::Path::new(r"C:\title\plain.dll"));
-        assert_eq!(GetModuleHandleW(w("plain.").as_ptr()) as usize, bare);
-        assert_eq!(
-            GetModuleHandleA(c"sub\\PLAIN.".as_ptr().cast()) as usize,
-            bare
-        );
-        assert_eq!(GetModuleHandleW(w("plain").as_ptr()) as usize, dll);
-        assert_eq!(GetModuleHandleW(w("plain.dll").as_ptr()) as usize, dll);
     }
 
     /// No buffer: nothing written, the error says it was too small.

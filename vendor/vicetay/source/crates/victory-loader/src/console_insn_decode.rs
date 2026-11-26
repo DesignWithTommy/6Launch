@@ -122,8 +122,6 @@ pub fn decode(code: &[u8]) -> Option<(ConsoleOnly, usize)> {
                 && code[i + 3..i + 7] == [0x48, 0x83, 0xC0, 0x40]
                 && (code[i + 7] == 0x48 || code[i + 7] == 0x4C)
                 && code[i + 8] == 0x39
-                && code[i + 9] & 0xC7 == 0xC0
-                && (code[i + 7] == 0x4C || code[i + 9] & 0x38 != 0)
                 && code[i + 10..i + 12] == [0x72, 0xF4]
             {
                 let rex_r = code[i + 7] == 0x4C;

@@ -136,36 +136,27 @@ fn operands(inst: &Instruction, name: &str, fields: &Fields) -> String {
             soffset,
             cache,
         } => {
-            let data = match (name, data) {
-                ("s_atc_probe" | "s_atc_probe_buffer", Some(Operand::Literal(imm))) => {
-                    Some(atc_immediate(*imm))
-                }
-                _ => data.map(|d| d.to_string()),
-            };
-            let off = match (soffset, offset) {
-                (Operand::Scalar { code: NULL, .. }, 0) => soffset.to_string(),
-                (Operand::Scalar { code: NULL, .. }, _) => {
-                    format!("0x{:06x}", offset & 0x1F_FFFF)
-                }
-                (_, 0) => soffset.to_string(),
-                _ => format!("{soffset} offset:0x{:06x}", offset & 0x1F_FFFF),
-            };
-            out = match (data, base) {
-                // The data is a counter or the wave ID; these have no address.
-                (Some(data), _)
-                    if matches!(
-                        name,
-                        "s_memtime" | "s_memrealtime" | "s_get_waveid_in_workgroup"
-                    ) =>
-                {
-                    data
-                }
-                (Some(data), Some(base)) => format!("{data}, {base}, {off}"),
-                (Some(data), None) if name.starts_with("s_scratch_") => format!("{data}, {off}"),
-                (Some(data), None) => data,
-                (None, Some(base)) => format!("{base}, {off}"),
-                (None, None) => String::new(),
-            };
+            if let Some(data) = data {
+                let data = match (name, data) {
+                    ("s_atc_probe" | "s_atc_probe_buffer", Operand::Literal(imm)) => {
+                        atc_immediate(*imm)
+                    }
+                    _ => data.to_string(),
+                };
+                let off = match (soffset, offset) {
+                    (Operand::Scalar { code: NULL, .. }, 0) => soffset.to_string(),
+                    (Operand::Scalar { code: NULL, .. }, _) => {
+                        format!("0x{:06x}", offset & 0x1F_FFFF)
+                    }
+                    (_, 0) => soffset.to_string(),
+                    _ => format!("{soffset} offset:0x{:06x}", offset & 0x1F_FFFF),
+                };
+                out = match name {
+                    // The data is a counter or the wave ID; these have no address.
+                    "s_memtime" | "s_memrealtime" | "s_get_waveid_in_workgroup" => data.to_string(),
+                    _ => format!("{data}, {base}, {off}"),
+                };
+            }
             flags(&mut out, cache, false);
         }
         Fields::Valu(v) => out = valu(name, v, inst.encoding),
@@ -391,7 +382,7 @@ fn flags(out: &mut String, cache: &Cache, dlc_first: bool) {
 }
 
 fn label(inst: &Instruction, imm: u16) -> String {
-    let target = inst.offset as i64 + 4 * inst.words().len() as i64 + 4 * i64::from(imm as i16);
+    let target = inst.offset as i64 + 4 * inst.words.len() as i64 + 4 * i64::from(imm as i16);
     format!("label_{target:04X}")
 }
 
@@ -807,7 +798,7 @@ mod tests {
                 panic!("not an SMEM instruction");
             };
             assert_eq!(got, Some(data), "{words:08x?}");
-            assert_eq!(got_base, Some(base), "{words:08x?}");
+            assert_eq!(got_base, base, "{words:08x?}");
             assert_eq!(cache, Cache::default(), "{words:08x?}");
         }
     }
@@ -935,79 +926,5 @@ mod tests {
         };
         assert_eq!(data, Operand::Vector { reg: 8, dwords: 2 });
         assert_eq!(addr.len(), 2);
-    }
-
-    #[test]
-    fn smem_scratch_query_cache_and_probe_omit_bogus_operands() {
-        use super::super::{Cache, NULL};
-        let decode_one = |words: &[u32]| {
-            let code: Vec<u8> = words
-                .iter()
-                .chain(&[0xBF81_0000])
-                .flat_map(|w| w.to_le_bytes())
-                .collect();
-            (code.clone(), decode(&code).unwrap()[0].clone())
-        };
-
-        // s_scratch_load_dword s4, off offset:0x10 (op=0x05, sdata=4, soffset=NULL=125)
-        let scratch = [(0x3D << 26) | (0x05 << 18) | (4 << 6), (125 << 25) | 0x10];
-        let (scratch_code, inst) = decode_one(&scratch);
-        let Fields::Smem {
-            data,
-            base,
-            offset,
-            soffset,
-            ..
-        } = inst.fields(false)
-        else {
-            panic!("expected SMEM");
-        };
-        assert_eq!(data, Some(Operand::Scalar { code: 4, dwords: 1 }));
-        assert_eq!(base, None);
-        assert_eq!(offset, 0x10);
-        assert_eq!(soffset, Operand::Scalar { code: NULL, dwords: 1 });
-        assert_eq!(one(&scratch, false), "s_scratch_load_dword s4, 0x000010");
-
-        // Building IR for s_scratch_load_dword must not fabricate Reg::S(0)/Reg::S(1) reads,
-        // and resource::track must not treat s[0:1] as a scalar load base.
-        let p = crate::ir::build(&scratch_code, false, 1).unwrap();
-        let ir_inst = &p.blocks[0].insts[0];
-        assert!(
-            ir_inst.reads.is_empty(),
-            "scratch load fabricated reads: {:?}",
-            ir_inst.reads
-        );
-        let res = crate::resource::track(&p, &[], crate::native::HwStage::Cs, None).unwrap();
-        assert!(res.scalar.is_empty(), "scratch load added scalar address");
-
-        // s_memtime s[6:7] (op=0x24, sdata=6) has no base or offset.
-        let memtime = [(0x3D << 26) | (0x24 << 18) | (6 << 6), 0x1234];
-        let (_, inst) = decode_one(&memtime);
-        assert_eq!(
-            inst.fields(false),
-            Fields::Smem {
-                data: Some(Operand::Scalar { code: 6, dwords: 2 }),
-                base: None,
-                offset: 0,
-                soffset: Operand::Scalar { code: NULL, dwords: 1 },
-                cache: Cache::default(),
-            }
-        );
-        assert_eq!(one(&memtime, false), "s_memtime s[6:7]");
-
-        // s_atc_probe_buffer (op=0x27, inst_op=3 in sdata field, sbase=4 -> s[8:11])
-        let probe = [(0x3D << 26) | (0x27 << 18) | (3 << 6) | 4, (125 << 25) | 0x20];
-        let (_, inst) = decode_one(&probe);
-        assert_eq!(
-            inst.fields(false),
-            Fields::Smem {
-                data: None,
-                base: Some(Operand::Scalar { code: 8, dwords: 4 }),
-                offset: 0x20,
-                soffset: Operand::Scalar { code: NULL, dwords: 1 },
-                cache: Cache::default(),
-            }
-        );
-        assert_eq!(one(&probe, false), "s_atc_probe_buffer s[8:11], 0x000020");
     }
 }

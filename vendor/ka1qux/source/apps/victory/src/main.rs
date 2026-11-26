@@ -5,13 +5,13 @@
 
 mod census;
 mod inspect;
-#[cfg(windows)]
-mod prebuild;
+#[cfg(all(windows, feature = "diagnostics"))]
+mod replay;
 mod run;
 mod shader;
-#[cfg(windows)]
-mod title_profile;
 mod translate;
+#[cfg(windows)]
+mod warm;
 
 use std::path::PathBuf;
 
@@ -30,6 +30,7 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
 enum Command {
     /// Summarise one PE image: headers, sections, imports, TLS, build id.
     Inspect {
@@ -64,47 +65,79 @@ enum Command {
     /// archives, if uncompressed) and report their layout.
     ShaderInfo {
         paths: Vec<PathBuf>,
-        /// Print one line per container found.
-        #[arg(long)]
+        /// Print one line per container found and show why paths were skipped.
+        #[arg(short, long)]
         verbose: bool,
         /// Also list the decoded native instructions (implies --verbose).
         #[arg(long)]
         disasm: bool,
-        /// Show the effects, techniques, and passes in shader databases.
-        #[arg(long)]
-        effects: bool,
     },
     /// Run every shader found (containers, SGD5 files) through the
     /// translator and report what it cannot handle yet.
+    ///
+    /// VICTORY_HOST_WAVE overrides the host wave width, including with --warm.
+    /// VICTORY_HOST_MAX_WAVE is a compatibility alias. When both values are
+    /// valid, VICTORY_HOST_WAVE takes precedence. Zero means unknown width.
+    /// For ordinary translation, VICTORY_HOST_RDNA=1 selects RDNA float settings.
     Translate {
         paths: Vec<PathBuf>,
         /// Check emitted DXIL with dxil.dll's validator (`VICTORY_DXIL`,
         /// else the newest Windows SDK's).
         #[arg(long)]
         validate: bool,
-        /// Check host pipelines, or prebuild the shader pack's pipelines with --cache.
+        /// Also create a host D3D12 pipeline for each emitted shader.
         #[arg(long)]
         pipelines: bool,
-        /// Prebuild only shader-pack pipelines requested by earlier runs in this cache.
-        #[arg(long, requires_all = ["cache", "pipelines"])]
-        used_pipelines: bool,
         /// Print one line per program and outcome.
         #[arg(long)]
         list: bool,
         /// Worker threads (default: every logical core).
         #[arg(long)]
         jobs: Option<usize>,
-        /// Fill the shader cache that `run` reads.
-        #[arg(long, conflicts_with_all = ["validate", "list", "warm"])]
-        cache: bool,
         /// Warm the run's shader cache: a file of shader hashes (the 16
         /// hex digits a run's log names a shader by, anywhere in a line);
         /// the containers with those hashes are translated into the
-        /// cache and nothing else is done (`all`: every container found).
-        /// Set `VICTORY_HOST_WAVE`, `VICTORY_VIEW_LIMIT` and
-        /// `VICTORY_HOST_NATIVE16` to what the run's log says of the host.
+        /// cache and nothing else is done. Set `VICTORY_HOST_WAVE` and
+        /// `VICTORY_VIEW_LIMIT` to what the run's log says of the host.
         #[arg(long)]
         warm: Option<PathBuf>,
+    },
+    /// Translate every shader found (as `translate` finds them) into the
+    /// shader cache, so that no run has to: a few minutes, once per version
+    /// of the translator. Translations an earlier build of the same version
+    /// cached are made again, and those that came out different counted.
+    /// In diagnostics builds, VICTORY_LOG=debug shows skipped paths.
+    Shaders {
+        paths: Vec<PathBuf>,
+        /// Worker threads (default: every logical core).
+        #[arg(long)]
+        jobs: Option<usize>,
+        /// Also write every shader that does not translate to this file,
+        /// one line each: hash, where it was found, why.
+        #[arg(long)]
+        list: Option<PathBuf>,
+    },
+    /// Make the host pipelines of every pipeline the title ever created
+    /// (runs with `VICTORY_PIPELINE_BOOK=1` write them down), so that the
+    /// driver's cache on disk has them before a run needs one: once per change
+    /// of the translator or the driver. Goes on where it was stopped.
+    #[cfg(windows)]
+    Warm {
+        /// Processes at once (default: two thirds of the logical cores).
+        #[arg(long)]
+        jobs: Option<usize>,
+        /// At most this many pipelines.
+        #[arg(long)]
+        limit: Option<usize>,
+        /// Those made before too.
+        #[arg(long)]
+        again: bool,
+        /// Only the pipelines earlier runs drew with.
+        #[arg(long)]
+        used: bool,
+        /// (What the processes it starts are given.)
+        #[arg(long, hide = true)]
+        these: Option<String>,
     },
     /// Prepare, map and bind a title executable; with --execute, run it.
     Run {
@@ -126,6 +159,10 @@ enum Command {
         #[arg(last = true)]
         title_args: Vec<String>,
     },
+    /// Run a captured frame's GPU work again (diagnostics builds; see
+    /// docs/replay.md).
+    #[cfg(all(windows, feature = "diagnostics"))]
+    Replay(replay::Replay),
     /// Show the resolved configuration and check it.
     Config,
 }
@@ -166,52 +203,45 @@ fn main() -> Result<()> {
             paths,
             verbose,
             disasm,
-            effects,
-        } => shader::run(paths, verbose || disasm, disasm, effects),
-        Command::Translate {
-            paths,
-            jobs,
-            pipelines,
-            used_pipelines,
-            cache: true,
-            ..
-        } => translate::warm(paths, jobs, pipelines, used_pipelines),
+        } => shader::run(paths, verbose || disasm, disasm),
         Command::Translate {
             paths,
             validate,
             pipelines,
             list,
             jobs,
-            cache: false,
             warm,
-            ..
         } => {
             // `VICTORY_VIEW_LIMIT=<null slot>`: translate as on a host whose view heap is capped
             if let Some(n) = std::env::var("VICTORY_VIEW_LIMIT").ok().and_then(|v| v.parse().ok()) {
                 victory_shader::emit::set_view_heap_limit(n);
             }
-            // `VICTORY_HOST_WAVE=32`: translate as for a GPU whose waves are at most 32 lanes
-            if let Some(n) = std::env::var("VICTORY_HOST_WAVE").ok().and_then(|v| v.parse().ok()) {
-                victory_shader::emit::set_host_max_wave(n);
-            }
-            // `VICTORY_HOST_NATIVE16=1`: translate as for a GPU with native 16-bit operations
-            // (f16 arithmetic in `half`; the run's log says "host native 16-bit float operations")
-            if std::env::var_os("VICTORY_HOST_NATIVE16").is_some_and(|v| v == "1") {
-                victory_shader::emit::set_host_native16(true);
-            }
+            let wave = translate::host_wave::select(
+                std::env::var("VICTORY_HOST_WAVE").ok().as_deref(),
+                std::env::var("VICTORY_HOST_MAX_WAVE").ok().as_deref(),
+                |message| eprintln!("{message}"),
+            );
             if let Some(file) = warm {
-                return translate::warm_hashes(paths, &file, jobs);
+                return translate::warm(paths, &file, jobs, wave);
             }
-            translate::run(paths, validate, pipelines, list, jobs)
+            translate::run(paths, validate, pipelines, list, jobs, wave)
         }
+        Command::Shaders { paths, jobs, list } => translate::precompile(paths, jobs, list),
+        #[cfg(windows)]
+        Command::Warm { jobs, limit, again, used, these } => warm::run(jobs, limit, again, used, these),
         Command::Run {
             exe,
             unimplemented,
             strict,
             execute,
             console,
-            title_args: _,
-        } => run::run(&exe, unimplemented, strict, execute, console),
+            title_args,
+        } => {
+            victory_hle::runtime::set_title_args(title_args);
+            run::run(&exe, unimplemented, strict, execute, console)
+        }
+        #[cfg(all(windows, feature = "diagnostics"))]
+        Command::Replay(options) => replay::run(options),
         Command::Config => show_config(),
     }
 }
@@ -232,8 +262,7 @@ fn show_config() -> Result<()> {
     println!("game_dir    : {}", status(&cfg.game_dir));
     println!("cache_dir   : {}", cfg.cache_dir.display());
     println!("data_dir    : {}", cfg.data_dir.display());
-    println!("fidelityfx  : {}", status(&cfg.fidelityfx_dir));
-    println!("fsr_profile : {}", status(&cfg.fsr_profile));
+    println!("title_profile: {}", status(&cfg.title_profile));
     for t in &cfg.test_titles {
         println!("test_title  : {}", status(&Some(t.clone())));
     }
@@ -241,6 +270,7 @@ fn show_config() -> Result<()> {
         .game_dir
         .iter()
         .chain(&cfg.test_titles)
+        .chain(&cfg.title_profile)
         .chain([&cfg.cache_dir, &cfg.data_dir])
     {
         if let Err(e) = victory_core::ensure_outside_repo(p) {

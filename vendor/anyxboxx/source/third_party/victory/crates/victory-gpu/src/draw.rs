@@ -8,8 +8,11 @@
 //! stencil reference, topology, targets) is set on the host list as the
 //! title sets it.
 
+#[cfg(test)]
+mod heap_texture_tests;
 mod root_slots;
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use victory_shader::resource::RootIndexedView;
@@ -218,6 +221,43 @@ fn tables_by_content() -> bool {
 fn raw_all() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("VICTORY_INDIRECT_RAW").is_some_and(|v| v == "2"))
+}
+
+/// (Neptune) `VICTORY_INDIRECT_RAW=3`: as 2, but a record that can be clamped in its list's
+/// prelude is clamped there and not drawn raw.
+///
+/// With 2 (the launcher's set) the card took garbage records as they stood: in about half the
+/// runs of the world on `main` the card hung as the title entered the world (device removed,
+/// "the GPU will not respond to more commands", always with 35 submissions of 275 lists in the
+/// air), stopped in a run of indirect commands between two barriers. With every record clamped
+/// (no `VICTORY_INDIRECT_RAW`) no run of four hung, at about 10 fps against 16-18: of some 6,500
+/// records a frame, 2,200 were clamped ahead in the lists' preludes, one pass for many records,
+/// and 4,300 in place, each a dispatch of ours between two waits for every earlier shader write.
+/// This clamps the first kind and draws the second raw.
+fn raw_but_ahead() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("VICTORY_INDIRECT_RAW").is_some_and(|v| v == "3"))
+}
+
+/// How an indirect record is drawn: from the title's own record (`Raw`), clamped in its list's
+/// prelude (`Ahead`), or clamped in place before it (`InPlace`). `raw`: `VICTORY_INDIRECT_RAW=2`;
+/// `raw_ahead`: `=3`; `rawable`: the kind and shape the raw path takes (not a dispatch split
+/// for its first group's number); `aheadable`: the shape the prelude clamp takes, and nothing
+/// the list recorded before may write the record.
+#[derive(Debug, PartialEq, Eq)]
+enum Route {
+    Raw,
+    Ahead,
+    InPlace,
+}
+
+fn route(raw: bool, raw_ahead: bool, rawable: bool, aheadable: bool) -> Route {
+    match (raw || raw_ahead, rawable, aheadable) {
+        (true, _, true) if raw_ahead => Route::Ahead,
+        (true, true, _) => Route::Raw,
+        (_, _, true) => Route::Ahead,
+        _ => Route::InPlace,
+    }
 }
 
 fn raw_indirect() -> bool {
@@ -969,7 +1009,6 @@ impl State {
 
     /// As [`State::prepare`], for draws (`mesh` false) or mesh dispatches.
     fn prepare_for(&mut self, list: &HostList, indexed: bool, mesh: bool) -> bool {
-        #[cfg(feature = "diagnostics")]
         if crate::pipeline::is_skipped(self.pipeline as This) {
             return false;
         }
@@ -1140,6 +1179,17 @@ impl State {
             } else {
                 None
             };
+            // The format flags of typed buffer views (`SLOT_TYPED`): a shader that reads them
+            // cannot run without them, as without the directory of title memory above.
+            let typed = if t.host.root_srvs.contains(&victory_shader::emit::SLOT_TYPED) {
+                let Some(gpu) = self.heap_typed_table(list) else {
+                    once!("a shader uses typed buffers with no view heap set: the draw is dropped");
+                    return false;
+                };
+                Some(gpu)
+            } else {
+                None
+            };
             if let Some((param, dwords)) = stage.user_data {
                 let mut values = vec![0u32; dwords as usize];
                 for u in &t.host.user_data {
@@ -1177,6 +1227,23 @@ impl State {
                                     l.SetComputeRootShaderResourceView(param, m.directory);
                                 } else {
                                     l.SetGraphicsRootShaderResourceView(param, m.directory);
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                    if srv && slot == victory_shader::emit::SLOT_TYPED {
+                        // Ours, not the title's: typed buffer format flags in the
+                        // view heap's strides table, without scanning the whole heap.
+                        // Found above (the draw is dropped without it).
+                        if let Some(gpu) = typed {
+                            // SAFETY: an open list; the table lives as long
+                            // as the heap the list holds.
+                            unsafe {
+                                if compute {
+                                    l.SetComputeRootShaderResourceView(param, gpu);
+                                } else {
+                                    l.SetGraphicsRootShaderResourceView(param, gpu);
                                 }
                             }
                         }
@@ -1475,6 +1542,26 @@ impl State {
             }
         }
         true
+    }
+
+    /// The GPU address of the view heap's stride/typed-format metadata table
+    /// (`SLOT_TYPED`), without triggering the full-heap buffer-view scan.
+    fn heap_typed_table(&self, list: &HostList) -> Option<u64> {
+        let heap = self
+            .heaps
+            .iter()
+            .filter(|&&h| h != 0)
+            .map(|&h| crate::descriptor::heap(h as This))
+            .find(|h| !h.samplers())?;
+        let host = heap.host()?;
+        let gpu = host.strides_gpu()?;
+        const ONCE: usize = usize::MAX - 0x5d;
+        if list.first_use(ONCE)
+            && let Some(buffer) = host.strides_buffer()
+        {
+            list.keep(buffer);
+        }
+        Some(gpu)
     }
 
     /// For a shader that picks buffers from the view heap by an index it
@@ -1929,8 +2016,16 @@ impl State {
             None => (span, per_frame),
         };
         let began = std::time::Instant::now();
+        // Several slots can show the same texture from the same mip. The list
+        // holds each upload even after its staging entry is removed. Reuse
+        // it within this pass, where there are no intervening title copies.
+        let mut uploaded = HashMap::new();
         for (index, write) in due {
             if SPENT.load(Ordering::Relaxed) >= bytes_at_most || began.elapsed() > span {
+                break;
+            }
+            // (cool_fox `ab75ac3`) Under low commit the rest waits for a pass with room.
+            if !crate::commit_gate::admit() {
                 break;
             }
             // A placed texture whose memory is not mapped (not streamed in
@@ -2030,20 +2125,27 @@ impl State {
                     continue;
                 }
             };
-            let title_fills = crate::resource::host_resource(resource).is_some_and(crate::texture::title_written);
-            if !title_fills {
+            let Some(texture) = crate::resource::host_resource(resource)
+                .filter(|texture| crate::texture::title_written(texture))
+            else {
                 // a render target, a depth or unordered access texture: the host's own
                 host.texture_slot_done(index, write, None);
                 continue;
-            }
+            };
+            let first = match &view {
+                Some(View::Placed(false, _, desc)) => crate::resource::first_mip(desc),
+                _ => 0,
+            };
+            let key = (resource, texture.as_raw(), first);
+            let previous = if partly.is_none() { uploaded.get(&key).copied() } else { None };
             // A texture that has a staging buffer now is one draws read
             // through a table: they upload it, and check it at every
             // submission that samples it.
-            let tabled = crate::texture::is_staged(resource);
+            let tabled = previous.is_none() && crate::texture::is_staged(resource);
             if tabled {
                 crate::texture::upload_again(resource);
             }
-            if let Some(view) = &view {
+            if previous.is_none() && let Some(view) = &view {
                 readable(list, sampled.kind, view);
             }
             // A texture view the host refuses removes the device: name it.
@@ -2057,7 +2159,15 @@ impl State {
                 crate::host::log_removal_context();
                 return;
             }
-            let (bytes, whole) = crate::texture::staged(resource).unwrap_or((0, true));
+            if let Some(recheck) = previous {
+                host.texture_slot_done(index, write, None);
+                if let Some((memory, print)) = recheck {
+                    host.texture_slot_recheck(index, frame, memory, print);
+                }
+                continue;
+            }
+            let staged = crate::texture::staged(resource);
+            let (bytes, whole) = staged.unwrap_or((0, true));
             // Not all of it there: looked at again next frame, and from
             // then on as a slot with nothing new (a placed texture: until
             // more of it is mapped; a texture object at an address the
@@ -2099,8 +2209,12 @@ impl State {
             HEAP_TEXTURES.fetch_add(1, Ordering::Relaxed);
             host.texture_slot_done(index, write, again);
             // Whole and uploaded: looked at again (`texture_slots_rechecked`).
-            if let Some((at, len)) = memory {
-                host.texture_slot_recheck(index, frame, (at, len), crate::texture::fingerprint(at, len));
+            let recheck = memory.map(|(at, len)| ((at, len), crate::texture::fingerprint(at, len)));
+            if let Some((memory, print)) = recheck {
+                host.texture_slot_recheck(index, frame, memory, print);
+            }
+            if again.is_none() && staged.is_some() {
+                uploaded.insert(key, recheck);
             }
         }
         catching_up(began.elapsed().saturating_sub(plain));
@@ -2199,7 +2313,6 @@ impl State {
     pub(crate) fn dispatch(&mut self, list: &HostList, x: u32, y: u32, z: u32) {
         // It may write the arguments a window holds clamped.
         self.window = None;
-        #[cfg(feature = "diagnostics")]
         if crate::pipeline::is_skipped(self.pipeline as This) {
             DROPPED.fetch_add(1, Ordering::Relaxed);
             crate::pipeline::note_drop(self.pipeline as This);
@@ -3203,7 +3316,6 @@ impl State {
             ATTEMPTS.fetch_add(1, Ordering::Relaxed);
         }
         // Skip before the argument clamp can mutate the indirect buffer.
-        #[cfg(feature = "diagnostics")]
         if crate::pipeline::is_skipped(self.pipeline as This) {
             crate::pipeline::note_drop(self.pipeline as This);
             return false;
@@ -3259,6 +3371,9 @@ impl State {
             why("arguments outside title buffers");
             return false;
         };
+        if crate::indirect::after_writer() && matches!(kind, DRAW | INDEXED | MESH) && max == 1 && count.is_none() {
+            crate::indirect::learn(arguments as usize, kind);
+        }
         let counter = match count {
             Some(at) => match crate::shadow::find_any(at, 4) {
                 Some(s) => Some((s, at)),
@@ -3314,7 +3429,52 @@ impl State {
         // (`VICTORY_INDIRECT_RAW=2`: also dispatches and records with a count, as the title
         // gave them; not a dispatch that is split into parts for its first group's number.)
         let split = kind == DISPATCH && max == 1 && count.is_none() && group_base(p).is_some();
-        if raw_all() && matches!(kind, DRAW | INDEXED | MESH | DISPATCH) && !split {
+        let rawable = matches!(kind, DRAW | INDEXED | MESH | DISPATCH) && !split;
+        // (Neptune) A single record without a count buffer, which nothing the list has recorded
+        // so far lets its shaders write, can be clamped in the list's prelude (below). Not asked
+        // where the record is drawn raw whatever the answer (`VICTORY_INDIRECT_RAW=2`).
+        let aheadable = !(raw_all() && rawable)
+            && clamp_ahead()
+            && !windows()
+            && kind != DISPATCH
+            && max == 1
+            && count.is_none()
+            && crate::indirect::ahead_layout(kind, stride, args.offset(arguments))
+            && !list.gpu_written(arguments as usize, len as usize);
+        // (Neptune) `VICTORY_CLAMP_AFTER_WRITER=1`: a single record that shaders of the list write
+        // runs raw once a pass of ours has made it safe in place (`crate::indirect::sanitized`);
+        // when none can, it is clamped as before.
+        let shape = crate::indirect::after_writer() && matches!(kind, DRAW | INDEXED | MESH) && max == 1 && count.is_none();
+        let written = shape && list.gpu_written(arguments as usize, len as usize);
+        let after_writer = written && {
+            args.refresh(list, arguments, len);
+            let (safe, ran) = crate::indirect::sanitized(list, &args, arguments, kind);
+            if ran {
+                // The pass bound a compute pipeline and root signature of its own.
+                self.host_pipeline = 0;
+                self.host_roots[1] = 0;
+            }
+            safe
+        };
+        if shape {
+            crate::indirect::SAN[if after_writer { 3 } else { 4 }].fetch_add(1, Ordering::Relaxed);
+            if !written {
+                crate::indirect::WHY[1].fetch_add(1, Ordering::Relaxed);
+            }
+            static SHOWN: AtomicU64 = AtomicU64::new(0);
+            if !after_writer && SHOWN.fetch_add(1, Ordering::Relaxed) < 5 {
+                let ranges = list.with_san(|s| s.ranges());
+                tracing::info!(
+                    args = format_args!("{arguments:#x}"),
+                    kind,
+                    written,
+                    ranges = ?ranges.iter().map(|(a, b)| format!("{a:#x}-{b:#x}")).collect::<Vec<_>>(),
+                    "VICTORY_CLAMP_AFTER_WRITER: a reader fell back to the clamp"
+                );
+            }
+        }
+        let way = if after_writer { Route::Raw } else { route(raw_all(), raw_but_ahead(), rawable, aheadable) };
+        if way == Route::Raw {
             self.window = None;
             args.refresh(list, arguments, len);
             if let Some((s, at)) = &counter {
@@ -3357,17 +3517,9 @@ impl State {
             }
             return true;
         }
-        // (Neptune) A single record without a count buffer, which nothing
-        // the list has recorded so far lets its shaders write: clamped in
-        // the list's prelude, and drawn from its slot there.
-        if clamp_ahead()
-            && !windows()
-            && kind != DISPATCH
-            && max == 1
-            && count.is_none()
-            && crate::indirect::ahead_layout(kind, stride, args.offset(arguments))
-            && !list.gpu_written(arguments as usize, len as usize)
-        {
+        // (Neptune) Clamped in the list's prelude, and drawn from its slot there (in place below
+        // if the prelude has no room).
+        if way == Route::Ahead {
             args.refresh(list, arguments, len);
             if let Some((slots, at)) = list.clamp_ahead(&args.buffer, args.offset(arguments), kind, stride) {
                 self.window = None;
@@ -3916,5 +4068,31 @@ pub(crate) fn depth_bounds(list: &HostList, min: f32, max: f32) {
     {
         // SAFETY: an open list on a device that supports depth bounds.
         unsafe { l1.OMSetDepthBounds(min, max) };
+    }
+}
+
+#[cfg(test)]
+mod route_tests {
+    use super::{Route, route};
+
+    /// `VICTORY_INDIRECT_RAW=3`: a record the prelude can clamp is clamped there; only the
+    /// others are drawn raw, and a record of neither shape is clamped in place.
+    #[test]
+    fn with_3_records_clamped_ahead_are_not_drawn_raw() {
+        assert_eq!(route(false, true, true, true), Route::Ahead);
+        assert_eq!(route(false, true, true, false), Route::Raw);
+        assert_eq!(route(false, true, false, false), Route::InPlace);
+        assert_eq!(route(false, true, false, true), Route::Ahead);
+    }
+
+    /// `VICTORY_INDIRECT_RAW=2` and no switch: as before.
+    #[test]
+    fn with_2_and_without_the_switch_records_go_as_before() {
+        assert_eq!(route(true, false, true, true), Route::Raw);
+        assert_eq!(route(true, false, true, false), Route::Raw);
+        assert_eq!(route(true, false, false, true), Route::Ahead);
+        assert_eq!(route(true, false, false, false), Route::InPlace);
+        assert_eq!(route(false, false, true, true), Route::Ahead);
+        assert_eq!(route(false, false, true, false), Route::InPlace);
     }
 }

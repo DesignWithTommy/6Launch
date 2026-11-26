@@ -42,7 +42,7 @@ pub fn run(
     strict: bool,
     execute: bool,
     console: Console,
-) -> Result<u32> {
+) -> Result<()> {
     use std::sync::Arc;
     use victory_hle::{HleResolver, HostPolicy};
     use victory_loader::{BindReport, UnimplementedPolicy, WithTitleDlls};
@@ -52,11 +52,6 @@ pub fn run(
     }
     // A title that relaunched itself: the old process must be gone first.
     victory_hle::modules::lifecycle::wait_for_previous();
-    if execute {
-        // Before the host's own memory (the image read below, the GPU
-        // device, the caches) takes the space the title's 32-bit memory needs.
-        victory_hle::modules::xmem::low_guards::install();
-    }
     let cfg = victory_core::Config::load()?;
     let original = std::fs::read(exe).with_context(|| format!("reading {}", exe.display()))?;
     let prepared = victory_loader::prepare(&original)?;
@@ -175,7 +170,7 @@ pub fn run(
     }
     if !execute {
         println!("not executing (pass --execute to start the title)");
-        return Ok(0);
+        return Ok(());
     }
     victory_loader::report_crashes();
     victory_loader::log_crashes_to(temp.with_file_name("crashes.log"));
@@ -199,7 +194,7 @@ pub fn run(
         .join()
         .map_err(|_| anyhow::anyhow!("title main thread panicked"))??;
     println!("title exited with {code}");
-    Ok(code)
+    Ok(())
 }
 
 /// The debugging aids (README): scheduled stack dumps, watched values and
@@ -360,12 +355,25 @@ impl LateDlls {
                     inner: &old,
                     dlls: &new,
                 };
-                for (name, dll) in &new {
+                // All of them bound before any is known as an image: a load
+                // that fails here leaves none behind, unattached, for the
+                // next `LoadLibrary` of its name to return.
+                let bound = new.iter().try_for_each(|(name, dll)| {
                     println!(
                         "title dll      {name} at {:#x} (loaded by the title)",
                         dll.base()
                     );
                     show(name, dll.bind_imports(&resolver, self.policy)?);
+                    anyhow::Ok(())
+                });
+                if let Err(error) = bound {
+                    for (_, dll) in new {
+                        // SAFETY: never attached, and no title code holds it.
+                        unsafe { dll.unload() };
+                    }
+                    return Err(error);
+                }
+                for (name, dll) in &new {
                     set_image_path(dll.base(), &self.title_dir.join(name));
                 }
                 // Visible before their `DllMain`s run, which may load more.
@@ -534,6 +542,6 @@ mod cpu_check_tests {
 }
 
 #[cfg(not(windows))]
-pub fn run(_: &Path, _: Unimplemented, _: bool, _: bool, _: Console) -> Result<u32> {
+pub fn run(_: &Path, _: Unimplemented, _: bool, _: bool, _: Console) -> Result<()> {
     anyhow::bail!("running titles requires Windows")
 }

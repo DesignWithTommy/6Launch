@@ -1340,6 +1340,14 @@ pub(crate) fn host_subresource(this: This, index: u32) -> Option<u32> {
     (mip >= drop).then(|| mip - drop + slice * (mips - drop))
 }
 
+/// Subresources in the first plane of title texture `this`, as the title
+/// numbers them (levels times slices).
+#[cfg(windows)]
+pub(crate) fn title_subresources(this: This) -> u32 {
+    let desc = &resource(this).desc;
+    u32::from(desc.mip_levels).max(1) * u32::from(desc.depth_or_array_size).max(1)
+}
+
 /// Maps a readback before creating a host texture. Ordinary textures keep
 /// their native subresource numbering. Shrunken textures support plane zero.
 #[cfg(windows)]
@@ -1507,7 +1515,8 @@ pub(crate) fn host_made(
 
 /// Whether more host copies of textures the title fills may be made for
 /// shaders that pick textures by index (`draw.rs` `heap_textures`): always
-/// up to `FLOOR` bytes of them, beyond that while the card's memory in use
+/// up to `FLOOR` bytes of them (a third of the card's budget where that is less),
+/// beyond that while the card's memory in use
 /// by this process is under nine tenths of the budget the system gives it
 /// ([`room_percent`] says another share; `VICTORY_TEXTURE_BUDGET_MB` sets a
 /// limit on those copies' bytes instead). Past the budget the system moves
@@ -1537,7 +1546,17 @@ pub(crate) fn texture_headroom(exact: bool) -> u64 {
     if let Some(limit) = limit {
         return limit.saturating_sub(filled);
     }
-    let floor = FLOOR.saturating_sub(filled);
+    // The floor is a third of the card's budget at most: on a card whose whole budget is
+    // about 3 GB the 2 GiB alone, beside the render targets and the buffer copies, put it a
+    // gigabyte over the budget from the first world frame.
+    static FLOOR_HERE: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    let floor_here = *FLOOR_HERE.get_or_init(|| {
+        match crate::host::host().and_then(|h| h.video_memory()) {
+            Some([budget, ..]) => FLOOR.min(budget / 3),
+            None => FLOOR,
+        }
+    });
+    let floor = floor_here.saturating_sub(filled);
     if floor != 0 && !exact {
         return floor;
     }
@@ -1554,6 +1573,18 @@ pub(crate) fn texture_headroom(exact: bool) -> u64 {
     }
 }
 
+/// Room on the card during a decoration bake (`PS_BakeDecorations_*`): up to
+/// 97 % of its budget, past the reserves [`room`] keeps (after
+/// fxceless/victory-fork #1097). On an 8 GB card [`room`] said no just
+/// before the bakes, and a skin source refused then is baked black for the
+/// rest of the run; the sources are swept out again afterwards.
+#[cfg(windows)]
+pub(crate) fn bake_room() -> bool {
+    match crate::host::host().and_then(|h| h.video_memory()) {
+        Some([budget, used, ..]) => used < budget / 100 * 97,
+        None => true,
+    }
+}
 /// The bytes of the card's memory the texture queue leaves free for
 /// render targets and other host copies the host itself writes that are
 /// not made yet: `VICTORY_CARD_ROOM_FOR_TARGETS_MB` (3,072; 0: none, as
@@ -2690,14 +2721,21 @@ impl OnDemand {
     /// [`crate::tiles::Tiled::uploaded`]; `memory`: where the texture's
     /// title memory starts (its slots are made again if the first level
     /// they may show changed).
-    /// Held levels get tiles only while the card has room ([`room`]).
+    /// Held levels get tiles only while the card has room ([`room`]), or
+    /// `whatever` it has (`crate::texture::whatever_the_room`).
     /// Returns whether a level is still without its tiles: the caller
     /// records the upload again later.
-    pub(crate) fn uploaded(&self, held: u32, memory: u64) -> bool {
+    pub(crate) fn uploaded(&self, held: u32, memory: u64, whatever: bool) -> bool {
         let Some(tiled) = &self.0.tiled else {
             return false;
         };
-        let (changed, needed) = tiled.uploaded(&self.0.texture, held);
+        // A decoration bake's source gets its held levels' tiles whatever
+        // the card's room (VI-BR-PORT 277bc02).
+        let (changed, needed) = if whatever {
+            tiled.uploaded_regardless(&self.0.texture, held)
+        } else {
+            tiled.uploaded(&self.0.texture, held)
+        };
         let waiting = needed != 0;
         if changed {
             crate::descriptor::host::levels_changed(memory);

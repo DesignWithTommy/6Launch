@@ -11,14 +11,11 @@
 #[cfg(windows)]
 pub mod apu;
 pub mod audio;
-pub mod bink;
 pub mod d3d12x;
 pub mod display;
 pub mod dsp;
 #[cfg(windows)]
 pub mod dstorage;
-#[cfg(windows)]
-pub mod fidelityfx;
 #[cfg(windows)]
 pub mod files;
 pub mod gameinput;
@@ -29,6 +26,7 @@ pub mod lifecycle;
 pub mod media;
 #[cfg(windows)]
 pub mod net;
+pub mod rpcrt4;
 pub mod speech;
 pub mod storage;
 pub mod xasync;
@@ -69,19 +67,10 @@ pub(crate) fn all() -> Vec<HleModule> {
     all.push(lifecycle::module());
     #[cfg(windows)]
     all.push(net::module());
+    all.push(rpcrt4::module());
     #[cfg(windows)]
     all.push(xmem::module());
     #[cfg(windows)]
-    if victory_gpu::title_pages_told() || victory_gpu::lazy_back_on() || victory_gpu::in_place_on() {
-        all.push(xmem::host_memory_module());
-    }
-    #[cfg(windows)]
     all.push(xsystem::module());
-    // Held only while the host's FidelityFX serves; else the title's own
-    // loader runs.
-    #[cfg(windows)]
-    if fidelityfx::serving() {
-        all.push(fidelityfx::module());
-    }
     all
 }

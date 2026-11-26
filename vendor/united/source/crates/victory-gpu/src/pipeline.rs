@@ -66,10 +66,6 @@ pub(crate) struct Shader {
     pub(crate) ambient: Option<crate::ambient::Role>,
     #[cfg(windows)]
     translated: OnceLock<Option<Translated>>,
-    /// Whether its code walks the ray-tracing structures, once looked at
-    /// ([`Shader::walks`]).
-    #[cfg(windows)]
-    walks: OnceLock<bool>,
 }
 
 impl std::fmt::Debug for Shader {
@@ -122,8 +118,6 @@ fn shader(stage: &'static str, bytes: &[u8]) -> Arc<Shader> {
                 ambient: (stage == "compute").then(|| crate::ambient::role(bytes)).flatten(),
                 #[cfg(windows)]
                 translated: OnceLock::new(),
-                #[cfg(windows)]
-                walks: OnceLock::new(),
             })
         })
         .clone()
@@ -136,14 +130,10 @@ pub(crate) struct Translated {
     /// A compute program's threads in a group.
     pub(crate) threads: Option<[u32; 3]>,
     pub(crate) used: Vec<victory_shader::UsedResource>,
+    pub(crate) tables: crate::draw::TablePlan,
     /// Whether the shader's code can store to buffer memory ([`stores`]);
     /// true when its code is not known.
     pub(crate) stores: bool,
-    /// Whether the code can write anything through unordered access:
-    /// [`stores`], or an image store or atomic (a texture shaders write).
-    /// True when its code is not known. What `VICTORY_BARRIER_MERGE` asks
-    /// of an op before it counts it as unordered writes to wait for.
-    pub(crate) writes: bool,
     /// Whether it can store through raw addresses ([`stores_by_address`]).
     pub(crate) stores_by_address: bool,
     /// Whether it stores through a view it picks from the heap by an index,
@@ -218,7 +208,6 @@ fn translate(container: &[u8]) -> Result<Translated, String> {
     };
     let host = crate::shader_cache::host_shader(container)?;
     let stores = programs.is_empty() || programs.iter().any(stores);
-    let writes = stores || programs.iter().any(image_stores);
     let threads = programs.iter().find_map(|p| match &p.io {
         victory_shader::native::StageIo::Cs(cs) if cs.threads.iter().all(|&n| n > 0) => Some(cs.threads),
         _ => None,
@@ -234,28 +223,15 @@ fn translate(container: &[u8]) -> Result<Translated, String> {
         })
         .map(|p| p.used)
         .unwrap_or_default();
+    let tables = crate::draw::TablePlan::new(&used, &host.root_indexed_views);
     Ok(Translated {
         host,
         threads,
         used,
+        tables,
         stores,
-        writes,
         stores_by_address,
         picks: Default::default(),
-    })
-}
-
-/// Whether a console program has an image store or atomic (it writes a
-/// texture through unordered access), or code that does not decode.
-#[cfg(windows)]
-fn image_stores(program: &victory_shader::NativeProgram) -> bool {
-    use victory_shader::gfx10::{Encoding, decode};
-    let Ok(code) = decode(&program.code) else {
-        return true;
-    };
-    code.iter().any(|i| {
-        matches!(i.encoding, Encoding::Mimg)
-            && i.name().is_none_or(|n| n.contains("store") || n.contains("atomic"))
     })
 }
 
@@ -330,90 +306,6 @@ pub(crate) fn builder_quarantined(this: This) -> bool {
     static ON: OnceLock<bool> = OnceLock::new();
     is_builder(this) && *ON.get_or_init(|| std::env::var_os("VICTORY_BVH_QUARANTINE").is_some_and(|v| v == "1"))
 }
-
-#[cfg(windows)]
-impl Shader {
-    /// Whether the program walks the ray-tracing structures: its code has
-    /// an `image_bvh_intersect_ray` or `image_bvh64_intersect_ray`. Looked
-    /// at once, when a dispatch first asks.
-    fn walks(&self) -> bool {
-        *self.walks.get_or_init(|| container_walks(&self.container))
-    }
-}
-
-/// Whether a console container's code tests rays against the nodes of a
-/// ray-tracing structure.
-#[cfg(windows)]
-fn container_walks(container: &[u8]) -> bool {
-    use victory_shader::{Container, FourCC};
-    let Ok(c) = Container::parse(container) else {
-        return false;
-    };
-    c.part(FourCC::DXIL)
-        .and_then(|part| victory_shader::native_programs(part.data).ok())
-        .is_some_and(|programs| programs.iter().any(|p| code_walks(&p.code)))
-}
-
-/// Whether native code has a ray-tracing node test.
-#[cfg(windows)]
-fn code_walks(code: &[u8]) -> bool {
-    victory_shader::gfx10::decode(code).is_ok_and(|code| code.iter().any(|i| i.name().is_some_and(|n| n.starts_with("image_bvh"))))
-}
-
-/// Dispatches held back by [`walk_held`] since the last frame line.
-#[cfg(windows)]
-pub(crate) static WALKS_HELD: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-
-/// Whether a dispatch with the title's pipeline `this` is held back
-/// because its program walks ray-tracing structures nothing has built
-/// (`VICTORY_BVH_HOLD=1`; off by default).
-///
-/// The structure builder does not run (see [`Builder`]: only with
-/// `VICTORY_BVH_BUILDER=1`, and then only whole, which a host of 32-lane
-/// waves does not manage yet). The title's ray-traced passes run all the
-/// same: 64 programs of its shader pack test rays against structure nodes
-/// (ray-traced shadows, screen probes, reflections, the irradiance cache;
-/// one of them, `CS_IrradianceCache_ShadowTrace_WithFar` f607780aa8e502d0,
-/// from the first world frame on in every run). Each walks, in a loop the
-/// title bounds at 65,535 steps a wave, whatever bytes lie where the
-/// structure would be: what it returns is not a picture of the scene, and
-/// how long it runs depends on those bytes. Upstream's pull request 2311
-/// measured a card hung in exactly that dispatch on an NVIDIA card, every
-/// run, and both card losses of ours since the draw windows' own fault was
-/// fixed (runs 208 and 224) came within a second of the first use of the
-/// programs that shade those rays' hits (`CS_RaytracingResolve`).
-///
-/// With the switch such a dispatch is dropped until the builder has run
-/// whole. What the passes would have written stays as the title left it
-/// (their targets are not cleared by us): the picture has to be looked at.
-#[cfg(windows)]
-pub(crate) fn walk_held(this: This) -> bool {
-    static ON: OnceLock<bool> = OnceLock::new();
-    if this.is_null() || !*ON.get_or_init(|| std::env::var_os("VICTORY_BVH_HOLD").is_some_and(|v| v == "1")) {
-        return false;
-    }
-    let p = pipeline(this);
-    if !p.shaders.iter().any(|s| s.stage == "compute" && s.walks()) {
-        return false;
-    }
-    // (Asked only for the few programs that walk: the lock is the builder's.)
-    if BUILDER.lock().unwrap_or_else(|e| e.into_inner()).whole {
-        return false;
-    }
-    if WALKS_HELD.fetch_add(1, std::sync::atomic::Ordering::Relaxed) == 0 {
-        static ONCE: std::sync::Once = std::sync::Once::new();
-        ONCE.call_once(|| {
-            tracing::info!(
-                shaders = ?p.shaders,
-                "a dispatch of a program that walks ray-tracing structures is held back: the structure builder has not                  built them (VICTORY_BVH_HOLD=1); the first one"
-            );
-        });
-    }
-    true
-}
-
-#[cfg(windows)]
-pub(crate) use make::frame_drew;
 
 /// Whether the title's pipeline `this` is one of the structure builder's.
 #[cfg(windows)]
@@ -574,10 +466,8 @@ pub(crate) fn making() -> u64 {
 }
 
 /// Draws and dispatches dropped since the last [`take_drops`], by reason
-/// (release builds too: the reasons name the shaders that do not
-/// translate and the pipelines the host refused, by how many draws each
-/// costs).
-#[cfg(windows)]
+/// (diagnostics).
+#[cfg(all(windows, feature = "diagnostics"))]
 static DROPS: Mutex<Option<HashMap<String, u64>>> = Mutex::new(None);
 
 /// Shader hashes as printed in the pipeline diagnostics.
@@ -623,35 +513,32 @@ pub(crate) fn is_skipped(this: This) -> bool {
 }
 
 /// Counts a draw or dispatch of `this` intentionally skipped or dropped
-/// for want of a host pipeline.
-#[cfg(windows)]
+/// for want of a host pipeline (diagnostics).
+#[cfg(all(windows, feature = "diagnostics"))]
 pub(crate) fn note_drop(this: This) {
     let why = if this.is_null() {
         Some("no pipeline set".to_owned())
     } else {
         let p = pipeline(this);
-        #[cfg(feature = "diagnostics")]
-        let skipped = skipped_shader(p).map(|hash| format!("skipped shader {hash}"));
-        #[cfg(not(feature = "diagnostics"))]
-        let skipped = None;
-        skipped.or_else(|| make::missing(&p.host))
+        skipped_shader(p)
+            .map(|hash| format!("skipped shader {hash}"))
+            .or_else(|| make::missing(&p.host))
     };
     if let Some(why) = why {
         note_why(why);
     }
 }
 
-/// Counts a draw or dispatch dropped for `why`.
-#[cfg(windows)]
+/// Counts a draw or dispatch dropped for `why` (diagnostics).
+#[cfg(all(windows, feature = "diagnostics"))]
 pub(crate) fn note_why(why: String) {
-    #[cfg(feature = "diagnostics")]
     crate::capture::op(0, || format!("DROPPED {why}"));
     let mut drops = DROPS.lock().unwrap_or_else(|e| e.into_inner());
     *drops.get_or_insert_with(HashMap::new).entry(why).or_default() += 1;
 }
 
-/// The drops counted since the last call, most first.
-#[cfg(windows)]
+/// The drops counted since the last call, most first (diagnostics).
+#[cfg(all(windows, feature = "diagnostics"))]
 pub(crate) fn take_drops() -> Vec<(String, u64)> {
     let drops = DROPS.lock().unwrap_or_else(|e| e.into_inner()).take();
     let mut drops: Vec<(String, u64)> = drops.into_iter().flatten().collect();
@@ -772,8 +659,6 @@ pub(crate) struct StreamDesc {
     stream: *const u8,
 }
 
-const VIEW_INSTANCING: u32 = 22;
-
 /// A subobject type's size (type included), and the stage it is if it is a
 /// shader. The console numbers amplification and mesh shaders 23 and 24
 /// (PC: 24 and 25); its own types from 25 on are not sized yet.
@@ -796,7 +681,7 @@ fn subobject(kind: u32) -> Option<(usize, Option<&'static str>)> {
         11 => Some((56, None)),
         17 => Some((16, None)),
         21 => Some((64, None)),
-        VIEW_INSTANCING => Some((32, None)),
+        22 => Some((32, None)),
         9 | 13 | 14 | 16 | 18 | 20 => Some((8, None)),
         _ => None,
     }
@@ -820,8 +705,6 @@ pub(crate) extern "system" fn create_stream(
     let mut shaders = Vec::new();
     #[cfg(windows)]
     let mut graphics = host::GraphicsState::default();
-    #[cfg(windows)]
-    let mut view_instancing = None;
     let mut at = 0;
     while at + 8 <= desc.size {
         // SAFETY: inside the stream the title passes.
@@ -834,43 +717,17 @@ pub(crate) extern "system" fn create_stream(
             );
             break;
         };
-        if at.checked_add(size).is_none_or(|end| end > desc.size) {
-            tracing::warn!(
-                kind,
-                at,
-                size,
-                total = desc.size,
-                "truncated pipeline subobject; the rest is ignored"
-            );
-            break;
-        }
         if let Some(stage) = stage {
-            // SAFETY: `at + size <= desc.size`, and a shader subobject is 24 bytes
-            // with `Bytecode` at +8.
-            let code = unsafe { desc.stream.add(at + 8).cast::<Bytecode>().read_unaligned() };
-            shaders.extend(copy(stage, &code));
+            // SAFETY: a shader subobject has its bytecode at +8.
+            let code = unsafe { &*desc.stream.add(at + 8).cast::<Bytecode>() };
+            shaders.extend(copy(stage, code));
         }
         #[cfg(windows)]
-        if kind == VIEW_INSTANCING {
-            if size > desc.size - at {
-                break;
-            }
-            view_instancing = Some(at);
-        } else {
-            // SAFETY: a whole subobject of this kind lies at `at`.
-            unsafe { graphics.read(kind, desc.stream.add(at)) };
-        }
+        // SAFETY: a whole subobject of this kind lies at `at`.
+        unsafe {
+            graphics.read(kind, desc.stream.add(at))
+        };
         at += size;
-    }
-    // The stream can declare its view locations before its shaders.
-    #[cfg(windows)]
-    if let Some(at) = view_instancing
-        && shaders.iter().any(|s| s.stage == "vertex")
-        && shaders.iter().all(|s| matches!(s.stage, "vertex" | "pixel"))
-    {
-        // SAFETY: the full descriptor is in the stream. The caller keeps
-        // its referenced locations alive through this call.
-        unsafe { graphics.read_view_instancing(desc.stream.add(at)) };
     }
     hand_out(
         shaders,
@@ -904,14 +761,6 @@ pub(crate) mod host;
 pub mod known;
 #[cfg(windows)]
 mod library;
-
-/// Host pipelines created and loaded from the library since the start
-/// (`crate::framelog`).
-#[cfg(windows)]
-pub(crate) fn frame_log_counts() -> (u64, u64) {
-    use std::sync::atomic::Ordering::Relaxed;
-    (library::MADE.load(Relaxed), library::LOADED.load(Relaxed))
-}
 #[cfg(windows)]
 mod make;
 
@@ -1058,65 +907,6 @@ mod tests {
                 (g.targets.NumRenderTargets, g.targets.RTFormats[0].0),
                 (1, 28)
             );
-        }
-    }
-
-    #[test]
-    fn truncated_and_unaligned_streams_do_not_read_out_of_bounds() {
-        // 1. Unaligned stream holding a complete 24-byte VS subobject (kind = 1).
-        let vs = [7u8; 6];
-        let mut backing = [0u8; 25];
-        let slice = &mut backing[1..25]; // intentionally misaligned by 1 byte
-        slice[0..4].copy_from_slice(&1u32.to_le_bytes());
-        slice[8..16].copy_from_slice(&(vs.as_ptr() as u64).to_le_bytes());
-        slice[16..24].copy_from_slice(&(vs.len() as u64).to_le_bytes());
-        let desc = StreamDesc {
-            size: slice.len(),
-            stream: slice.as_ptr(),
-        };
-        let mut p = std::ptr::null();
-        assert_eq!(
-            create_stream(std::ptr::null(), &desc, &PIPELINE_IIDS[0], &mut p),
-            S_OK
-        );
-        assert_eq!(shaders(p), [("vertex", vs.to_vec())]);
-        assert_eq!(slot::<extern "system" fn(This) -> u32>(p, 0x10)(p), 0);
-
-        // 2. Truncated 336-byte blend subobject (kind = 8) placed flush against a
-        // PAGE_NOACCESS guard page: must not fault reading past `desc.size`.
-        #[cfg(windows)]
-        {
-            use windows_sys::Win32::System::Memory::*;
-            // SAFETY: private two-page reservation with the second page inaccessible.
-            unsafe {
-                let base = VirtualAlloc(
-                    std::ptr::null(),
-                    0x2000,
-                    MEM_RESERVE | MEM_COMMIT,
-                    PAGE_READWRITE,
-                )
-                .cast::<u8>();
-                assert!(!base.is_null());
-                let mut old = 0;
-                assert_ne!(
-                    VirtualProtect(base.add(0x1000).cast(), 0x1000, PAGE_NOACCESS, &mut old),
-                    0
-                );
-                let tail = base.add(0x1000 - 12);
-                tail.cast::<u32>().write_unaligned(8); // D3D12_BLEND_DESC (336 bytes)
-                let trunc = StreamDesc {
-                    size: 12,
-                    stream: tail,
-                };
-                let mut q = std::ptr::null();
-                assert_eq!(
-                    create_stream(std::ptr::null(), &trunc, &PIPELINE_IIDS[0], &mut q),
-                    S_OK
-                );
-                assert!(shaders(q).is_empty());
-                assert_eq!(slot::<extern "system" fn(This) -> u32>(q, 0x10)(q), 0);
-                assert_ne!(VirtualFree(base.cast(), 0, MEM_RELEASE), 0);
-            }
         }
     }
 }

@@ -145,7 +145,7 @@ const _: () = assert!(offset_of!(List, pipeline_shadow) + 32 == 0x560);
 fn with_state(this: This, f: impl FnOnce(&crate::host::HostList, &mut crate::draw::State)) {
     let Some(list) = host_list(this) else { return };
     #[cfg(feature = "diagnostics")]
-    let started = std::time::Instant::now();
+    let started = crate::copystat::ticks();
     // SAFETY: the title passes one of our lists.
     let state = unsafe { &(*this.cast::<List>()).state };
     f(list, &mut state.lock().unwrap_or_else(|e| e.into_inner()));
@@ -241,6 +241,40 @@ const IDLE_MOST: (usize, u64) = (512, 256 << 20);
 fn pools() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("VICTORY_LIST_POOL").is_none_or(|v| v != "0"))
+}
+
+/// Whether a submission leaves the title's list without a host list in
+/// place of the one it takes, and the title's next reset takes a ready one
+/// from the pool ([`fresh_list`], reset already when its last run landed)
+/// instead of resetting its own; with the relay, the host lists of landed
+/// flights are then reset by the helper thread alone (`crate::host::land`).
+/// Before, the submitting thread closed an empty host list for each list it
+/// submitted, and reset the landed ones half of the time. On by default;
+/// `VICTORY_LIST_AWAY=0`: as before.
+#[cfg(windows)]
+pub(crate) fn away() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("VICTORY_LIST_AWAY").is_none_or(|v| v != "0"))
+}
+
+/// With [`away`], for the frame line (`crate::host::late_line`): host
+/// sides taken by submissions that left no host list behind, and title
+/// resets that took a ready host list instead of resetting their own.
+#[cfg(windows)]
+pub(crate) static AWAY: [std::sync::atomic::AtomicU64; 2] = [const { std::sync::atomic::AtomicU64::new(0) }; 2];
+
+/// What a submitted list keeps in place of the host list its submission
+/// takes: with [`away`] none (its next reset takes a ready one); else a
+/// new host list, closed, since the title's next call on its list is a
+/// reset, which wants it closed. `Err` if no host list could be had.
+#[cfg(windows)]
+fn left_behind() -> Result<Option<crate::host::HostList>, ()> {
+    if away() {
+        return Ok(None);
+    }
+    let fresh = fresh_list().ok_or(())?;
+    fresh.close();
+    Ok(Some(fresh))
 }
 
 /// A host list open for recording: one that has run, as a title's list is
@@ -367,7 +401,7 @@ pub(crate) fn cut_list(this: This) -> bool {
 pub(crate) type Parts = Vec<(Vec<ValueWait>, Vec<Detached>, Vec<usize>)>;
 
 /// Takes the host sides of the submitted `lists`, part by part ([`cut`]),
-/// and leaves each list a new, closed host list for its next reset, as
+/// and leaves each list what [`left_behind`] gives for its next reset, as
 /// [`detach`] does. What comes back is in the order the queue runs it: a
 /// new entry starts at every part that has waits; host lists without
 /// waits join the entry before them. The list's upload memory and draw
@@ -398,18 +432,18 @@ pub(crate) fn detach_parts(lists: &[This]) -> Parts {
             }
             continue;
         }
-        let Some(fresh) = fresh_list() else {
+        let Ok(fresh) = left_behind() else {
             continue;
         };
-        // A new host list is open; the title's next call on its list is a
-        // reset, which wants it closed.
-        fresh.close();
         // SAFETY: one of our lists, closed and submitted: nothing records
         // into it until the title resets it.
         let list = unsafe { &mut *this.cast_mut().cast::<List>() };
-        let Some(host) = list.host.replace(fresh) else {
+        let Some(host) = std::mem::replace(&mut list.host, fresh) else {
             continue;
         };
+        if away() {
+            AWAY[0].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
         let earlier = std::mem::take(&mut list.earlier);
         let gate = std::mem::take(&mut list.gate);
         let uploads = std::mem::take(&mut *list.uploads.lock().unwrap_or_else(|e| e.into_inner()));
@@ -456,7 +490,7 @@ pub(crate) fn detach_parts(lists: &[This]) -> Parts {
 }
 
 /// Takes the host sides of submitted lists (each once, however often the
-/// submission names it) and leaves each list a new, closed host list for
+/// submission names it) and leaves each list what [`left_behind`] gives for
 /// its next reset: what was taken, and which of them run in what order.
 #[cfg(windows)]
 pub(crate) fn detach(lists: &[This]) -> (Vec<Detached>, Vec<usize>) {
@@ -470,17 +504,14 @@ pub(crate) fn detach(lists: &[This]) -> (Vec<Detached>, Vec<usize>) {
             order.push(i);
             continue;
         }
-        let Some(fresh) = fresh_list() else {
+        let Ok(fresh) = left_behind() else {
             continue;
         };
-        // A new host list is open; the title's next call on its list is a
-        // reset, which wants it closed.
-        fresh.close();
         let list = this.cast_mut().cast::<List>();
         // SAFETY: one of our lists, closed and submitted: nothing records
         // into it until the title resets it.
         let (host, uploads, state) = unsafe {
-            let Some(host) = (*list).host.replace(fresh) else {
+            let Some(host) = std::mem::replace(&mut (*list).host, fresh) else {
                 continue;
             };
             let uploads =
@@ -489,6 +520,9 @@ pub(crate) fn detach(lists: &[This]) -> (Vec<Detached>, Vec<usize>) {
                 std::mem::take(&mut *(*list).state.lock().unwrap_or_else(|e| e.into_inner()));
             (host, uploads, state)
         };
+        if away() {
+            AWAY[0].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
         order.push(taken.len());
         taken.push((
             this,
@@ -651,16 +685,29 @@ extern "system" fn reset(this: This, allocator: This, pipeline: This) -> HRESULT
     // The parts of a recording that was cut and never submitted go with it
     // (a submission takes the parts it runs).
     #[cfg(windows)]
-    {
+    let ready = {
         // SAFETY: the title passes one of our lists, and neither records
         // into it nor submits it during its reset.
         let list = unsafe { &mut *this.cast_mut().cast::<List>() };
         list.earlier.clear();
         list.gate.clear();
-    }
+        // Its host list went with a submission ([`away`]): a ready one takes
+        // its place, open already (reset when its last run had landed, or
+        // new). The one that went is reset only once its flight has landed.
+        if away() && list.host.is_none() {
+            list.host = fresh_list();
+            list.host.is_some()
+        } else {
+            false
+        }
+    };
     #[cfg(windows)]
     with_state(this, |host, state| {
-        host.reset();
+        if ready {
+            AWAY[1].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        } else {
+            host.reset();
+        }
         state.reset(pipeline);
     });
     #[cfg(not(windows))]
@@ -1135,7 +1182,7 @@ fn read_back(
     let bytes = pitch * (rows - 1) + row;
     let data = buffer_range(dst.resource, dst.footprint.offset, bytes).ok_or("a destination outside its buffer")?;
     let texture = crate::resource::host_resource(src.resource).ok_or("no host texture")?;
-    let buffer = host.read_back_buffer(size).ok_or("no read-back buffer")?;
+    let buffer = host.read_back_buffer(size, crate::cardmem::Owner::ReadBacks).ok_or("no read-back buffer")?;
     // As a texture source of any copy: what shaders wrote to a depth twin
     // and what the title wrote itself first, then the state.
     list.twin_use(src.resource, false, false);

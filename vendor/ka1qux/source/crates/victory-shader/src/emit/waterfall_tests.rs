@@ -83,10 +83,7 @@ fn build(words: &[u32], buffers: bool) -> HostShader {
         root_cbvs: lowered.root_cbvs,
         root_srvs: lowered.root_srvs,
         root_uavs: lowered.root_uavs,
-        written_root_uavs: lowered.written_root_uavs,
-        writes_guest_memory: lowered.writes_guest_memory,
         root_indexed_views: Vec::new(),
-        half_views: lowered.half_views,
     };
     if let Ok(mut v) = validator::Validator::load(validator::Validator::default_path().as_deref()) {
         v.validate(&mut shader.dxil.clone())
@@ -118,9 +115,12 @@ pub(super) fn run(shader: &HostShader, views: &[View]) -> Vec<(&'static str, Vec
         .lock()
         .unwrap_or_else(|e| e.into_inner());
     for (label, warp) in [("hardware", false), ("warp", true)] {
-        let Ok(host) = Host::new(warp) else {
-            eprintln!("no SM 6.6 {label} device; skipped");
-            continue;
+        let host = match Host::new(warp) {
+            Ok(host) => host,
+            Err(e) => {
+                eprintln!("no SM 6.6 {label} device ({e}); skipped");
+                continue;
+            }
         };
         let (root, pso) = match host.compute_pipeline(shader) {
             Ok(p) => p,
@@ -385,10 +385,7 @@ fn immediate_sampler_chosen_by_control_flow() {
             root_cbvs: lowered.root_cbvs,
             root_srvs: lowered.root_srvs,
             root_uavs: lowered.root_uavs,
-            written_root_uavs: lowered.written_root_uavs,
-            writes_guest_memory: lowered.writes_guest_memory,
             root_indexed_views: Vec::new(),
-            half_views: Vec::new(),
         };
         if let Ok(mut v) =
             validator::Validator::load(validator::Validator::default_path().as_deref())
@@ -437,131 +434,5 @@ fn immediate_sampler_chosen_by_control_flow() {
                 assert_eq!(got, 1.0, "{case_name}/{label} branch={branch}");
             }
         }
-    }
-}
-
-/// A compute program's sample with implicit derivatives takes them from the
-/// lanes of its quad (`Lower::quad_gradients`): it asks for the console's
-/// lanes, validates, and runs on the host (one texel: every lane reads it).
-#[test]
-fn a_compute_sample_takes_its_derivatives_from_its_quad() {
-    let s_mov_lit = |dst: u8, lit: u32| [0xBE80_03FF | (dst as u32) << 16, lit];
-    let s_mov_zero = |dst: u8| 0xBE80_0380 | (dst as u32) << 16;
-    let s_load_x8 = |dst: u8, base: u8| [0x3D << 26 | 0x03 << 18 | (dst as u32) << 6 | (base as u32 >> 1), 125 << 25];
-    let s_load_x4_off = |dst: u8, base: u8, off: u32| [0x3D << 26 | 0x02 << 18 | (dst as u32) << 6 | (base as u32 >> 1), 125 << 25 | off];
-    // image_sample v4, v[2:3], s[8:15], s[16:19] dmask:0x1 dim:SQ_RSRC_IMG_2D
-    let image_sample: [u32; 2] = [
-        0x3C << 26 | 0x20 << 18 | 1 << 8 | 1 << 3,
-        (16u32 >> 2) << 21 | (8u32 >> 2) << 16 | 4 << 8 | 2,
-    ];
-    // buffer_store_dword v4, off, s[20:23], 0
-    let buf_store: [u32; 2] = [0x38 << 26 | 0x1C << 18, 0x80 << 24 | (20u32 >> 2) << 16 | 4 << 8];
-    let sampler: [u32; 4] = [0x0000_0092, 0x00C0_0000, 0x1850_0000, 0];
-    let mut words = vec![0xBE80_0300 | (2 << 16), s_mov_zero(3)]; // s[2:3] = (s0, 0)
-    words.extend_from_slice(&s_load_x8(8, 2));
-    words.extend_from_slice(&s_load_x4_off(20, 2, 64));
-    words.push(0x7E00_02F0 | (2 << 17)); // v_mov_b32 v2, 0.5
-    words.push(0x7E00_02F0 | (3 << 17)); // v_mov_b32 v3, 0.5
-    for (i, &w) in sampler.iter().enumerate() {
-        words.extend_from_slice(&s_mov_lit(16 + i as u8, w));
-    }
-    words.extend_from_slice(&image_sample);
-    words.extend_from_slice(&buf_store);
-    words.push(0xBF81_0000); // s_endpgm
-    let range = |kind, table_offset_dwords, dwords| UsedResource {
-        kind,
-        root: RootType::Table,
-        table_offset_dwords,
-        lower_bound: 0,
-        stride: 0,
-        dwords,
-        user_data: 0,
-        slot: 0,
-    };
-    let native = NativeProgram {
-        stage: HwStage::Cs,
-        wave64: false,
-        vgprs: 8,
-        layout: vec![RootParam {
-            root: RootType::Table,
-            table_offset_dwords: 0,
-            sgprs: 1,
-            base_register: 0,
-            user_data: 0,
-            slot: 0,
-        }],
-        used: vec![range(ResourceType::Srv, 0, 8), range(ResourceType::Uav, 16, 4)],
-        io: StageIo::Cs(ComputeIo {
-            rsrc2: 2 << 1,
-            threads: [32, 1, 1],
-        }),
-        code: words.iter().flat_map(|w| w.to_le_bytes()).collect(),
-    };
-    let p = ir::build(&native.code, false, native.vgprs).expect("ir::build");
-    assert!(p.blocks.iter().flat_map(|b| &b.insts).any(|i| i.name() == "image_sample"));
-    let st = structure::structure(&p).expect("structure");
-    let res = resource::track(&p, &native.layout, native.stage, Some(&st)).expect("track");
-    let io = io::raise(&p, &native).expect("io::raise");
-    let lowered = lower::lower(&lower::Parts {
-        native: &native,
-        p: &p,
-        st: &st,
-        io: &io,
-        res: &res,
-        inputs: Vec::new(),
-        outputs: Vec::new(),
-        prims: Vec::new(),
-        mesh_stride: 0,
-    })
-    .unwrap_or_else(|e| panic!("lower failed: {e}"));
-    // The quad's lanes are read: the console's lanes, by wave operations.
-    assert!(lowered.wave_ops);
-    let static_samplers = lowered.samplers.iter().map(|&w| super::StaticSampler::from_words(w)).collect();
-    let shader = HostShader {
-        stage: HwStage::Cs,
-        dxil: lowered.dxil,
-        user_data: lowered.user_data,
-        samplers: lowered.samplers,
-        static_samplers,
-        root_cbvs: lowered.root_cbvs,
-        root_srvs: lowered.root_srvs,
-        root_uavs: lowered.root_uavs,
-        written_root_uavs: lowered.written_root_uavs,
-        writes_guest_memory: lowered.writes_guest_memory,
-        root_indexed_views: Vec::new(),
-        half_views: Vec::new(),
-    };
-    if let Ok(mut v) = validator::Validator::load(validator::Validator::default_path().as_deref()) {
-        v.validate(&mut shader.dxil.clone()).expect("DXIL validation failed");
-    }
-    let _one = super::valu_tests::ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
-    for (label, warp) in [("hardware", false), ("warp", true)] {
-        let Ok(host) = Host::new(warp) else {
-            continue;
-        };
-        // (it asks for waves of 32, which WARP does not take)
-        let (root, pso) = match host.compute_pipeline(&shader) {
-            Ok(x) => x,
-            Err(e) if warp => {
-                eprintln!("{label} does not take this program (waves of 32?): {e}; not run");
-                continue;
-            }
-            Err(e) => panic!("{label}: compute_pipeline failed: {e}"),
-        };
-        let ud = vec![0u32; shader.user_data_dwords().max(1) as usize];
-        let texels = [[1.0f32, 0.0, 0.0, 1.0]];
-        let out = host
-            .dispatch(
-                &root,
-                &pso,
-                &Dispatch {
-                    roots: vec![(0, Root::Constants(ud))],
-                    views: &[View::Texture(1, 1, &texels), View::Texture(1, 1, &texels), View::RawUav(1)],
-                    samplers: &[],
-                    groups: [1, 1, 1],
-                },
-            )
-            .unwrap_or_else(|e| panic!("{label}: dispatch failed: {e}"));
-        assert_eq!(f32::from_bits(out[0][0]), 1.0, "{label}");
     }
 }

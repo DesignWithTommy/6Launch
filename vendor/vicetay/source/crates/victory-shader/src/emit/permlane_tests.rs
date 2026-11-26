@@ -123,10 +123,8 @@ fn permlane_fetch_inactive_outside_the_host_branch_is_rejected() {
     let mut native = native(true, true, false, false, false);
     let mut words: Vec<u32> = native
         .code
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .map(|w| u32::from_le_bytes(*w))
+        .chunks_exact(4)
+        .map(|w| u32::from_le_bytes(w.try_into().unwrap()))
         .collect();
     // Skip the permutation when EXEC is empty. Structurisation turns this
     // into a host lane branch, so FI cannot read lanes that took the skip.

@@ -429,7 +429,7 @@ pub(crate) fn dump_args(frame: u64) {
 /// Flamingo: the arguments each indirect command of a listed frame ran with: (frame, kind,
 /// title address of its record, the 16 bytes the card copied there, leaked: listed frames
 /// only).
-static DRAWN: std::sync::Mutex<Vec<(u64, u32, u64, usize)>> = std::sync::Mutex::new(Vec::new());
+static DRAWN: std::sync::Mutex<Vec<(u64, u32, u64, usize, [u32; 4])>> = std::sync::Mutex::new(Vec::new());
 
 /// After indirect command `kind` (its record at title address `at`) ran from `buffer` at
 /// `offset` (the clamped record, in `INDIRECT_ARGUMENT`): its 16 bytes copied on the card
@@ -449,14 +449,21 @@ pub(crate) fn note_drawn(list: &crate::host::HostList, kind: u32, at: u64, buffe
         list.list.ResourceBarrier(&[transition(buffer, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT)]);
     }
     list.defer_read_back(back, slot.as_mut_ptr(), [16, 1, 16]);
-    DRAWN.lock().unwrap_or_else(|e| e.into_inner()).push((frame, kind, at, slot.as_ptr() as usize));
+    // The record as title memory holds it while the command is recorded.
+    let mut bytes = [0u8; 16];
+    let title = if crate::host::read_into(at as *const u8, &mut bytes) {
+        std::array::from_fn(|i| u32::from_le_bytes([bytes[4 * i], bytes[4 * i + 1], bytes[4 * i + 2], bytes[4 * i + 3]]))
+    } else {
+        [u32::MAX; 4]
+    };
+    DRAWN.lock().unwrap_or_else(|e| e.into_inner()).push((frame, kind, at, slot.as_ptr() as usize, title));
 }
 
 /// At every present (`frame`): the commands of listed frames four or more back, as
 /// `frame-<n>-drawn.txt` (their lists have run by then).
 pub(crate) fn dump_drawn(frame: u64) {
     let Some(folder) = folder() else { return };
-    let done: Vec<(u64, u32, u64, usize)> = {
+    let done: Vec<(u64, u32, u64, usize, [u32; 4])> = {
         let mut drawn = DRAWN.lock().unwrap_or_else(|e| e.into_inner());
         let (done, keep): (Vec<_>, Vec<_>) = drawn.drain(..).partition(|d| d.0 + 4 <= frame);
         *drawn = keep;
@@ -467,13 +474,155 @@ pub(crate) fn dump_drawn(frame: u64) {
     frames.dedup();
     for f in frames {
         let mut out = String::new();
-        for &(_, kind, at, slot) in done.iter().filter(|d| d.0 == f) {
+        for &(_, kind, at, slot, title) in done.iter().filter(|d| d.0 == f) {
             // SAFETY: the leaked 16 bytes, written by the read-back.
             let bytes = unsafe { std::slice::from_raw_parts(slot as *const u8, 16) };
             let w: Vec<u32> = bytes.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
-            out += &format!("kind {kind} at {at:#x}: ran with {w:?}\n");
+            out += &format!("kind {kind} at {at:#x}: ran with {w:?}, title memory at recording {title:?}\n");
         }
         let _ = std::fs::write(folder.join(format!("frame-{f}-drawn.txt")), out);
+    }
+}
+
+/// Flamingo: title ranges `FLAMINGO_DUMP_RANGE` names (`<hex address>+<hex bytes>`,
+/// comma-separated), as their host copies hold them at the first character mesh draw of a
+/// listed frame (after the skinning passes): (frame, address, the leaked bytes, length).
+static RANGES: std::sync::Mutex<Vec<(u64, u64, usize, usize)>> = std::sync::Mutex::new(Vec::new());
+
+/// The ranges `FLAMINGO_DUMP_RANGE` names: `<hex address>+<hex bytes>`, or `size:<hex bytes>`
+/// for the title buffer of that size wherever it lies this run (address 0 until found).
+fn dump_ranges_asked() -> Vec<(u64, u64)> {
+    static ASKED: std::sync::OnceLock<Vec<(u64, u64)>> = std::sync::OnceLock::new();
+    let asked = ASKED.get_or_init(|| {
+        let hex = |s: &str| u64::from_str_radix(s.trim().trim_start_matches("0x"), 16).ok();
+        std::env::var("FLAMINGO_DUMP_RANGE")
+            .unwrap_or_default()
+            .split(',')
+            .filter_map(|r| match r.trim().strip_prefix("size:") {
+                Some(len) => Some((0, hex(len)?)),
+                None => {
+                    let (at, len) = r.split_once('+')?;
+                    Some((hex(at)?, hex(len)?))
+                }
+            })
+            .collect()
+    });
+    asked
+        .iter()
+        .filter_map(|&(at, len)| {
+            if at != 0 {
+                return Some((at, len));
+            }
+            let spans = crate::shadow::spans();
+            spans.iter().find(|s| !s.2 && s.1 == len).map(|s| (s.0, len))
+        })
+        .collect()
+}
+
+/// The view heap slots the ops dump describes at the pipeline [`dump_at`] names
+/// (`FLAMINGO_DUMP_SLOTS=<index,...>`): buffers a program picks from the heap by an index in
+/// its constants, as the title wrote them and as the host made them.
+pub(crate) fn dump_slots() -> &'static [u32] {
+    static SLOTS: std::sync::OnceLock<Vec<u32>> = std::sync::OnceLock::new();
+    SLOTS.get_or_init(|| {
+        std::env::var("FLAMINGO_DUMP_SLOTS")
+            .unwrap_or_default()
+            .split(',')
+            .filter_map(|s| s.trim().parse().ok())
+            .collect()
+    })
+}
+
+/// `FLAMINGO_DUMP_SLOT_WORD=<table dword>:<word>,...`: constant buffers at those table offsets
+/// whose words name view heap slots to describe as [`dump_slots`] do.
+pub(crate) fn dump_slot_words() -> &'static [(u32, u32)] {
+    static AT: std::sync::OnceLock<Vec<(u32, u32)>> = std::sync::OnceLock::new();
+    AT.get_or_init(|| {
+        std::env::var("FLAMINGO_DUMP_SLOT_WORD")
+            .unwrap_or_default()
+            .split(',')
+            .filter_map(|w| {
+                let (at, word) = w.split_once(':')?;
+                Some((at.trim().parse().ok()?, word.trim().parse().ok()?))
+            })
+            .collect()
+    })
+}
+
+/// The indirect command [`note_ranges`] runs after: the first of a listed frame whose pipeline's
+/// name holds `FLAMINGO_DUMP_AT` (the character draws, `PedTransformPreSkinD`, without it).
+pub(crate) fn dump_at() -> &'static str {
+    static AT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    AT.get_or_init(|| std::env::var("FLAMINGO_DUMP_AT").unwrap_or_else(|_| "PedTransformPreSkinD".into()))
+}
+
+/// At a character mesh draw: the ranges [`dump_ranges_asked`] names copied from their host
+/// copies into read-back buffers, once a listed frame.
+pub(crate) fn note_ranges(list: &crate::host::HostList, extra: &[(u64, u64)]) {
+    let frame = crate::queue::presented() + 1;
+    if folder().is_none() || !listed(frame) {
+        return;
+    }
+    static TAKEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    if TAKEN.swap(frame, std::sync::atomic::Ordering::Relaxed) == frame {
+        return;
+    }
+    let asked = dump_ranges_asked();
+    let Some(host) = crate::host::host() else { return };
+    for &(address, len) in asked.iter().chain(extra) {
+        let Some(shadow) = crate::shadow::find(address, len) else {
+            tracing::info!(address = format_args!("{address:#x}"), len, "range to dump has no host copy");
+            continue;
+        };
+        let Some(back) = host.read_back_buffer(len) else { continue };
+        let bytes: &'static mut [u8] = Box::leak(vec![0u8; len as usize].into_boxed_slice());
+        let barrier = D3D12_RESOURCE_BARRIER {
+            Type: D3D12_RESOURCE_BARRIER_TYPE_UAV,
+            ..Default::default()
+        };
+        // SAFETY: an open list; the copy's buffer lives while the list does (the list keeps
+        // the read-back buffer), and the range is inside it.
+        unsafe {
+            list.list.ResourceBarrier(&[barrier]);
+            list.list.CopyBufferRegion(&back, 0, &shadow.buffer, shadow.offset(address), len);
+        }
+        list.defer_read_back(back, bytes.as_mut_ptr(), [len as usize, 1, len as usize]);
+        RANGES.lock().unwrap_or_else(|e| e.into_inner()).push((frame, address, bytes.as_ptr() as usize, len as usize));
+    }
+}
+
+/// At every present (`frame`): the ranges taken four or more frames back, as
+/// `frame-<n>-range-<address>.bin`.
+pub(crate) fn dump_ranges(frame: u64) {
+    let Some(folder) = folder() else { return };
+    // At the present of a frame the ranges were taken in: title memory of the same ranges, as
+    // the title's CPU side holds them (`frame-<n>-title-<address>.bin`), to set beside what
+    // the host copies held.
+    {
+        let taken: Vec<(u64, usize)> = RANGES
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .filter(|r| r.0 == frame)
+            .map(|r| (r.1, r.3))
+            .collect();
+        for (address, len) in taken {
+            let mut bytes = vec![0u8; len];
+            if crate::host::read_into(address as *const u8, &mut bytes) {
+                let _ = std::fs::write(folder.join(format!("frame-{frame}-title-{address:x}.bin")), &bytes);
+            }
+        }
+    }
+    let done: Vec<(u64, u64, usize, usize)> = {
+        let mut ranges = RANGES.lock().unwrap_or_else(|e| e.into_inner());
+        let (done, keep): (Vec<_>, Vec<_>) = ranges.drain(..).partition(|r| r.0 + 4 <= frame);
+        *ranges = keep;
+        done
+    };
+    for (f, address, bytes, len) in done {
+        // SAFETY: the leaked bytes, written by the read-back.
+        let data = unsafe { std::slice::from_raw_parts(bytes as *const u8, len) };
+        let _ = std::fs::write(folder.join(format!("frame-{f}-range-{address:x}.bin")), data);
     }
 }
 

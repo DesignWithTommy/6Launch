@@ -31,8 +31,6 @@ enum TypeDef {
     Int(u32),
     Float,
     Double,
-    /// IEEE binary16 (native 16-bit operations, SM 6.2).
-    Half,
     /// Pointee and address space.
     Ptr(Ty, u32),
     Struct(Option<String>, Vec<Ty>),
@@ -228,9 +226,6 @@ pub(crate) struct Module {
     named: Vec<(String, Vec<Md>)>,
     /// See [`Tag`]: by instruction.
     tags: HashMap<u32, Tag>,
-    /// The module uses native 16-bit types (`Shader::finish` sets it from
-    /// the shader's flags): written with their data layout.
-    pub native16: bool,
 }
 
 impl Module {
@@ -255,9 +250,6 @@ impl Module {
     }
     pub fn double(&mut self) -> Ty {
         self.ty(TypeDef::Double)
-    }
-    pub fn half(&mut self) -> Ty {
-        self.ty(TypeDef::Half)
     }
     pub fn ptr(&mut self, to: Ty) -> Ty {
         self.ty(TypeDef::Ptr(to, 0))
@@ -591,7 +583,6 @@ impl Module {
                 TypeDef::Void => w.record(2, &[]),
                 TypeDef::Float => w.record(3, &[]),
                 TypeDef::Double => w.record(4, &[]),
-                TypeDef::Half => w.record(10, &[]),
                 TypeDef::Int(b) => w.record(7, &[u64::from(*b)]),
                 TypeDef::Ptr(p, space) => w.record(8, &[u64::from(p.0), u64::from(*space)]),
                 TypeDef::Array(n, e) => w.record(11, &[u64::from(*n), u64::from(e.0)]),
@@ -616,15 +607,11 @@ impl Module {
         w.exit();
 
         w.record(2, &chars("dxil-ms-dx"));
-        // Native 16-bit types are laid out in 16 bits, minimum precision in
-        // 32 (the validator wants the layout that matches the flags).
         w.record(
             3,
-            &chars(if self.native16 {
-                "e-m:e-p:32:32-i1:32-i8:8-i16:16-i32:32-i64:64-f16:16-f32:32-f64:64-n8:16:32:64"
-            } else {
-                "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
-            }),
+            &chars(
+                "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64",
+            ),
         );
         let first_const = (self.globals.len() + self.funcs.len()) as u64;
         for g in &self.globals {
@@ -740,7 +727,7 @@ impl Module {
             let blk = &self.blocks[b];
             if let (Some(Term::Br(h)), true, [p]) = (
                 blk.term,
-                blk.phis.is_empty() && blk.body.is_empty(),
+                blk.phis.iter().all(|&i| !live[i as usize]) && blk.body.is_empty(),
                 &preds[b][..],
             ) && pos[h] < pos[b]
                 && !succs(*p).contains(&h)
@@ -1207,6 +1194,45 @@ mod tests {
         assert!(live[ids(read)] && live[ids(sum)]);
         assert!(!live[ids(unread)] && !live[ids(cyc_a)] && !live[ids(cyc_b)]);
         assert_eq!(live, live_by_passes(&m));
+    }
+
+    #[test]
+    fn empty_latch_with_dead_phis_is_folded() {
+        // Two identical loops except one has an unread phi in its empty latch;
+        // both must fold the latch and emit identical bitcode.
+        let build = |with_dead_phi: bool| {
+            let mut m = Module::default();
+            let i32t = m.int(32);
+            let void = m.void();
+            let fty = m.func_ty(void, vec![i32t]);
+            let f = m.function("sink", fty, Some(Attr::NoUnwind), false);
+            let main_ty = m.func_ty(void, vec![]);
+            m.function("main", main_ty, None, true);
+            let (entry, head, body, latch, exit) = (
+                m.new_block(),
+                m.new_block(),
+                m.new_block(),
+                m.new_block(),
+                m.new_block(),
+            );
+            let (z, one, ten) = (m.i32(0), m.i32(1), m.i32(10));
+            m.terminate(entry, Term::Br(head));
+            let i = m.phi(head, i32t);
+            m.terminate(head, Term::Br(body));
+            let next = m.bin(body, Bin::Add, i, one);
+            let cond = m.cmp(body, pred::IULT, next, ten);
+            m.terminate(body, Term::CondBr(cond, latch, exit));
+            if with_dead_phi {
+                let dead = m.phi(latch, i32t);
+                m.set_phi(dead, vec![(next, body)]);
+            }
+            m.terminate(latch, Term::Br(head));
+            m.set_phi(i, vec![(z, entry), (next, latch)]);
+            let _ = m.call(exit, f, vec![next]);
+            m.terminate(exit, Term::Ret);
+            m.write()
+        };
+        assert_eq!(build(false), build(true));
     }
 
     #[test]

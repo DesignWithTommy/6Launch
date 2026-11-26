@@ -718,9 +718,12 @@ fn translated_shaders_draw_as_pc_ones() {
         eprintln!("no console or PC compiler; skipped");
         return;
     };
-    let Ok(host) = Host::new(false) else {
-        eprintln!("no SM 6.6 device; skipped");
-        return;
+    let host = match Host::new(false) {
+        Ok(host) => host,
+        Err(e) => {
+            eprintln!("no SM 6.6 device ({e}); skipped");
+            return;
+        }
     };
     let dir = std::env::temp_dir().join(format!("victory-diff-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
@@ -874,9 +877,12 @@ fn translated_mesh_shaders_draw_as_pc_ones() {
         eprintln!("no console or PC compiler; skipped");
         return;
     };
-    let Ok(host) = Host::new(false) else {
-        eprintln!("no SM 6.6 device; skipped");
-        return;
+    let host = match Host::new(false) {
+        Ok(host) => host,
+        Err(e) => {
+            eprintln!("no SM 6.6 device ({e}); skipped");
+            return;
+        }
     };
     let dir = std::env::temp_dir().join(format!("victory-diff-ms-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
@@ -991,9 +997,12 @@ fn float_semantics_are_the_consoles() {
         eprintln!("no console compiler; skipped");
         return;
     };
-    let Ok(host) = Host::new(false) else {
-        eprintln!("no SM 6.6 device; skipped");
-        return;
+    let host = match Host::new(false) {
+        Ok(host) => host,
+        Err(e) => {
+            eprintln!("no SM 6.6 device ({e}); skipped");
+            return;
+        }
     };
     let dir = std::env::temp_dir().join(format!("victory-float-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
@@ -1080,9 +1089,12 @@ fn translated_compute_matches_pc() {
         eprintln!("no console or PC compiler; skipped");
         return;
     };
-    let Ok(host) = Host::new(false) else {
-        eprintln!("no SM 6.6 device; skipped");
-        return;
+    let host = match Host::new(false) {
+        Ok(host) => host,
+        Err(e) => {
+            eprintln!("no SM 6.6 device ({e}); skipped");
+            return;
+        }
     };
     let dir = std::env::temp_dir().join(format!("victory-diff-cs-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
@@ -1152,7 +1164,7 @@ fn translated_compute_matches_pc() {
             typed_view(DXGI_FORMAT_R8_UNORM, 1),
             typed_view(DXGI_FORMAT_R16_FLOAT, 2),
             typed_view(DXGI_FORMAT_R8G8B8A8_SNORM, 4),
-            View::Cube(4, &cube_texels),
+            View::Cube(4, 1, &cube_texels),
         ])
         .collect();
     let root_cbv = floats(64, -0.125);
@@ -1225,7 +1237,24 @@ fn translated_compute_matches_pc() {
             };
             roots.push((1 + n as u32, Root::View { srv, data }));
         }
-        let ours = host.dispatch(&root_t, &pso_t, &dispatch(roots));
+        // A buffer of halves the translated program moves as unsigned
+        // integers is shown to it as its unsigned twin, as the host does
+        // (`HostShader::half_views`); the PC program keeps the float view.
+        let twins: Vec<View> = views
+            .iter()
+            .map(|&v| match v {
+                View::HalfUav(n) if !cs_c.half_views.is_empty() => View::HalfUintUav(n),
+                v => v,
+            })
+            .collect();
+        let ours = host.dispatch(
+            &root_t,
+            &pso_t,
+            &Dispatch {
+                views: &twins,
+                ..dispatch(roots)
+            },
+        );
         if name.starts_with("terminates") {
             match ours {
                 Ok(_) => eprintln!("{name}: finished"),

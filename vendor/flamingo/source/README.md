@@ -11,19 +11,23 @@ own legally obtained copy, on an NVIDIA RTX 4070.
 **This repository contains no game files, code or assets.** You need your own copy. Flamingo is
 not affiliated with or endorsed by any game's developer or publisher, or by Microsoft.
 
-## Status (2026-11-25)
+## Status (2026-11-26)
 
-Tested on one machine: Windows 11, NVIDIA RTX 4070 12 GB, Series S profile (`--console series-s`).
+Tested on one machine: Windows 11, NVIDIA RTX 4070 12 GB, Series S profile (`--console series-s`),
+with the settings under [Build and run](#build-and-run).
 
 | Stage | State |
 |-------|-------|
 | Boot, menus, start screen | work (30 fps) |
-| Opening cutscene | plays through; faces and hair show a dither pattern, eyes come out white, and much of it is too dark |
-| First gameplay scene | renders with the player in control: **about 14 fps** facing the window; **9-12 fps** turned fully around toward the room, where the card is 80-85% busy; 4 fps for a few seconds while turning, as the room's textures stream in |
-| Shadowed areas | dark: the title's ray-traced bounce light and shadows do not run yet |
-| Geometry, characters | some geometry is missing in the first area and some character assets load wrong; under investigation |
-| Latest tree | victory-fork main is merged in (run 84): the cell window's wire grate now draws, but the frame rate is lower for now (9-10 fps, first measurement with a cold shader cache) and is being worked on |
-| Stability | 15-minute runs end without a device loss |
+| Cutscenes | play through; faces move (their 16-bit integer data now keeps its bits); shade is lit by a constant floor of light |
+| First mission (boat cutscene) | **about 10 fps** (run 222: 10.4 fps median, 96 ms a frame) |
+| Characters | mostly whole; a few meshes come out of the skinning passes wrong, the same ones every frame (a body missing in the boat cutscene, a head in the opening one) |
+| Distant trees and buildings | left out: the title's impostors draw as huge flat panels on this layer |
+| Water | dark blocks, from the water's transmission volumetrics; leaving those two programs out removes them (the water turns grey) |
+| Ray-traced light and shadows | do not run; a constant floor of indirect light stands in |
+| Stability | runs end without a device loss |
+
+What was found this round, and what to look at next: [docs/handoff.md](docs/handoff.md).
 
 <p align="center">
 <img src="https://github.com/realblastex/flamingo/releases/download/progress-2026-11-25/prologue-window.png" width="70%" alt="The first gameplay scene">
@@ -60,6 +64,14 @@ Flamingo's own work:
 - **A lean build**: the launcher build has no diagnostics counters, which is about 9% faster.
   The `keys` feature keeps the scripted keys for timing runs.
 - **Intro and menu flicker fix**: recently changed guarded textures are hashed at every check.
+- **Pipeline syncs order shader writes**: the console's pipeline syncs were no-ops, so a later
+  dispatch could read what an earlier one had not written yet; they are now a barrier on every
+  shader write (`FLAMINGO_SYNC_BARRIER=0` restores the old behavior).
+- **Faces move**: 16-bit typed accesses through integer views keep their bits, also for views in
+  descriptor tables (VIctory 4243a96a by way of avatarmanz/VIctory-7900XTX 9a6c829d and #114).
+- **`VICTORY_SKIP_PIPELINES` in every build**, so the launcher can leave out the broken impostors.
+- **Diagnostics** for tracing a draw's data end to end (`FLAMINGO_DUMP_RANGE` and more; see
+  [docs/handoff.md](docs/handoff.md)).
 
 Pull requests merged from victory-fork and VIctory that have not landed upstream yet:
 
@@ -76,6 +88,14 @@ Pull requests merged from victory-fork and VIctory that have not landed upstream
 
 - victory-fork #768 (opt-in, `VICTORY_WIDE_TEXTURES=1`): a submission's texture checks run
   several at a time.
+- victory-fork d4a528ba (its pull request #1007's worker; opt-in, `VICTORY_HEAP_WORKER=1`):
+  textures picked by index are uploaded by a thread of their own (7.1 to 9.1 fps here).
+- avatarmanz/VIctory-7900XTX #204: on 32-lane GPUs, LDS atomics in a lane branch keep their order
+  between the two halves of a console wave.
+
+Being tried (see [docs/handoff.md](docs/handoff.md)): `VICTORY_CARD_BUFFERS_MIN_KB=64
+VICTORY_CARD_BUFFERS_MB=1536` keeps every title buffer from 64 KB up on the card: 11.1 fps in the
+boat cutscene against 9.8, with the picture as mixed as before.
 
 Experiments, all off by default, kept for testing (each has its result in FLAMINGO.md):
 
@@ -87,7 +107,8 @@ Experiments, all off by default, kept for testing (each has its result in FLAMIN
 - `FLAMINGO_CARD_FILLS=1`: reads of memory that shaders wrote lately are made on the card. Slower.
 - `VICTORY_AMBIENT=<level>`: after the indirect-light resolve, its output is replaced by a constant
   (from [Belobug's fork](https://github.com/Belobug/VIctory-Belobug-AMD), GPL-3.0). At 0.6 the
-  opening cutscene washed out grey.
+  opening cutscene once washed out grey; in the boat cutscene it lights the shade, and the
+  settings below use it.
 - `FLAMINGO_QUAD_HELPERS=1`: in pixel shaders, reads of the quad's other lanes reach helper lanes
   (also from Belobug's fork). Sharper fine detail, about 18% slower.
 
@@ -101,7 +122,7 @@ You need Rust (stable) and Windows 11.
 cargo build --profile diag -p victory
 ```
 
-Run it with the settings this build is tuned for:
+Run it with the settings this build is tuned for (about 9-10 fps on an RTX 4070):
 
 ```
 set VICTORY_NO_WATCHDOG=1
@@ -113,11 +134,19 @@ set VICTORY_CARD_BUFFERS_MB=1024
 set VICTORY_INDIRECT_WINDOW=0
 set VICTORY_SHADER_OPT=0
 set VICTORY_WIDE_MERGE=1
-target\diag\victory.exe run <path to your dump>\<the title's executable> --execute --console series-x
+set VICTORY_WIDE_TEXTURES=1
+set VICTORY_VIEW_GUARD=0
+set FLAMINGO_BVH_MISS=1
+set VICTORY_HEAP_WORKER=1
+set VICTORY_AMBIENT=0.6
+set VICTORY_SKIP_PIPELINES=7115e46a79c78f98,59b1ba494f18c894,b8ca32a6899b87fb,659fe9cae59dbd88
+target\diag\victory.exe run <path to your dump>\<the title's executable> --execute --console series-s
 ```
 
-The Series X profile is the one to use: on some PCs the Series S profile (`--console series-s`,
-faster) shows a black screen once the game has loaded.
+The last line leaves out the title's distant-object impostors, which draw as huge panels here:
+far trees and some far buildings are then missing. For a sharper picture at about 5 fps, use
+`--console series-x`. If the Series S profile shows a black screen once the game has loaded
+(seen on some PCs), use `--console series-x` too.
 
 The first launch after a build translates and compiles shaders for a few minutes. Later launches
 use the cache.

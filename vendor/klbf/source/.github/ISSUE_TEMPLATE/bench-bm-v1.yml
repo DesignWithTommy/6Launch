@@ -1,0 +1,48 @@
+name: "Bench result · Bayside Morning v1"
+description: Submit a KLBF Lab Bench BM-v1 result to appear on the results board.
+title: "[BM-v1] "
+labels: ["bench-bm-v1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Run the bench as described in [docs/klbf/BENCH-BM-V1.md](https://github.com/PastiiJay/klbf-lab/blob/main/docs/klbf/BENCH-BM-V1.md), then attach the files from `bench-results` next to the exe.
+        Only the card PNG, please: no screenshots of the game.
+        The player on the card (`KLBF_BENCH_PLAYER`) must be **your GitHub login** or `anonymous`; any other name is not listed.
+  - type: input
+    id: nickname
+    attributes:
+      label: Nickname
+      description: Optional. Your GitHub login (as on the card), or leave empty if the card says "anonymous". No other names.
+    validations:
+      required: false
+  - type: input
+    id: project
+    attributes:
+      label: Project repo URL
+      description: The repository your build came from.
+      placeholder: https://github.com/owner/repo
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Result JSON
+      description: "Paste the WHOLE `KLBF-Bench-BM-v1-…json` file from `bench-results` exactly as the game wrote it (about 3 KB). Do not edit, shorten or summarize it, and do not ask an AI to rewrite it: the serial is checked against every field, so any change makes the run invalid."
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: card
+    attributes:
+      label: Card PNG
+      description: Drag `KLBF-Bench-BM-v1-<serial>.png` here.
+    validations:
+      required: true
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Agreement
+      options:
+        - label: I followed the procedure and agree to publish this result
+          required: true

@@ -131,6 +131,7 @@ fn make() -> Option<Meter> {
             .CreateCommittedResource(&readback, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COPY_DEST, None, &mut back)
             .ok()?;
         let (heap, back) = (heap?, back?);
+        crate::cardmem::enter(&back, crate::cardmem::Owner::Meters);
         let mut mapped = std::ptr::null_mut();
         back.Map(0, None, Some(&mut mapped)).ok()?;
         let frequency = host.timestamp_frequency();

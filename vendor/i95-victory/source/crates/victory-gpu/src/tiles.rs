@@ -416,6 +416,18 @@ impl Tiled {
         }
     }
 
+    /// [`Tiled::uploaded`] with no room test: every held level gets its
+    /// tiles (a decoration bake's sources, VI-BR-PORT 277bc02).
+    pub(crate) fn uploaded_regardless(&self, texture: &ID3D12Resource, held: u32) -> (bool, u64) {
+        match host() {
+            Some(host) => {
+                let (changed, needed) = self.uploaded_with_room(host.queue(), &host.device, texture, held, u64::MAX);
+                (changed, u64::from(needed != 0))
+            }
+            None => (false, 0),
+        }
+    }
+
     /// [`Tiled::uploaded`] on a queue and a device.
     #[cfg(test)]
     pub(crate) fn uploaded_on(

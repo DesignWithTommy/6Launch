@@ -101,7 +101,7 @@ pub(crate) struct ResourceDesc {
 #[cfg(windows)]
 impl ResourceDesc {
     /// The texture of this one's levels from `base` on.
-    fn from_level(&self, base: u32) -> ResourceDesc {
+    fn levels_from(&self, base: u32) -> ResourceDesc {
         let mut d = *self;
         if base > 0 {
             d.width = (d.width >> base).max(1);
@@ -121,6 +121,9 @@ pub(crate) struct AllocationInfo {
 
 const _: () = assert!(size_of::<HeapProperties>() == 20);
 const _: () = assert!(size_of::<HeapDesc>() == 48);
+// placed_resource_words copies the two field spans on either side of the padding.
+const _: () = assert!(std::mem::offset_of!(ResourceDesc, alignment) == 8);
+const _: () = assert!(std::mem::offset_of!(ResourceDesc, flags) == 48);
 const _: () = assert!(size_of::<ResourceDesc>() == 56);
 
 const BUFFER: u32 = 1;
@@ -502,7 +505,6 @@ fn twin_texture(
             &mut texture,
         )
     };
-    crate::census::made(6, 0);
     if let Err(e) = made {
         tracing::warn!(error = %e, desc = ?d, "no colour twin for a depth texture");
     }
@@ -1588,7 +1590,7 @@ fn hosted(this: This, make: bool) -> Option<Made> {
         }
         let texture = match texture {
             Some(texture) => Some(texture),
-            None => host_texture(&r.desc.from_level(base), r.host.state, clear),
+            None => host_texture(&r.desc.levels_from(base), r.host.state, clear),
         };
         let Some(texture) = texture else {
             r.host.refused.store(true, Relaxed);
@@ -1990,12 +1992,13 @@ pub(crate) fn card_accounting(room: bool, due: [u64; 5], never: Vec<(u64, u64)>,
     }
 }
 
-/// Whether LRU texture eviction from descriptor heaps under VRAM pressure is
-/// enabled (on by default; `VICTORY_TEXTURE_EVICT=0` disables it).
-#[cfg(windows)]
-fn evict_enabled() -> bool {
-    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| std::env::var_os("VICTORY_TEXTURE_EVICT").is_none_or(|v| v != "0"))
+#[cfg(any(windows, test))]
+fn sweep_batch(all: &std::collections::BTreeSet<usize>, from: usize, limit: usize) -> impl Iterator<Item = usize> + '_ {
+    // The last batch can end exactly at the final address, or the
+    // remaining textures can be released between passes.
+    let tail = all.range(from..);
+    let batch = if from != 0 && tail.clone().next().is_none() { all.range(..) } else { tail };
+    batch.take(limit).copied()
 }
 
 /// Lets go of the host copies of textures the title fills that nothing
@@ -2044,7 +2047,11 @@ pub(crate) fn let_go_idle() {
     static KEEP: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     let keep = *KEEP
         .get_or_init(|| !matches!(std::env::var("VICTORY_TEXTURE_KEEP").as_deref(), Ok("0") | Ok("1")));
+    // The card's room says nothing of the PC's: what the card spills to
+    // system memory is commit too. Short of it ([`crate::residency::pressured`]),
+    // idle copies go after seconds, not the minutes room on the card keeps them.
     let (idle_ms, most) = match memory {
+        _ if crate::residency::pressured() => (5_000, u64::MAX),
         Some([budget, used, ..]) if keep => {
             let used = used.saturating_sub(crate::pool::texture_room())
                 + crate::shadow::card_room_kept()
@@ -2087,7 +2094,7 @@ pub(crate) fn let_go_idle() {
     let from = if part == PART { FROM.load(Relaxed) } else { 0 };
     let mut looked = 0;
     let began = std::time::Instant::now();
-    for at in all.range(from..).take(part).copied().chain(by_age.iter().map(|&(_, at)| at)) {
+    for at in sweep_batch(&all, from, part).chain(by_age.iter().map(|&(_, at)| at)) {
         if bytes >= most {
             break;
         }
@@ -2132,7 +2139,6 @@ pub(crate) fn let_go_idle() {
             crate::host::retire(host);
         }
     }
-    drop(all);
     SWEPT_US[0].fetch_add(1, Relaxed);
     SWEPT_US[1].fetch_add(began.elapsed().as_micros() as u64, Relaxed);
     SWEPT_US[2].fetch_max(began.elapsed().as_micros() as u64, Relaxed);
@@ -2144,128 +2150,6 @@ pub(crate) fn let_go_idle() {
                 first.unwrap_or(0)
             )
         });
-    }
-    evict_under_vram_pressure(idle_ms);
-}
-
-/// When VRAM usage exceeds [`room_percent`], unpins the least-recently-used
-/// idle title-filled textures from shader-visible descriptor heaps (replacing
-/// their slots with valid null SRVs) and frees their host copies so hot
-/// compute buffers and newly streamed textures have VRAM headroom.
-/// Called only from [`let_go_idle`] inside `sweep()` when no GPU submission is
-/// in flight.
-#[cfg(windows)]
-fn evict_under_vram_pressure(idle_ms: u64) {
-    use std::sync::atomic::Ordering::Relaxed;
-    const EVICT_IDLE_FRAMES: u64 = 120;
-    const MIN_FREE: u64 = 128 << 20;
-    const MAX_FREE: u64 = 512 << 20;
-
-    if !evict_enabled() {
-        return;
-    }
-    let Some([budget, used, ..]) = crate::host::host().and_then(|h| h.video_memory()) else {
-        return;
-    };
-    let cap = budget / 100 * room_percent().max(90);
-    if budget == 0 || used < cap {
-        return;
-    }
-    let goal = budget / 100 * room_percent().max(90).saturating_sub(6);
-    let target = used.saturating_sub(goal).clamp(MIN_FREE, MAX_FREE);
-
-    // Pass 1: gather LRU candidates under `TEXTURES` lock, then drop it before
-    // touching descriptor heaps so lock ordering stays strictly acyclic.
-    let mut candidates: Vec<(u64, usize, usize, u64)> = {
-        let all = textures();
-        let mut out = Vec::new();
-        for &at in all.iter() {
-            // SAFETY: every entry in `TEXTURES` is live under its lock.
-            let r = unsafe { &*(at as *const Resource) };
-            if !fills(&r.desc) || crate::texture::host_wrote(at) {
-                continue;
-            }
-            let last_used = r.host.used.load(Relaxed);
-            if !crate::host::long_ago(last_used, idle_ms, EVICT_IDLE_FRAMES) {
-                continue;
-            }
-            let made = r.host.made.lock().unwrap_or_else(|e| e.into_inner());
-            if let Some((host, _)) = made.as_ref()
-                && std::sync::Arc::strong_count(host) == 1
-                && crate::host::references(&host.texture) > 1
-            {
-                let raw = windows::core::Interface::as_raw(&host.texture) as usize;
-                out.push((last_used, at, raw, host.bytes));
-            }
-        }
-        out
-    };
-    if candidates.is_empty() {
-        return;
-    }
-    // Oldest `moment()` first (frame in high 32 bits, tenths in low 32 bits).
-    candidates.sort_unstable_by_key(|&(last_used, _, _, _)| last_used);
-
-    let mut victim_ptrs = std::collections::HashSet::new();
-    let mut victim_resources = Vec::new();
-    let mut selected = 0u64;
-    for (_, at, raw, bytes) in candidates {
-        victim_ptrs.insert(raw);
-        victim_resources.push(at);
-        selected += bytes;
-        if selected >= target {
-            break;
-        }
-    }
-
-    let slots_cleared = crate::descriptor::evict_kept_resources(&victim_ptrs);
-    if slots_cleared == 0 {
-        return;
-    }
-
-    // Pass 2: now that descriptor heaps released their COM references (and no
-    // submission is in flight), free every victim whose refcount dropped to 1.
-    let (mut freed, mut freed_bytes) = (0u64, 0u64);
-    {
-        let all = textures();
-        for at in victim_resources {
-            if !all.contains(&at) {
-                continue;
-            }
-            // SAFETY: `at` is still live in `TEXTURES` under the lock.
-            let r = unsafe { &*(at as *const Resource) };
-            let gone = {
-                let mut made = r.host.made.lock().unwrap_or_else(|e| e.into_inner());
-                let ready = made.as_ref().is_some_and(|(host, _)| {
-                    std::sync::Arc::strong_count(host) == 1
-                        && crate::host::references(&host.texture) == 1
-                });
-                if ready {
-                    crate::texture::unstage(at as This);
-                    made.take()
-                } else {
-                    None
-                }
-            };
-            if let Some((host, _)) = gone {
-                r.host.gone.store(true, Relaxed);
-                KINDS[2].fetch_add(1, Relaxed);
-                KINDS[3].fetch_add(host.bytes, Relaxed);
-                freed += 1;
-                freed_bytes += host.bytes;
-                crate::host::retire(host);
-            }
-        }
-    }
-    if freed > 0 {
-        tracing::info!(
-            textures = freed,
-            mb = freed_bytes >> 20,
-            slots_cleared,
-            vram_used_mb = used >> 20,
-            vram_budget_mb = budget >> 20,
-            "VRAM pressure: evicted LRU idle textures from descriptor heaps"
-        );
     }
 }
 
@@ -2464,12 +2348,6 @@ impl HostTexture {
 impl Drop for HostTexture {
     fn drop(&mut self) {
         use std::sync::atomic::Ordering::Relaxed;
-        // A texture with levels on demand: its tiles are in heaps of ours,
-        // not in the texture, so they stay given until nothing names the
-        // texture any more (`crate::tiles::let_go`).
-        if let Some(tiled) = self.tiled.take() {
-            crate::tiles::let_go(self.texture.clone(), tiled);
-        }
         HOST_TEXTURES[0].fetch_sub(1, Relaxed);
         HOST_TEXTURES[1].fetch_sub(self.bytes, Relaxed);
         if self.filled {
@@ -2515,6 +2393,14 @@ pub(crate) fn host_resource<'a>(
     // list and no slot holds and that nothing asked for in seconds (the
     // asking just made is noted under the same lock).
     Some(unsafe { &*std::ptr::from_ref(&host.texture) })
+}
+
+/// Whether `this` is a valid title resource created by this runtime.
+#[cfg(windows)]
+pub(crate) fn is_resource(this: This) -> bool {
+    let mut table = [0; size_of::<usize>()];
+    crate::host::read_into(this.cast(), &mut table)
+        && usize::from_ne_bytes(table) == RESOURCE_FUNCTIONS.0.as_ptr() as usize
 }
 
 /// A title texture's host copy, shared, for a list to hold.
@@ -2662,8 +2548,8 @@ fn host_texture_as(
             )
         }
     };
-    crate::census::made(if reserved { 5 } else { 4 }, 0);
     if let Err(e) = &made {
+        crate::residency::allocation_error(e);
         tracing::warn!(error = %e, desc = ?d, reserved, "no host texture");
     }
     if !reserved
@@ -2844,9 +2730,6 @@ fn hand_out_resource(
     if desc.dimension == BUFFER {
         let at = std::ptr::from_ref::<Resource>(&resource) as usize;
         crate::shadow::register(at, resource.data() as u64, desc.width);
-        if crate::readback::creating_readback() {
-            crate::readback::tag(resource.data() as u64, desc.width);
-        }
     }
     object::hand_out(RESOURCE, resource, iid, &RESOURCE_IIDS, out)
 }
@@ -2867,8 +2750,6 @@ impl Drop for Resource {
                     targets.remove(&at);
                 }
             }
-        } else {
-            crate::readback::untag(self.data() as u64);
         }
         let made = self
             .host
@@ -3087,8 +2968,9 @@ static PLACED_RAW: std::sync::Mutex<std::collections::BTreeSet<(u64, [u32; 14])>
 #[cfg(windows)]
 static PLACED_TWINS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-/// See [`PLACED_TWINS`]. Read by the diagnostics' memory report only.
-#[cfg(all(windows, feature = "diagnostics"))]
+/// See [`PLACED_TWINS`].
+#[cfg(windows)]
+#[cfg_attr(not(feature = "diagnostics"), allow(dead_code))]
 pub(crate) fn placed_filler_twins() -> u64 {
     PLACED_TWINS.load(std::sync::atomic::Ordering::Relaxed)
 }
@@ -4666,6 +4548,23 @@ float4 lit() : SV_Target { return 1.0; }
         // The resource keeps the heap alive.
         assert_eq!(slot::<Release>(heap, 0x10)(heap), 1);
         assert_eq!(slot::<Release>(placed, 0x10)(placed), 0);
+    }
+
+    #[test]
+    fn idle_sweep_restarts_after_a_full_last_batch() {
+        let all = std::collections::BTreeSet::from([1, 3, 5, 7]);
+        assert_eq!(sweep_batch(&all, 0, 2).collect::<Vec<_>>(), [1, 3]);
+        assert_eq!(sweep_batch(&all, 4, 2).collect::<Vec<_>>(), [5, 7]);
+        assert_eq!(sweep_batch(&all, 8, 2).collect::<Vec<_>>(), [1, 3]);
+    }
+
+    #[test]
+    fn idle_sweep_restarts_if_the_remaining_textures_were_released() {
+        let mut all = std::collections::BTreeSet::from([1, 3, 5]);
+        assert_eq!(sweep_batch(&all, 0, 2).collect::<Vec<_>>(), [1, 3]);
+        assert_eq!(sweep_batch(&all, 4, 2).collect::<Vec<_>>(), [5]);
+        all.remove(&5);
+        assert_eq!(sweep_batch(&all, 4, 2).collect::<Vec<_>>(), [1, 3]);
     }
 
     #[test]

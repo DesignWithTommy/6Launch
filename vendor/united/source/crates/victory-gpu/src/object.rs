@@ -71,21 +71,6 @@ pub(crate) extern "system" fn add_ref(this: This) -> u32 {
     unsafe { &*this }.refs.fetch_add(1, Ordering::Relaxed) + 1
 }
 
-/// Increments the reference count only if it is currently non-zero, preventing
-/// resurrection of an object whose last `Release` is already dropping it.
-/// The caller must prevent deallocation (for instance by holding the table lock
-/// that `Drop` acquires before freeing) across this call.
-#[cfg(windows)]
-pub(crate) fn try_add_ref(this: This) -> bool {
-    // SAFETY: caller prevents deallocation of `this` while checking `refs`.
-    unsafe { &*this }
-        .refs
-        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
-            (n > 0).then_some(n + 1)
-        })
-        .is_ok()
-}
-
 pub(crate) extern "system" fn release(this: This) -> u32 {
     // SAFETY: `this` is one of our objects.
     let refs = &unsafe { &*this }.refs;
@@ -205,7 +190,7 @@ extern "system" fn get_private_data(
     S_OK
 }
 
-/// Null data removes the entry and reports S_FALSE if it was already absent.
+/// Null data removes the entry.
 extern "system" fn set_private_data(
     this: This,
     id: *const Iid,
@@ -216,18 +201,14 @@ extern "system" fn set_private_data(
     let Some(&id) = (unsafe { id.as_ref() }) else {
         return E_INVALIDARG;
     };
-    let key = (this as usize, id);
     let mut map = private_data();
     if data.is_null() {
-        return if map.remove(&key).is_some() {
-            S_OK
-        } else {
-            S_FALSE
-        };
+        map.remove(&(this as usize, id));
+    } else {
+        // SAFETY: the title passes `size` bytes.
+        let value = unsafe { std::slice::from_raw_parts(data, size as usize) };
+        map.insert((this as usize, id), value.to_vec());
     }
-    // SAFETY: the title passes `size` bytes.
-    let value = unsafe { std::slice::from_raw_parts(data, size as usize) };
-    map.insert(key, value.to_vec());
     S_OK
 }
 
@@ -307,35 +288,15 @@ const MAX_SLOTS: usize = 160;
 static REPORTED: [[AtomicBool; MAX_SLOTS]; KINDS.len()] =
     [const { [const { AtomicBool::new(false) }; MAX_SLOTS] }; KINDS.len()];
 
-/// The four registers a win64 method call carries its first arguments in,
-/// as hex. A report of an unexpected slot can then tell a call passing an
-/// interface GUID or a module address from one passing flags, a count or an
-/// out pointer, without a local patch to this stub.
-fn argument_text(args: [usize; 4]) -> String {
-    format!(
-        "{:#x} {:#x} {:#x} {:#x}",
-        args[0], args[1], args[2], args[3]
-    )
-}
-
 /// Logged once per slot, with the caller's offset in its module (the title
-/// image for title calls) and the four argument registers. Wrong for a slot
-/// that returns a value instead of an `HRESULT`; and a call made with fewer
-/// real arguments shows whatever its registers held (on win64 all four are
-/// registers, so reading them never touches the caller's stack).
-extern "system" fn missing<const KIND: usize, const SLOT: usize>(
-    this: This,
-    second: usize,
-    third: usize,
-    fourth: usize,
-) -> HRESULT {
+/// image for title calls). Wrong for a slot that returns a value instead of
+/// an `HRESULT`.
+extern "system" fn missing<const KIND: usize, const SLOT: usize>() -> HRESULT {
     if !REPORTED[KIND][SLOT].swap(true, Ordering::Relaxed) {
-        let args = argument_text([this as usize, second, third, fourth]);
         tracing::warn!(
             object = KINDS[KIND],
             slot = format_args!("{:#x}", SLOT * 8),
             caller = caller(),
-            args = %args,
             "method not implemented"
         );
     }
@@ -479,11 +440,8 @@ mod tests {
         assert_eq!(set(first, &TAG, 99, std::ptr::null()), S_OK);
         assert_eq!(get(first, &TAG, &mut size, data.as_mut_ptr()), NOT_FOUND);
         assert_eq!(size, 0);
-        assert_eq!(set(first, &TAG, 0, std::ptr::null()), S_FALSE);
         assert_eq!(get(first, &OTHER_TAG, &mut size, data.as_mut_ptr()), S_OK);
         assert_eq!(size, 0);
-        assert_eq!(set(first, &OTHER_TAG, 0, std::ptr::null()), S_OK);
-        assert_eq!(set(first, &OTHER_TAG, 0, std::ptr::null()), S_FALSE);
         assert_eq!(release(first), 0);
         size = 3;
         assert_eq!(get(second, &TAG, &mut size, data.as_mut_ptr()), S_OK);
@@ -558,14 +516,6 @@ mod tests {
             assert_eq!(set_private_data(this, &id, 1, b"a".as_ptr()), S_OK);
         }
         assert_eq!(release_boxed::<OwnedObject>(this), 0);
-    }
-
-    #[test]
-    fn unimplemented_calls_report_their_argument_registers() {
-        assert_eq!(
-            argument_text([0x1234_0000, 0x0, 0xdead_beef_cafe, 0xffff_ffff_ffff_fff6]),
-            "0x12340000 0x0 0xdeadbeefcafe 0xfffffffffffffff6"
-        );
     }
 
     #[test]

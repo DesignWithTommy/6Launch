@@ -748,7 +748,7 @@ impl HostPipeline {
                 slots: 0,
                 inputs: Vec::new(),
                 rects: false,
-                state: String::new(),
+                state: describe_state(g, &g.host_blend(), depth_bounds),
             });
         }
 
@@ -887,34 +887,7 @@ impl HostPipeline {
             slots: g.slots(),
             inputs: g.elements(),
             rects: rect_gs.is_some(),
-            state: {
-                let (d, r, b) = (&g.depth, &g.rasterizer, &blend.RenderTarget[0]);
-                let face = |f: &D3D12_DEPTH_STENCILOP_DESC| {
-                    format!(
-                        "fail {} depth-fail {} pass {} func {}",
-                        f.StencilFailOp.0, f.StencilDepthFailOp.0, f.StencilPassOp.0, f.StencilFunc.0
-                    )
-                };
-                let bounds = if depth_bounds { " bounds true" } else { "" };
-                format!(
-                    "depth {} write {} func {}{bounds}; stencil {} read {:#x} write {:#x} front [{}] back [{}]; cull {} front-ccw {}; blend {} src {} dst {} op {} mask {:#x}",
-                    d.DepthEnable.as_bool(),
-                    d.DepthWriteMask.0,
-                    d.DepthFunc.0,
-                    d.StencilEnable.as_bool(),
-                    d.StencilReadMask,
-                    d.StencilWriteMask,
-                    face(&d.FrontFace),
-                    face(&d.BackFace),
-                    r.CullMode.0,
-                    r.FrontCounterClockwise.as_bool(),
-                    b.BlendEnable.as_bool(),
-                    b.SrcBlend.0,
-                    b.DestBlend.0,
-                    b.BlendOp.0,
-                    b.RenderTargetWriteMask
-                )
-            },
+            state: describe_state(g, &blend, depth_bounds),
         })
     }
 }
@@ -1070,6 +1043,37 @@ fn linked(
 /// "already exists"). The translation makes triangle mesh shaders only
 /// (`mesh_prologue` refuses others), and the debug layer wants the two to
 /// agree (1323).
+/// A pipeline's depth, stencil, cull and first target's blend state in a few words (the
+/// capture's draw lines; mesh pipelines too).
+fn describe_state(g: &GraphicsState, blend: &D3D12_BLEND_DESC, depth_bounds: bool) -> String {
+    let (d, r, b) = (&g.depth, &g.rasterizer, &blend.RenderTarget[0]);
+    let face = |f: &D3D12_DEPTH_STENCILOP_DESC| {
+        format!(
+            "fail {} depth-fail {} pass {} func {}",
+            f.StencilFailOp.0, f.StencilDepthFailOp.0, f.StencilPassOp.0, f.StencilFunc.0
+        )
+    };
+    let bounds = if depth_bounds { " bounds true" } else { "" };
+    format!(
+        "depth {} write {} func {}{bounds}; stencil {} read {:#x} write {:#x} front [{}] back [{}]; cull {} front-ccw {}; blend {} src {} dst {} op {} mask {:#x}",
+        d.DepthEnable.as_bool(),
+        d.DepthWriteMask.0,
+        d.DepthFunc.0,
+        d.StencilEnable.as_bool(),
+        d.StencilReadMask,
+        d.StencilWriteMask,
+        face(&d.FrontFace),
+        face(&d.BackFace),
+        r.CullMode.0,
+        r.FrontCounterClockwise.as_bool(),
+        b.BlendEnable.as_bool(),
+        b.SrcBlend.0,
+        b.DestBlend.0,
+        b.BlendOp.0,
+        b.RenderTargetWriteMask
+    )
+}
+
 fn mesh_pipeline(
     device: &ID3D12Device,
     root: &ID3D12RootSignature,

@@ -294,7 +294,7 @@ fn bench_indirect_draw_barriers() {
         device.CreateRenderTargetView(&target, None, rtv);
 
         // The title's records: three vertices, one instance, 32 bytes apart.
-        let (src, src_ptr) = host.shared_buffer(u64::from(DRAWS * STEP)).unwrap();
+        let (src, src_ptr) = host.shared_buffer(u64::from(DRAWS * STEP), crate::cardmem::Owner::PcOther).unwrap();
         for i in 0..DRAWS as usize {
             let words = [3u32, 1, 0, 0];
             std::ptr::copy_nonoverlapping(
@@ -303,14 +303,14 @@ fn bench_indirect_draw_barriers() {
                 16,
             );
         }
-        let (budget, budget_ptr) = host.shared_buffer(256).unwrap();
+        let (budget, budget_ptr) = host.shared_buffer(256, crate::cardmem::Owner::PcOther).unwrap();
         let budget_gpu = budget.GetGPUVirtualAddress();
         // The same words in the card's own memory (zeroed when made; the
         // runs below charge far less than the budget).
-        let card_budget = host.uav_buffer(256).unwrap();
+        let card_budget = host.uav_buffer(256, crate::cardmem::Owner::Indirect).unwrap();
         let card_budget_gpu = card_budget.GetGPUVirtualAddress();
         let scratch = host
-            .uav_buffer(u64::from(WINDOW * STEP).max(64 << 10))
+            .uav_buffer(u64::from(WINDOW * STEP).max(64 << 10), crate::cardmem::Owner::Indirect)
             .unwrap();
         let signature = {
             let arg = D3D12_INDIRECT_ARGUMENT_DESC {

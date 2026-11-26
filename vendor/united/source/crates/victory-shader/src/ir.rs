@@ -126,27 +126,6 @@ impl Inst {
     }
 }
 
-thread_local! {
-    /// See [`with_shared_slots`].
-    static SHARED_SLOTS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
-/// Runs `f` with programs built so that a register pair parked in two lanes of a VGPR moves
-/// as a pair wherever its save or restore comes together, also where the lower lane holds a
-/// single scalar at other times ([`unspill`] otherwise moves every half alone then). Each
-/// save and restore keeps its meaning either way (a pair move is the two moves at once, where
-/// nothing in between sees the difference); what changes is that a parked lane mask then comes
-/// back as the mask it is. `PS_VoxelizeVisiblity` parks a lane mask in lanes 3 and 4 of v56 and
-/// later a single scalar in lane 3: its mask came back as two scalars, a mask the
-/// structurisation cannot see into ("an opaque lane mask"). A retry ([`crate::emit::emit`]),
-/// so that the programs that translate as they are keep their form.
-pub fn with_shared_slots<R>(f: impl FnOnce() -> R) -> R {
-    let was = SHARED_SLOTS.replace(true);
-    let r = f();
-    SHARED_SLOTS.set(was);
-    r
-}
-
 /// Decodes `code` and builds its SSA form; `vgprs` is the program's VGPR
 /// count. Fails on instructions the IR cannot express yet
 /// ([`ShaderError::Unsupported`]).
@@ -233,16 +212,17 @@ pub fn build(code: &[u8], wave64: bool, vgprs: u16) -> Result<Program, ShaderErr
         }
         if let Some((mut reads, writes)) = effects(&machine, &fields, name, lanes, vgprs)? {
             // Lanes disabled in EXEC keep the old value.
-            for w in writes.iter().filter(|(w, _)| matches!(w, Reg::V(_))) {
+            for w in writes.iter().filter(|w| matches!(w, Reg::V(_))) {
                 if !reads.contains(w) {
                     reads.push(*w);
                 }
             }
+            let unset = |regs: Vec<Reg>| regs.into_iter().map(|r| (r, NONE)).collect();
             blocks[b].insts.push(Inst {
                 machine,
                 fields,
-                reads,
-                writes,
+                reads: unset(reads),
+                writes: unset(writes),
             });
         }
     }
@@ -280,9 +260,7 @@ pub fn build(code: &[u8], wave64: bool, vgprs: u16) -> Result<Program, ShaderErr
 /// A register pair parked in two neighbouring lanes (a lane mask, a 64-bit
 /// address) moves as a pair (`s_mov_b64`) when every save and every restore
 /// of the two lanes come together, so a parked lane mask comes back as the
-/// mask it is; otherwise its halves come back as two scalars (with
-/// [`with_shared_slots`], the saves and restores that come together still
-/// move as pairs).
+/// mask it is; otherwise its halves come back as two scalars.
 ///
 /// The compiler reuses a lane once what it held is dead, for a pair first and
 /// a scalar later, say. Where that keeps a pair from being one, each life of a
@@ -297,19 +275,13 @@ fn unspill(
     vgprs: u16,
 ) -> Vec<(usize, u8, u8)> {
     /// `v_writelane_b32 vN, sX, K` / `v_readlane_b32 sX, vN, K`: (save, N, X, K).
-    fn parked(
-        inst: &gfx10::Instruction,
-        fields: &Fields,
-        wave64: bool,
-    ) -> Option<(bool, u8, u8, u32)> {
+    fn parked(inst: &gfx10::Instruction, fields: &Fields) -> Option<(bool, u8, u8, u32)> {
         let Fields::Valu(v) = fields else { return None };
         if v.abs != 0 || v.neg != 0 || v.opsel != 0 || v.clamp || v.omod != 0 || v.sdwa.is_some() || v.dpp.is_some() {
             return None;
         }
         let lane = |op: &Operand| match *op {
-            Operand::Const(c @ 128..=191) => {
-                Some((u32::from(c) - 128) & gfx10::lane_selector_mask(wave64))
-            }
+            Operand::Const(c @ 128..=191) => Some(u32::from(c) - 128),
             _ => None,
         };
         match (inst.name()?, v.dst?, v.src.as_slice()) {
@@ -326,26 +298,26 @@ fn unspill(
     // per instruction the scalar codes it writes.
     let mut stores = [false; 256];
     let mut other: [Option<usize>; 256] = [None; 256]; // the last such use
-    let mut used = [false; 256];
+    let mut used = [false; 128];
     let mut parks: Vec<Option<(bool, u8, u8, u32)>> = Vec::with_capacity(list.len());
     let mut written: Vec<Vec<u8>> = Vec::with_capacity(list.len());
     let mut read: Vec<Vec<u8>> = Vec::with_capacity(list.len());
     for inst in list.iter() {
         let Some(name) = inst.name() else { return Vec::new() };
         let fields = inst.fields(wave64);
-        let park = parked(inst, &fields, wave64);
+        let park = parked(inst, &fields);
         let Ok(effects) = effects(inst, &fields, name, lanes, vgprs) else {
             return Vec::new();
         };
         let mut codes = Vec::new();
         let mut from = Vec::new();
         if let Some((reads, writes)) = effects {
-            for &(reg, _) in &writes {
+            for &reg in &writes {
                 if let Reg::S(c) = reg {
                     codes.push(c);
                 }
             }
-            for &(reg, _) in &reads {
+            for &reg in &reads {
                 if let Reg::S(c) = reg {
                     from.push(c);
                 }
@@ -356,7 +328,7 @@ fn unspill(
             // ordinary ones. (Relative writes still do.)
             let relative = name == "v_movrels_b32";
             let n_reads = reads.len();
-            for (k, (reg, _)) in reads.into_iter().chain(writes).enumerate() {
+            for (k, reg) in reads.into_iter().chain(writes).enumerate() {
                 if relative && k < n_reads && matches!(reg, Reg::V(_)) {
                     continue;
                 }
@@ -518,7 +490,6 @@ fn unspill(
     };
     // The stores that move as pairs (lower, upper) and every store's code;
     // none if the spare codes do not suffice.
-    let shared = SHARED_SLOTS.get();
     let plan = |split: bool| -> Option<(Vec<usize>, Vec<(usize, usize)>, Vec<u8>)> {
         let (mut of, stores) = stores_of(split);
         let mut pairs: Vec<(usize, usize)> = Vec::new();
@@ -534,17 +505,12 @@ fn unspill(
             let Some(upper) = distinct.first().map(|&j| of[j]) else {
                 continue;
             };
-            // Every save and restore of the two lanes come together. With
-            // [`with_shared_slots`] a partner that comes together is enough: the
-            // lane's other lives are not asked about.
-            let found = partners.iter().flatten().count();
-            let together = distinct.iter().all(|&j| of[j] == upper);
-            let strict = partners.iter().all(Option::is_some)
+            if stores[upper] == (reg, lane + 1)
+                && partners.iter().all(Option::is_some)
                 && distinct.len() == lower.len()
-                && together
-                && of.iter().filter(|&&o| o == upper).count() == lower.len();
-            let relaxed = shared && found > 0 && distinct.len() == found && together;
-            if stores[upper] == (reg, lane + 1) && (strict || relaxed) {
+                && distinct.iter().all(|&j| of[j] == upper)
+                && of.iter().filter(|&&o| o == upper).count() == lower.len()
+            {
                 pairs.push((n, upper));
             }
         }
@@ -575,9 +541,10 @@ fn unspill(
         // scalars and leaves about 20 machine codes unused.
         let past = usize::from(PARKED);
         let mut free = [false; 256];
-        for c in (0..105).chain(108..=123).chain(past..255) {
+        for c in (0..105).chain(108..=123) {
             free[c] = !used[c];
         }
+        free[past..255].fill(true);
         let mut codes: Vec<Option<u8>> = vec![None; shared.len()];
         for &(lower, upper) in &pairs {
             let at = (108..123).chain((0..104).rev()).chain(past..254).find(|&c| free[c] && free[c + 1]);
@@ -611,7 +578,7 @@ fn unspill(
     }
     let (store, pairs, codes) = chosen;
     let put = |list: &mut [gfx10::Instruction], i: usize, encoding, opcode: u16, word: u32| {
-        list[i] = gfx10::Instruction::synthetic(list[i].offset, encoding, opcode, word);
+        list[i] = gfx10::Instruction::new(list[i].offset, encoding, opcode, vec![word]);
     };
     // `s_mov_b32` / `s_mov_b64 dst, src` (SOP1, opcodes 3 and 4); `s_nop`. A code
     // from `PARKED` up does not fit the word: s0 stands in for it there.
@@ -619,27 +586,12 @@ fn unspill(
     let mov = |wide: bool, dst: u8, src: u8| 0xBE80_0000 | field(dst) << 16 | (3 + u32::from(wide)) << 8 | field(src);
     const NOP: u32 = 0xBF80_0000;
     let mut edits: Vec<(usize, Option<(bool, u8, u8)>)> = Vec::new();
-    // ([`with_shared_slots`]) the parks a pair move takes as its second half: a
-    // park of a pair's lanes that no pair takes moves alone.
-    let mut taken: Vec<usize> = Vec::new();
-    if shared {
-        for i in 0..list.len() {
-            if pairs.iter().any(|p| p.0 == store[i])
-                && let Some(j) = partner(i)
-            {
-                taken.push(j);
-            }
-        }
-    }
     for i in 0..list.len() {
         let Some((save, _, code, _)) = parks[i] else {
             continue;
         };
         let slot = codes[store[i]];
-        let lower = pairs.iter().any(|p| p.0 == store[i]);
-        let upper = pairs.iter().any(|p| p.1 == store[i]);
-        let alone = shared && (lower && partner(i).is_none() || upper && !taken.contains(&i));
-        if lower && !alone {
+        if pairs.iter().any(|p| p.0 == store[i]) {
             let Some(j) = partner(i) else { return Vec::new() };
             // A save moves the pair where its second half is saved; a
             // restore where its first half is restored.
@@ -647,7 +599,7 @@ fn unspill(
             let (dst, src) = if save { (slot, code) } else { (code, slot) };
             edits.push((at, Some((true, dst, src))));
             edits.push((gone, None));
-        } else if upper && !alone {
+        } else if pairs.iter().any(|p| p.1 == store[i]) {
             // the upper half of a pair: moved with the lower
         } else {
             let (dst, src) = if save { (slot, code) } else { (code, slot) };
@@ -767,258 +719,6 @@ pub(crate) fn thread_edges(
     link(&mut blocks);
     split_irreducible(&mut blocks)?;
     Ok(rename(blocks, p.wave64, p.vgprs))
-}
-
-/// A pixel program without its waits for the waves it overlaps: POPS, the console's
-/// rasterizer-ordered views. Before the accesses it wants in primitive order, the program
-/// loops (`s_sleep`) until `src_pops_exiting_wave_id` says the overlapping waves have left
-/// that section. On the host the views themselves are ordered (the lowering makes them
-/// rasterizer-ordered views), so every way into such a loop goes past it instead. Only a
-/// loop of scalar instructions of which nothing is read after it. `None` if the program has
-/// no such loop.
-pub(crate) fn without_pops_wait(p: &Program) -> Option<Program> {
-    use crate::gfx10::{Fields, Operand};
-    /// `src_pops_exiting_wave_id`, a scalar source.
-    const EXITING: u8 = 239;
-    let reads_exiting = |i: &Inst| {
-        matches!(&i.fields, Fields::Sop { src, .. }
-            if src.iter().any(|o| matches!(o, Operand::Const(EXITING))))
-    };
-    let scalar = |i: &Inst| matches!(i.fields, Fields::Sop { .. } | Fields::Sopp { .. });
-    // values read outside block `l`, directly or through joins outside it
-    let read_outside = |l: usize| {
-        let others = || {
-            p.blocks
-                .iter()
-                .enumerate()
-                .filter(move |&(b, _)| b != l)
-                .map(|(_, block)| block)
-        };
-        let mut read: std::collections::HashSet<Value> = others()
-            .flat_map(|block| &block.insts)
-            .flat_map(|inst| &inst.reads)
-            .map(|r| r.1)
-            .collect();
-        let mut changed = true;
-        while changed {
-            changed = false;
-            for phi in others().flat_map(|block| &block.phis) {
-                if read.contains(&phi.value) {
-                    for &a in &phi.args {
-                        changed |= read.insert(a);
-                    }
-                }
-            }
-        }
-        read
-    };
-    let mut blocks = p.blocks.clone();
-    let mut any = false;
-    for (l, block) in p.blocks.iter().enumerate() {
-        let Exit::Branch { taken, not_taken } = block.exit else {
-            continue;
-        };
-        let past = match (taken == l, not_taken == l) {
-            (true, false) => not_taken,
-            (false, true) => taken,
-            _ => continue,
-        };
-        if !block.insts.iter().any(reads_exiting) || !block.insts.iter().all(scalar) {
-            continue;
-        }
-        let read = read_outside(l);
-        let written = block.insts.iter().flat_map(|i| &i.writes).map(|w| w.1);
-        if written.chain(block.phis.iter().map(|phi| phi.value)).any(|v| read.contains(&v)) {
-            continue;
-        }
-        for &q in block.preds.iter().filter(|&&q| q != l) {
-            let before = &mut blocks[q];
-            match before.exit {
-                Exit::Jump(_) => before.exit = Exit::Jump(past),
-                // a branch around the wait (taken when no wave is to be waited for) has
-                // nothing left to decide
-                Exit::Branch { taken, not_taken } => {
-                    let to = |t: usize| if t == l { past } else { t };
-                    before.exit = match (to(taken), to(not_taken)) {
-                        (t, n) if t == n => {
-                            before.insts.pop();
-                            Exit::Jump(t)
-                        }
-                        (taken, not_taken) => Exit::Branch { taken, not_taken },
-                    };
-                }
-                _ => unreachable!("a way into a loop"),
-            }
-        }
-        // (no way in is left; it leads nowhere either)
-        blocks[l].insts.clear();
-        blocks[l].exit = Exit::End;
-        any = true;
-    }
-    if !any {
-        return None;
-    }
-    for block in &mut blocks {
-        block.phis.clear();
-    }
-    link(&mut blocks);
-    split_irreducible(&mut blocks).ok()?;
-    Some(rename(blocks, p.wave64, p.vgprs))
-}
-
-/// Each of `joins` copied for every way into it but the first, each copy entered from its own
-/// predecessor and left as the join is: a value the join merged from its ways in is one
-/// value in each copy. Every instruction still runs once on each path. A loop header (a
-/// block with a way in from later in reverse postorder) is left as it is. `None` if nothing
-/// changes.
-pub(crate) fn split_joins(p: &Program, joins: &[usize]) -> Option<Program> {
-    let order = reverse_postorder(&p.blocks);
-    let mut index = vec![usize::MAX; p.blocks.len()];
-    for (n, &b) in order.iter().enumerate() {
-        index[b] = n;
-    }
-    let mut blocks = p.blocks.clone();
-    for block in &mut blocks {
-        block.phis.clear();
-    }
-    let mut any = false;
-    for &join in joins {
-        let mut preds = p.blocks[join].preds.clone();
-        preds.dedup();
-        if preds.len() < 2 || preds.iter().any(|&q| index[q] >= index[join]) {
-            continue;
-        }
-        for &pred in &preds[1..] {
-            let target = blocks.len();
-            blocks.push(blocks[join].clone());
-            match &mut blocks[pred].exit {
-                Exit::Jump(t) => *t = target,
-                Exit::Branch { taken, not_taken } => {
-                    if *taken == join {
-                        *taken = target;
-                    }
-                    if *not_taken == join {
-                        *not_taken = target;
-                    }
-                }
-                _ => unreachable!("a way into a join"),
-            }
-        }
-        any = true;
-    }
-    if !any {
-        return None;
-    }
-    link(&mut blocks);
-    split_irreducible(&mut blocks).ok()?;
-    Some(rename(blocks, p.wave64, p.vgprs))
-}
-
-/// The program with each whole-wave section (`s_or_saveexec -1` up to the restore of the
-/// saved mask, `emit::wave`) that a jump splits in one block: the block the section starts
-/// in, when it jumps to the block that restores the mask, takes that block's code and exit
-/// (a copy where other ways lead there too). The compiler shares the end of two sections
-/// whose start a branch chooses (`cond ? WaveActiveMax(x) : WaveActiveMin(x)` in the title's
-/// water optical depth: each arm reduces up to the read of lane 32, the join reads lane 0
-/// and restores), and a section is followed within one block. Every instruction still runs
-/// once on each path. A join that is a loop header is left as it is. `None` if nothing
-/// changes.
-pub(crate) fn whole_sections(p: &Program) -> Option<Program> {
-    use crate::gfx10::{Fields, Operand};
-    /// The saved mask's scalar code if `inst` starts a section: EXEC becomes every lane
-    /// (`s_or_saveexec -1`, `s_nand_saveexec 0`).
-    fn start(inst: &Inst) -> Option<u8> {
-        let all = match inst.name() {
-            "s_or_saveexec_b64" | "s_or_saveexec_b32" => Operand::Const(193),
-            "s_nand_saveexec_b64" | "s_nand_saveexec_b32" => Operand::Const(128),
-            _ => return None,
-        };
-        match &inst.fields {
-            Fields::Sop {
-                dst: Some(Operand::Scalar { code, .. }),
-                src,
-                ..
-            } if src.first() == Some(&all) => Some(*code),
-            _ => None,
-        }
-    }
-    let order = reverse_postorder(&p.blocks);
-    let mut index = vec![usize::MAX; p.blocks.len()];
-    for (n, &b) in order.iter().enumerate() {
-        index[b] = n;
-    }
-    // (block, the join whose code it takes)
-    let mut fuse = Vec::new();
-    for &b in &order {
-        let block = &p.blocks[b];
-        let Exit::Jump(join) = block.exit else { continue };
-        // the last section start of the block, unless its restore is in the block too
-        let Some((at, code)) = block
-            .insts
-            .iter()
-            .enumerate()
-            .rev()
-            .find_map(|(i, inst)| start(inst).map(|c| (i, c)))
-        else {
-            continue;
-        };
-        let saved = block.insts[at].write(Reg::S(code));
-        let restores = |i: &Inst, held: Option<Value>| {
-            i.write(Reg::S(EXEC)).is_some() && i.read(Reg::S(code)).is_some_and(|v| Some(v) == held)
-        };
-        if block.insts[at + 1..].iter().any(|i| restores(i, saved)) {
-            continue;
-        }
-        let z = &p.blocks[join];
-        if join == b || z.preds.iter().any(|&q| index[q] >= index[join]) {
-            continue;
-        }
-        // what the saved register holds in the join: the value itself, or a join of it
-        let held = match z.phis.iter().find(|phi| phi.reg == Reg::S(code)) {
-            Some(phi) => {
-                let from_b = z.preds.iter().position(|&q| q == b).map(|k| phi.args[k]);
-                if from_b != saved {
-                    continue;
-                }
-                Some(phi.value)
-            }
-            None => saved,
-        };
-        // the join's first write of EXEC is the restore, and nothing before it writes the
-        // saved register
-        let first = z
-            .insts
-            .iter()
-            .position(|i| i.write(Reg::S(EXEC)).is_some() || i.write(Reg::S(code)).is_some());
-        if first.is_some_and(|k| restores(&z.insts[k], held)) {
-            fuse.push((b, join));
-        }
-    }
-    if fuse.is_empty() {
-        return None;
-    }
-    let mut blocks = p.blocks.clone();
-    for block in &mut blocks {
-        block.phis.clear();
-    }
-    for &(b, join) in &fuse {
-        if blocks[b].insts.last().is_some_and(|i| i.name() == "s_branch") {
-            blocks[b].insts.pop();
-        }
-        let tail = p.blocks[join].insts.clone();
-        blocks[b].insts.extend(tail);
-        blocks[b].exit = p.blocks[join].exit;
-    }
-    // a join whose every way in took its code is left: nothing reaches it
-    for &(_, join) in &fuse {
-        if p.blocks[join].preds.iter().all(|q| fuse.contains(&(*q, join))) {
-            blocks[join].insts.clear();
-            blocks[join].exit = Exit::End;
-        }
-    }
-    link(&mut blocks);
-    split_irreducible(&mut blocks).ok()?;
-    Some(rename(blocks, p.wave64, p.vgprs))
 }
 
 /// The program without its early-outs: an `s_cbranch_execz` to a block that
@@ -1247,19 +947,9 @@ fn contains(set: &RegSet, reg: Reg) -> bool {
 
 /// In [`Reg`] order, which is also index order.
 fn members(set: &RegSet) -> impl Iterator<Item = Reg> + '_ {
-    let (mut word, mut bits) = (0, set[0]);
-    std::iter::from_fn(move || loop {
-        if bits != 0 {
-            let b = bits.trailing_zeros() as usize;
-            bits &= bits - 1;
-            return Some(reg_at(word * 64 + b));
-        }
-        word += 1;
-        if word >= set.len() {
-            return None;
-        }
-        bits = set[word];
-    })
+    (0..REGS)
+        .filter(|&i| set[i / 64] >> (i % 64) & 1 != 0)
+        .map(reg_at)
 }
 
 /// `outs` is sorted by register, and holds every register live out.
@@ -1628,8 +1318,8 @@ const DROPPED: &[&str] = &[
     "v_clrexcp",
 ];
 
-/// Registers read and written, each with a placeholder for the SSA pass.
-type Effects = (Vec<(Reg, Value)>, Vec<(Reg, Value)>);
+/// Registers read, registers written.
+type Effects = (Vec<Reg>, Vec<Reg>);
 
 /// The registers `inst` of `p` reads as operands: its reads without the old
 /// value of a VGPR it only writes.
@@ -1638,7 +1328,7 @@ pub(crate) fn operand_reads(p: &Program, inst: &Inst) -> Vec<Reg> {
     effects(&inst.machine, &inst.fields, inst.name(), lanes, p.vgprs)
         .ok()
         .flatten()
-        .map_or_else(Vec::new, |e| e.0.into_iter().map(|(reg, _)| reg).collect())
+        .map_or_else(Vec::new, |e| e.0)
 }
 
 /// Registers an instruction reads and writes, one per dword, or `None` if
@@ -1657,9 +1347,9 @@ fn effects(
         offset: inst.offset,
         what: name,
     };
-    let mask = |code: u8| (0..lanes).map(move |i| (Reg::S(code + i), NONE));
+    let mask = |code: u8| (0..lanes).map(move |i| Reg::S(code + i));
     let (mut r, mut w) = (Vec::new(), Vec::new());
-    let regs = |op: &Operand, out: &mut Vec<(Reg, Value)>| {
+    let regs = |op: &Operand, out: &mut Vec<Reg>| {
         add_regs(op, lanes, out).map_err(|_| ShaderError::Isa {
             offset: inst.offset,
             reason: "register range out of bounds",
@@ -1694,21 +1384,21 @@ fn effects(
                 || name.starts_with("s_cselect_")
                 || name.starts_with("s_cmov_")
             {
-                r.push((Reg::Scc, NONE));
+                r.push(Reg::Scc);
             }
             if name.contains("saveexec") || name.contains("wrexec") {
                 r.extend(mask(EXEC));
                 w.extend(mask(EXEC));
             }
             if writes_scc(inst.encoding, name) {
-                w.push((Reg::Scc, NONE));
+                w.push(Reg::Scc);
             }
         }
         Fields::Sopp { .. } => match name {
-            "s_cbranch_scc0" | "s_cbranch_scc1" => r.push((Reg::Scc, NONE)),
+            "s_cbranch_scc0" | "s_cbranch_scc1" => r.push(Reg::Scc),
             "s_cbranch_vccz" | "s_cbranch_vccnz" => r.extend(mask(VCC)),
             "s_cbranch_execz" | "s_cbranch_execnz" => r.extend(mask(EXEC)),
-            "s_sendmsg" | "s_sendmsghalt" => r.push((Reg::S(M0), NONE)),
+            "s_sendmsg" | "s_sendmsghalt" => r.push(Reg::S(M0)),
             "s_endpgm"
             | "s_endpgm_saved"
             | "s_endpgm_ordered_ps_done"
@@ -1732,9 +1422,7 @@ fn effects(
             }
             "s_gl1_inv" | "s_dcache_inv" | "s_dcache_wb" => {}
             _ if name.contains("_load_") || name.contains("_store_") => {
-                if let Some(base) = base {
-                    regs(base, &mut r)?;
-                }
+                regs(base, &mut r)?;
                 regs(soffset, &mut r)?;
                 let data = data.as_ref().ok_or_else(unsupported)?;
                 regs(
@@ -1756,9 +1444,9 @@ fn effects(
                 _ => (false, false),
             };
             // v[reg + M0] for any M0 that stays inside the program's VGPRs.
-            let indexed = |op: &Operand, out: &mut Vec<(Reg, Value)>| match *op {
+            let indexed = |op: &Operand, out: &mut Vec<Reg>| match *op {
                 Operand::Vector { reg, .. } if u16::from(reg) < vgprs => {
-                    out.extend((u16::from(reg)..vgprs).map(|r| (Reg::V(r as u8), NONE)));
+                    out.extend((u16::from(reg)..vgprs).map(|r| Reg::V(r as u8)));
                     Ok(())
                 }
                 _ => Err(ShaderError::Isa {
@@ -1803,12 +1491,12 @@ fn effects(
                 _ => {}
             }
             if name.starts_with("v_interp_") || src_indexed || dst_indexed {
-                r.push((Reg::S(M0), NONE));
+                r.push(Reg::S(M0));
             }
         }
         Fields::Vintrp { dst, src, .. } => {
             regs(src, &mut r)?;
-            r.push((Reg::S(M0), NONE));
+            r.push(Reg::S(M0));
             regs(dst, &mut w)?;
         }
         Fields::Ds {
@@ -1829,7 +1517,7 @@ fn effects(
                 || name.contains("addtid")
                 || matches!(name, "ds_ordered_count" | "ds_append" | "ds_consume")
             {
-                r.push((Reg::S(M0), NONE));
+                r.push(Reg::S(M0));
             }
         }
         Fields::Buffer {
@@ -1849,7 +1537,7 @@ fn effects(
             regs(rsrc, &mut r)?;
             regs(soffset, &mut r)?;
             if *lds {
-                r.push((Reg::S(M0), NONE));
+                r.push(Reg::S(M0));
             }
             if let Some(d) = data {
                 if name.contains("_load_") {
@@ -1983,7 +1671,7 @@ fn atomic_result(data: &Operand, name: &str) -> Operand {
 
 /// Appends the register dwords an operand names; reading `vccz`, `execz`,
 /// `scc` or `lds_direct` reads the register behind it.
-fn add_regs(op: &Operand, lanes: u8, out: &mut Vec<(Reg, Value)>) -> Result<(), ()> {
+fn add_regs(op: &Operand, lanes: u8, out: &mut Vec<Reg>) -> Result<(), ()> {
     match *op {
         Operand::Scalar { code, .. } if code == gfx10::NULL => {}
         Operand::Scalar { code, dwords } => {
@@ -1994,18 +1682,18 @@ fn add_regs(op: &Operand, lanes: u8, out: &mut Vec<(Reg, Value)>) -> Result<(), 
             if end > limit {
                 return Err(());
             }
-            out.extend((u16::from(code)..end).map(|c| (Reg::S(c as u8), NONE)));
+            out.extend((u16::from(code)..end).map(|c| Reg::S(c as u8)));
         }
         Operand::Vector { reg, dwords } => {
             if u16::from(reg) + u16::from(dwords) > 256 {
                 return Err(());
             }
-            out.extend((0..dwords).map(|i| (Reg::V(reg + i), NONE)));
+            out.extend((0..dwords).map(|i| Reg::V(reg + i)));
         }
-        Operand::Const(251) => out.extend((0..lanes).map(|i| (Reg::S(VCC + i), NONE))),
-        Operand::Const(252) => out.extend((0..lanes).map(|i| (Reg::S(EXEC + i), NONE))),
-        Operand::Const(253) => out.push((Reg::Scc, NONE)),
-        Operand::Const(254) => out.push((Reg::S(M0), NONE)),
+        Operand::Const(251) => out.extend((0..lanes).map(|i| Reg::S(VCC + i))),
+        Operand::Const(252) => out.extend((0..lanes).map(|i| Reg::S(EXEC + i))),
+        Operand::Const(253) => out.push(Reg::Scc),
+        Operand::Const(254) => out.push(Reg::S(M0)),
         Operand::Const(_) | Operand::Literal(_) | Operand::Attr { .. } => {}
     }
     Ok(())
@@ -2024,31 +1712,6 @@ mod tests {
 
     fn input(p: &Program, reg: Reg) -> Value {
         p.inputs.iter().find(|i| i.0 == reg).expect("input").1
-    }
-
-    #[test]
-    fn wrapped_wave32_spill_overwrites_the_same_lane() {
-        let p = build_words(
-            &[
-                0xD761_0009,
-                0x0001_0401, // v_writelane_b32 v9, s1, 2
-                0xD761_0009,
-                0x0001_4402, // v_writelane_b32 v9, s2, 34
-                0xD760_0003,
-                0x0001_0509, // v_readlane_b32 s3, v9, 2
-                S_ENDPGM,
-            ],
-            false,
-        );
-        let [first, second, reload, _] = &p.blocks[0].insts[..] else {
-            panic!("expected two stores and one reload");
-        };
-        assert_eq!(
-            (first.name(), second.name(), reload.name()),
-            ("s_mov_b32", "s_mov_b32", "s_mov_b32")
-        );
-        assert_eq!(first.writes[0].0, second.writes[0].0);
-        assert_eq!(reload.reads[0].1, second.writes[0].1);
     }
 
     /// `if (v0 < s0) { ... }` whose body changes s6: `body` are its words, `after` what
@@ -2099,70 +1762,6 @@ mod tests {
         let idle = skip(&[SET, USE], &[0xBEFE_0406, 0xBEFE_040C, 0x7E04_0200]);
         assert!(without_skips(&idle, false).is_none());
         assert_eq!(skips(&without_skips(&idle, true).expect("left out")), 0);
-    }
-
-    /// A POPS wait: past it when SCC says so (`s_cbranch_scc1`), else a loop that sleeps
-    /// until `src_pops_exiting_wave_id` passes s1; `after` follows.
-    fn pops_wait(after: &[u32]) -> Program {
-        let mut w = vec![
-            0xBF06_8000, // s_cmp_eq_u32 s0, 0
-            0xBF85_0004, // s_cbranch_scc1 -> past the loop
-            0xBF8E_FFFF, // s_sleep 0xffff
-            0x810C_01EF, // s_add_i32 s12, src_pops_exiting_wave_id, s1
-            0xBF0A_0C01, // s_cmp_lt_u32 s1, s12
-            0xBF84_FFFC, // s_cbranch_scc0 -> s_sleep
-        ];
-        w.extend_from_slice(after);
-        w.push(S_ENDPGM);
-        build_words(&w, false)
-    }
-
-    #[test]
-    fn a_pops_wait_is_left_out_when_nothing_after_it_reads_what_it_wrote() {
-        let loops = |p: &Program| {
-            let order = reverse_postorder(&p.blocks);
-            order.iter().filter(|&&b| p.blocks[b].exit.successors().contains(&b)).count()
-        };
-        // v_mov_b32 v1, s2: the wait wrote nothing read after it
-        let p = pops_wait(&[0x7E02_0202]);
-        assert_eq!(loops(&p), 1);
-        let q = without_pops_wait(&p).expect("left out");
-        assert_eq!(loops(&q), 0);
-        // the branch around the wait has nothing left to decide
-        let entry = &q.blocks[0];
-        assert!(matches!(entry.exit, Exit::Jump(_)), "{:?}", entry.exit);
-        assert!(entry.insts.iter().all(|i| !i.name().starts_with("s_cbranch")));
-        // v_mov_b32 v1, s12: the sum the wait made is read after it: it stays
-        assert!(without_pops_wait(&pops_wait(&[0x7E02_020C])).is_none());
-        // no wait, nothing to leave out
-        assert!(without_pops_wait(&build_words(&[0x7E02_0202, S_ENDPGM], false)).is_none());
-    }
-
-    #[test]
-    fn a_split_join_gives_each_way_in_its_own_copy() {
-        let code = [
-            0xBF06_0100, // s_cmp_eq_u32 s0, s1
-            0xBF85_0002, // s_cbranch_scc1 -> s_mov_b32 s2, 0
-            0xB002_0092, // s_movk_i32 s2, 0x92
-            0xBF82_0001, // s_branch -> the join
-            0xBE82_0380, // s_mov_b32 s2, 0
-            0x7E02_0202, // v_mov_b32 v1, s2 (the join)
-            S_ENDPGM,
-        ];
-        let p = build_words(&code, false);
-        let join = p.blocks.iter().position(|b| b.preds.len() == 2).expect("a join");
-        assert_eq!(p.blocks[join].phis.len(), 1, "s2 differs by the way in");
-        let q = split_joins(&p, &[join]).expect("split");
-        // two blocks read s2 into v1, neither through a phi
-        let reads: Vec<&Block> = q
-            .blocks
-            .iter()
-            .filter(|b| b.insts.first().is_some_and(|i| i.name() == "v_mov_b32"))
-            .collect();
-        assert_eq!(reads.len(), 2);
-        assert!(reads.iter().all(|b| b.preds.len() == 1 && b.phis.is_empty()));
-        // a block with one way in is left as it is
-        assert!(split_joins(&q, &[0]).is_none());
     }
 
     #[test]
@@ -2345,62 +1944,6 @@ mod tests {
         assert_eq!(vgprs(&movrels.reads), [4, 5, 0]);
         assert_eq!(movrels.read(Reg::V(4)), movreld.write(Reg::V(4)));
         assert!(build(&code, false, 4).is_err(), "v4 is past 4 VGPRs");
-    }
-
-    #[test]
-    fn unspill_tracks_the_full_scalar_destination_field() {
-        let program = build_words(&[0xD760_0080, 256 | 128 << 9, S_ENDPGM], false);
-        let inst = &program.blocks[0].insts[0];
-        assert_eq!(inst.name(), "v_readlane_b32");
-        assert!(inst.write(Reg::S(128)).is_some());
-    }
-
-    /// `PS_VoxelizeVisiblity`'s parking (0xa18-0xa38, 0xe44-0xe4c, 0x2df8, 0x3184): a lane
-    /// mask parked in lanes 3 and 4 of v56 and taken back to make EXEC, later a single scalar
-    /// parked in lane 3. Built as it is, the mask comes back as two scalars, which the
-    /// structurisation cannot see into; with [`with_shared_slots`] it comes back as the pair
-    /// it is, and EXEC as the compare's lanes.
-    #[test]
-    fn a_mask_parked_in_lanes_another_scalar_shares_comes_back_whole_with_shared_slots() {
-        let writelane = |lane: u32, s: u32| [0xD761_0038, s | (128 + lane) << 9]; // v_writelane_b32 v56, s, lane
-        let readlane = |s: u32, lane: u32| [0xD760_0000 | s, (256 + 56) | (128 + lane) << 9]; // v_readlane_b32 s, v56, lane
-        let mut w = vec![
-            0x7D88_0000, // v_cmp_gt_u32 vcc, s0, v0
-            0xBEA2_046A, // s_mov_b64 s[34:35], vcc
-        ];
-        w.extend(writelane(3, 34));
-        w.extend(writelane(4, 35));
-        w.push(0xBEA2_0480); // s_mov_b64 s[34:35], 0
-        w.extend(readlane(34, 3));
-        w.extend(readlane(35, 4));
-        let restore = 4 * (w.len() - 4) as u64; // (the first restore's offset)
-        w.extend([
-            0xBE82_2422, // s_and_saveexec_b64 s[2:3], s[34:35]
-            0x7E02_0281, // v_mov_b32 v1, 1
-            0xBEFE_0402, // s_mov_b64 exec, s[2:3]
-        ]);
-        w.extend(writelane(3, 1));
-        w.push(0xBE81_0380); // s_mov_b32 s1, 0
-        w.extend(readlane(1, 3));
-        w.push(S_ENDPGM);
-        let code: Vec<u8> = w.iter().flat_map(|w| w.to_le_bytes()).collect();
-        let at = |p: &Program| {
-            let i = p.blocks.iter().flat_map(|b| &b.insts).find(|i| i.machine.offset as u64 == restore).expect("the restore");
-            i.name()
-        };
-        let alone = build(&code, true, 64).unwrap();
-        assert_eq!(at(&alone), "s_mov_b32");
-        let shared = with_shared_slots(|| build(&code, true, 64)).unwrap();
-        assert_eq!(at(&shared), "s_mov_b64");
-        let opaque = |p: &Program| {
-            let st = crate::structure::structure(p).unwrap();
-            let v1 = p.blocks.iter().enumerate().flat_map(|(b, blk)| blk.insts.iter().enumerate().map(move |(i, inst)| (b, i, inst)));
-            let (b, i, _) = v1.into_iter().find(|(_, _, inst)| inst.name() == "v_mov_b32").expect("the guarded move");
-            let guard = st.guards[b][i].expect("a guard");
-            st.bools.support(guard).iter().any(|a| matches!(a, crate::structure::Atom::Opaque(_)))
-        };
-        assert!(opaque(&alone), "two scalars make an opaque mask");
-        assert!(!opaque(&shared), "the pair is the compare's mask");
     }
 
     const fn s_branch(simm16: i16) -> u32 {

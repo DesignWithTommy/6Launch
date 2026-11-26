@@ -274,7 +274,23 @@ pub(crate) fn card_room_kept() -> u64 {
     if !card_room_kept_on() || !cards() {
         return 0;
     }
-    card_limits().1.saturating_sub(CARD_BYTES[0].load(Ordering::Relaxed) + CARD_REFUSED[1].load(Ordering::Relaxed))
+    let kept = card_limits().1.saturating_sub(CARD_BYTES[0].load(Ordering::Relaxed) + CARD_REFUSED[1].load(Ordering::Relaxed));
+    kept.min(card_room_kept_most())
+}
+
+/// The most bytes [`card_room_kept`] keeps: `VICTORY_CARD_ROOM_KEPT_MB`
+/// (not set, or 0: no cap, as before). From ZigZagBoi1/ScarlettPort's
+/// runtime (v0.4.2, default 512 there): with `VICTORY_CARD_BUFFERS_MB=4096`
+/// the queue kept 3,731 MB for copies never made, took the card for full,
+/// and 2,162 texture slots waited 1,588 frames. Here the limit is 1,024 MB
+/// by default, so the cap only bites below that: on an 8 GB card it gives
+/// the textures back the room kept for copies that do not come.
+fn card_room_kept_most() -> u64 {
+    static MOST: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    *MOST.get_or_init(|| match std::env::var("VICTORY_CARD_ROOM_KEPT_MB").ok().and_then(|v| v.trim().parse::<u64>().ok()) {
+        Some(mb) if mb > 0 => mb << 20,
+        _ => u64::MAX,
+    })
 }
 
 /// The copies in the card's memory.
@@ -1444,6 +1460,16 @@ fn give_back(v: Vec<u8>) {
 }
 
 const NOT_WATCHED: u8 = 2;
+
+/// [`Shadow::update_free`]'s counter (fps41 round 8): refreshes that copied
+/// nothing are also looked at for being known unchanged before asking
+/// (`VICTORY_REFRESH_COUNT=1`; off by default: the look takes the
+/// journal's and the guards' locks once more a refresh).
+#[cfg(feature = "diagnostics")]
+fn refresh_count() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("VICTORY_REFRESH_COUNT").is_some_and(|v| v == "1"))
+}
 
 // Fixed-size equality compiles to two SIMD comparisons on Windows x64.
 // Only the first or last unequal chunk needs a byte-wise search.
@@ -2847,6 +2873,11 @@ impl Shadow {
         self.id
     }
 
+    /// Whether it is no copy but title memory in place (`crate::inplace`).
+    pub(crate) fn in_place(&self) -> bool {
+        self.place.is_some()
+    }
+
     /// Offset of a title address from the buffer's start.
     pub(crate) fn offset(&self, address: u64) -> u64 {
         address - self.start + self.place.as_ref().map_or(0, |place| place.1)
@@ -3448,6 +3479,12 @@ impl Shadow {
         !self.pending.lock().unwrap_or_else(|e| e.into_inner()).is_empty()
     }
 
+    /// Whether one of those submissions may be writing in title memory
+    /// `[from, to)`.
+    pub(crate) fn writes_pending_in(&self, from: usize, to: usize) -> bool {
+        self.pending.lock().unwrap_or_else(|e| e.into_inner()).iter().any(|&(a, e)| a < to && e > from)
+    }
+
     /// Whether [`Shadow::update`] of `[address, address + len)` would leave
     /// title bytes behind: a range shaders may be writing holds a page the
     /// title wrote since the copy last took it. The answer comes from the
@@ -3674,9 +3711,31 @@ impl Shadow {
                 }
                 return 0;
             }
+            // The counter of fps41 round 8: copied nothing or something,
+            // and (with `VICTORY_REFRESH_COUNT=1`) whether it was known
+            // unchanged before asking. Looked at before the asking, which
+            // changes the guards and the journal.
+            #[cfg(feature = "diagnostics")]
+            let (asking, known) = (std::time::Instant::now(), refresh_count() && self.unchanged_known(from, to));
             if let Some((now, written)) = crate::watch::writes(from, to, true) {
                 self.watched.store(1, Ordering::Relaxed);
                 let copied = self.copy_stale(from, to, now, &written);
+                #[cfg(feature = "diagnostics")]
+                {
+                    use crate::copystat::{C, add};
+                    let us = asking.elapsed().as_micros() as u64;
+                    if copied == 0 {
+                        add(C::RefreshNone, 1);
+                        add(C::RefreshNoneUs, us);
+                        if known {
+                            add(C::RefreshKnown, 1);
+                            add(C::RefreshKnownUs, us);
+                        }
+                    } else {
+                        add(C::RefreshSome, 1);
+                        add(C::RefreshSomeUs, us);
+                    }
+                }
                 self.refresh_check(from, to);
                 #[cfg(feature = "diagnostics")]
                 {
@@ -3696,6 +3755,18 @@ impl Shadow {
         #[cfg(feature = "diagnostics")]
         crate::copystat::whole(from, to - from, started.elapsed().as_micros() as u64);
         to - from
+    }
+
+    /// Whether a refresh of `[from, to)` would copy nothing, known before
+    /// asking (`crate::watch::unchanged_known`); `false` for a copy not
+    /// known to be watched yet.
+    #[cfg_attr(not(feature = "diagnostics"), allow(dead_code))]
+    fn unchanged_known(&self, from: usize, to: usize) -> bool {
+        if self.watched.load(Ordering::Relaxed) != 1 {
+            return false;
+        }
+        let copied = self.copied.lock().unwrap_or_else(|e| e.into_inner());
+        crate::watch::unchanged_known(from, to, self.start as usize / PAGE, &copied)
     }
 
     /// Whether [`Shadow::update_free`] of `[from, to)` would copy nothing,

@@ -13,7 +13,7 @@
 //! parameters, by data flow: copies, phis that agree, and additions.
 
 use crate::ShaderError;
-use crate::gfx10::{Fields, NULL, Operand, lane_selector_mask};
+use crate::gfx10::{Fields, NULL, Operand};
 use crate::ir::{EXEC, Exit, Inst, Program, Reg, Value};
 use crate::native::{HwStage, RootParam, RootType};
 use crate::structure::{Bool, LaneExit, Meets, Structured};
@@ -138,6 +138,9 @@ pub struct RootIndexedView {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Resources {
+    /// Scalar values saved to a constant VGPR lane and restored within one
+    /// block, even if that VGPR is also used in ordinary vector operations.
+    pub(crate) restored_lanes: std::collections::HashMap<Site, Moved>,
     /// Every scalar memory access by address (`s_load_*`, `s_store_*`), and
     /// every global memory access (`global_*`, the dynamic term per lane).
     pub scalar: Vec<(Site, Address)>,
@@ -224,9 +227,12 @@ pub fn track(
     let mut offset_at =
         std::collections::BTreeMap::<usize, (Vec<usize>, Vec<Value>, Vec<Site>)>::new();
     for (b, block) in p.blocks.iter().enumerate() {
-        t.at.set(Some(b));
         for (i, inst) in block.insts.iter().enumerate() {
             let site = (b, i);
+            t.at.set(Some(site));
+            if let Some(value) = t.restored(inst, Some(b)) {
+                out.restored_lanes.insert(site, value);
+            }
             let fail = |what| ShaderError::Unsupported {
                 offset: inst.machine.offset,
                 what,
@@ -234,7 +240,7 @@ pub fn track(
             let mut first_lane = Vec::new();
             let mut offset = Vec::new();
             let mut descriptor = |op: &Operand, role| -> Result<(), ShaderError> {
-                let source = t.descriptor(inst, op, b).map_err(fail)?;
+                let source = t.descriptor(inst, op, site).map_err(fail)?;
                 // A descriptor the code keeps per lane ([`Tracer::lane_copies`])
                 // is the same in every lane: its loop is lowered as it stands
                 // and needs no proof.
@@ -289,11 +295,11 @@ pub fn track(
                     descriptor(rsrc, Role::Resource)?
                 }
                 Fields::Buffer { .. } => {}
-                Fields::Smem { base: Some(base), .. } if inst.name().starts_with("s_buffer_") => {
+                Fields::Smem { base, .. } if inst.name().starts_with("s_buffer_") => {
                     descriptor(base, Role::Resource)?;
                 }
                 Fields::Smem {
-                    base: Some(base),
+                    base,
                     offset,
                     soffset,
                     ..
@@ -411,8 +417,8 @@ struct Tracer<'a> {
     meets: std::cell::RefCell<Meets>,
     /// Reverse-postorder index per block.
     rpo: Vec<usize>,
-    /// The block of the access being traced ([`Self::live`]).
-    at: std::cell::Cell<Option<usize>>,
+    /// The instruction site of the access being traced ([`Self::live`]).
+    at: std::cell::Cell<Option<Site>>,
 }
 
 /// What lanes are known to satisfy: each [`Bool`] where its flag is set,
@@ -514,7 +520,7 @@ impl<'a> Tracer<'a> {
                 }
                 for inst in &block.insts {
                     for (k, &(_, v)) in inst.writes.iter().enumerate() {
-                        let new = match copy_source(inst, k).or_else(|| self.restored(inst)) {
+                        let new = match copy_source(inst, k).or_else(|| self.restored(inst, None)) {
                             Some(Moved::Const(c)) => Some(Term::Const(c)),
                             Some(Moved::Value(s)) => o[s.0 as usize],
                             None => Some(Term::Value(v)),
@@ -654,21 +660,11 @@ impl<'a> Tracer<'a> {
         };
         if let Some(reg) = self.inputs[v.0 as usize] {
             return match self.param_of(reg) {
-                Some((param, 0))
-                    if matches!(
-                        self.layout[param].root,
-                        RootType::Table
-                            | RootType::ResourceHeap
-                            | RootType::SamplerHeap
-                            | RootType::Descriptor
-                    ) =>
-                {
-                    Sum {
-                        base: Some(v),
-                        offset: 0,
-                        dynamic: None,
-                    }
-                }
+                Some((_, 0)) => Sum {
+                    base: Some(v),
+                    offset: 0,
+                    dynamic: None,
+                },
                 _ => dynamic,
             };
         }
@@ -1071,12 +1067,8 @@ impl<'a> Tracer<'a> {
         let Some(v) = dynamic else {
             return "a constant address";
         };
-        if let Some(reg) = self.inputs[v.0 as usize] {
-            return if self.param_of(reg).is_some() {
-                "an address from a root parameter that is no address"
-            } else {
-                "an address in an SGPR that is no root parameter"
-            };
+        if self.inputs[v.0 as usize].is_some() {
+            return "an address in an SGPR that is no root parameter";
         }
         if self
             .leaves(v)
@@ -1127,8 +1119,8 @@ impl<'a> Tracer<'a> {
         self.address(lo, hi, extra)
     }
 
-    /// The source of the descriptor operand `op` of `inst`, in block `at`.
-    fn descriptor(&self, inst: &Inst, op: &Operand, at: usize) -> Result<Source, &'static str> {
+    /// The source of the descriptor operand `op` of `inst`, at `at`.
+    fn descriptor(&self, inst: &Inst, op: &Operand, at: Site) -> Result<Source, &'static str> {
         let Operand::Scalar { code, dwords } = *op else {
             return Err("a descriptor not in SGPRs");
         };
@@ -1143,8 +1135,14 @@ impl<'a> Tracer<'a> {
         {
             words = raw.to_vec();
         }
-        // Only the lanes that reach the access read the descriptor.
-        let mut known = Vec::from_iter(self.lanes.map(|l| (l.reach[at], true)));
+        // Only the lanes that reach and run the access read the descriptor.
+        let mut known = Vec::new();
+        if let Some(l) = self.lanes {
+            known.push((l.reach[at.0], true));
+            if let Some(guard) = l.guards[at.0][at.1] {
+                known.push((guard, true));
+            }
+        }
         self.classify(&words, &mut Vec::new(), &mut known)
     }
 
@@ -1276,7 +1274,7 @@ impl<'a> Tracer<'a> {
                 let inst = self.inst(*load);
                 match &inst.fields {
                     Fields::Smem {
-                        base: Some(base),
+                        base,
                         offset,
                         soffset,
                         ..
@@ -1296,7 +1294,10 @@ impl<'a> Tracer<'a> {
         let (Some(at), Some(lanes)) = (self.at.get(), self.lanes) else {
             return t;
         };
-        let mut known = vec![(lanes.reach[at], true)];
+        let mut known = vec![(lanes.reach[at.0], true)];
+        if let Some(guard) = lanes.guards[at.0][at.1] {
+            known.push((guard, true));
+        }
         for _ in 0..MAX_JOINS {
             let Term::Value(v) = t else { break };
             let Some((block, i)) = self.phis[v.0 as usize] else {
@@ -1545,7 +1546,7 @@ impl<'a> Tracer<'a> {
     fn first_lane_offset(&self, load: Site) -> Option<Value> {
         let inst = self.inst(load);
         let Fields::Smem {
-            base: Some(base),
+            base,
             offset,
             soffset,
             ..
@@ -2200,7 +2201,7 @@ impl<'a> Tracer<'a> {
             let inst = self.inst(site);
             match &inst.fields {
                 Fields::Smem {
-                    base: Some(base),
+                    base,
                     offset,
                     soffset,
                     ..
@@ -2280,7 +2281,7 @@ impl<'a> Tracer<'a> {
     fn base_from_entry(&self, site: Site) -> bool {
         let inst = self.inst(site);
         let Fields::Smem {
-            base: Some(Operand::Scalar { code, .. }),
+            base: Operand::Scalar { code, .. },
             soffset: Operand::Scalar { code: NULL, .. },
             ..
         } = &inst.fields
@@ -2306,42 +2307,64 @@ impl<'a> Tracer<'a> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Moved {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Moved {
     Const(u32),
     Value(Value),
+}
+
+fn plain_lane(v: &crate::gfx10::Valu) -> bool {
+    v.abs == 0
+        && v.neg == 0
+        && v.opsel == 0
+        && !v.clamp
+        && v.omod == 0
+        && v.sdwa.is_none()
+        && v.dpp.is_none()
 }
 
 impl Tracer<'_> {
     /// For `v_readlane_b32` of a constant lane: the SGPR spilled to that
     /// lane, found by following the VGPR's `v_writelane_b32` writes.
-    fn restored(&self, inst: &Inst) -> Option<Moved> {
+    fn restored(&self, inst: &Inst, block: Option<usize>) -> Option<Moved> {
         let Fields::Valu(v) = &inst.fields else {
             return None;
         };
-        if inst.name() != "v_readlane_b32" {
+        if inst.name() != "v_readlane_b32" || !plain_lane(v) {
             return None;
         }
         let [Operand::Vector { reg, .. }, lane] = v.src[..] else {
             return None;
         };
-        let lane = lane_of(lane, self.p.wave64)?;
-        self.spilled(inst.read(Reg::V(reg))?, lane, &mut Vec::new())
+        let lane = lane_of(lane)?;
+        if lane >= if self.p.wave64 { 64 } else { 32 } {
+            return None;
+        }
+        self.spilled(inst.read(Reg::V(reg))?, lane, block, &mut Vec::new())
             .ok()
             .flatten()
     }
 
     /// What lane `lane` of VGPR value `v` holds: `Ok(None)` for a phi in
     /// `seen` (already being resolved), `Err` if not a spilled SGPR.
-    fn spilled(&self, v: Value, lane: u32, seen: &mut Vec<Value>) -> Result<Option<Moved>, ()> {
+    fn spilled(
+        &self,
+        v: Value,
+        lane: u32,
+        block: Option<usize>,
+        seen: &mut Vec<Value>,
+    ) -> Result<Option<Moved>, ()> {
         if let Some((b, i)) = self.phis[v.0 as usize] {
+            if block.is_some() {
+                return Err(());
+            }
             if seen.contains(&v) {
                 return Ok(None);
             }
             seen.push(v);
             let mut found = None;
             for &a in &self.p.blocks[b].phis[i].args {
-                if let Some(m) = self.spilled(a, lane, seen)? {
+                if let Some(m) = self.spilled(a, lane, block, seen)? {
                     if found.is_some_and(|f| f != m) {
                         return Err(());
                     }
@@ -2350,18 +2373,26 @@ impl Tracer<'_> {
             }
             return Ok(found);
         }
-        let inst = self.def(v).ok_or(())?;
+        let site = self.defs[v.0 as usize].ok_or(())?;
+        if block.is_some_and(|b| site.0 != b) {
+            return Err(());
+        }
+        let inst = self.inst(site);
         let Fields::Valu(w) = &inst.fields else {
             return Err(());
         };
         let (Some(Operand::Vector { reg, .. }), [value, at]) = (w.dst, &w.src[..]) else {
             return Err(());
         };
-        if inst.name() != "v_writelane_b32" {
+        if inst.name() != "v_writelane_b32" || !plain_lane(w) {
             return Err(());
         }
-        if lane_of(*at, self.p.wave64).ok_or(())? != lane {
-            return self.spilled(inst.read(Reg::V(reg)).ok_or(())?, lane, seen);
+        let written = lane_of(*at).ok_or(())?;
+        if written >= if self.p.wave64 { 64 } else { 32 } {
+            return Err(());
+        }
+        if written != lane {
+            return self.spilled(inst.read(Reg::V(reg)).ok_or(())?, lane, block, seen);
         }
         match *value {
             Operand::Scalar { code, .. } if code != NULL => {
@@ -2376,14 +2407,13 @@ impl Tracer<'_> {
     }
 }
 
-/// A constant lane selector normalized to the guest wave width.
-fn lane_of(op: Operand, wave64: bool) -> Option<u32> {
+/// A lane select given as a constant.
+fn lane_of(op: Operand) -> Option<u32> {
     match op {
         Operand::Const(c) => inline(c),
         Operand::Literal(x) => Some(x),
         _ => None,
     }
-    .map(|lane| lane & lane_selector_mask(wave64))
 }
 
 /// What dword `k` of a move's result copies.
@@ -2395,7 +2425,8 @@ fn copy_source(inst: &Inst, k: usize) -> Option<Moved> {
         return Some(Moved::Const(i32::from((*imm)? as i16) as u32));
     }
     // s_bfm_b32 d, width, offset: `width` ones from bit `offset` (the
-    // console compiler builds sampler words this way).
+    // console compiler builds sampler words this way, the upscaler's too),
+    // from inline constants or literals.
     if inst.name() == "s_bfm_b32" && k == 0 {
         let constant = |o: &Operand| match *o {
             Operand::Const(c) => inline(c),
@@ -2408,8 +2439,6 @@ fn copy_source(inst: &Inst, k: usize) -> Option<Moved> {
     }
     let src = src.first()?;
     match (inst.name(), *src) {
-        // A 32-bit literal of a 64-bit integer move is zero-extended.
-        ("s_mov_b64", Operand::Literal(x)) => Some(Moved::Const(if k == 0 { x } else { 0 })),
         ("s_mov_b32" | "s_mov_b64", Operand::Scalar { code, .. }) if code != NULL => {
             inst.read(Reg::S(code + k as u8)).map(Moved::Value)
         }
@@ -2617,56 +2646,6 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn root_constant_dword0_is_dynamic_offset_not_address_base() {
-        // 1. Compute shader indexing a root descriptor (s[0:1]) by root constant dword 0 (s2):
-        // must resolve to param 0 with `dynamic = Some(s2)` rather than falling back to MEMORY.
-        let cs_code = [
-            0x8004_0200, // s_add_u32 s4, s0, s2
-            0x8205_8001, // s_addc_u32 s5, s1, 0
-            0xF400_0182,
-            0xFA00_0000, // s_load_dword s6, s[4:5], 0
-            S_ENDPGM,
-        ];
-        let cs = track_words(
-            &cs_code,
-            &[param(Descriptor, 0, 2), param(Constants, 2, 1)],
-            HwStage::Cs,
-        );
-        let const0 = cs.params.iter().find(|p| p.1 == 1 && p.2 == 0).unwrap().0;
-        assert_eq!(
-            cs.scalar[0].1.param, 0,
-            "must keep root descriptor param 0, not MEMORY"
-        );
-        assert_eq!(cs.scalar[0].1.dynamic, Some(const0));
-
-        // 2. Unshifted root constant dword 0 (s14) passed directly as SMEM soffset
-        // into a root table (s[18:19]): must not fail with "an offset from a root parameter".
-        let ms_code = [
-            0xBE93_0380, // s_mov_b32 s19, 0
-            0xF408_0209,
-            0x1C00_0000, // s_load_dwordx4 s[8:11], s[18:19], s14
-            0xE000_2000,
-            0x8002_0400, // buffer_load_format_x v4, v0, s[8:11], 0 idxen
-            S_ENDPGM,
-        ];
-        let table = RootParam {
-            slot: 7,
-            ..param(Table, 10, 1)
-        };
-        let indexed = track_words(&ms_code, &[param(Constants, 6, 1), table], HwStage::Ms);
-        assert_eq!(
-            indexed.root_indexed_views,
-            [RootIndexedView {
-                table_slot: 7,
-                constant_slot: 0,
-                constant_dword: 0,
-                byte_offset: 0,
-                shift: 0,
-            }]
-        );
-    }
-
-    #[test]
     fn spilled_sgprs_are_followed_through_vgpr_lanes() {
         let r = track_words(
             &[
@@ -2771,40 +2750,6 @@ pub(crate) mod tests {
         let p = crate::ir::build(&code, true, 8).unwrap();
         let insts = p.blocks.iter().flat_map(|b| &b.insts);
         insts.filter(|i| i.name() == "s_mov_b64").count()
-    }
-
-    #[test]
-    fn wrapped_lane_selectors_trace_the_last_descriptor_write() {
-        for (write, read) in [(35u32, 3u32), (3, 35)] {
-            let words = [
-                0x7E00_0287u32, // v_mov_b32 v0, 7 (ordinary vector use prevents unspill)
-                0xD761_0000,
-                0x0001_0609, // v_writelane_b32 v0, s9, 3
-                0xD761_0000,
-                (128 + write) << 9 | 10, // v_writelane_b32 v0, s10, write
-                0xD760_0002,
-                (128 + read) << 9 | 0x100, // v_readlane_b32 s2, v0, read
-                0xBE83_0380,               // s_mov_b32 s3, 0
-                0xF40C_0001,
-                0xFA00_0020, // s_load_dwordx8 s[0:7], s[2:3], 0x20
-                S_ENDPGM,
-            ];
-            let code: Vec<_> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
-            let p = crate::ir::build(&code, false, 8).unwrap();
-            assert_eq!(p.blocks[0].insts[3].name(), "v_readlane_b32");
-            let r = track(
-                &p,
-                &[param(Table, 9, 1), param(Table, 10, 1)],
-                HwStage::Cs,
-                None,
-            )
-            .unwrap();
-            assert_eq!(
-                r.scalar,
-                [((0, 5), at(1, 0x20))],
-                "write {write}, read {read}"
-            );
-        }
     }
 
     #[test]
@@ -4168,5 +4113,46 @@ pub(crate) mod tests {
         assert_eq!(table_offset(&r, other), 0x20);
         assert_eq!(r.waterfall.compares.len(), 2);
         assert_eq!(r.waterfall.reads.len(), 4);
+    }
+
+    #[test]
+    fn a_guarded_access_excludes_dead_lane_edges_at_a_join() {
+        // Lanes failing `v_cmp_gt_u32` clear EXEC and take `s_cbranch_execz`
+        // directly to the join block without initializing the immediate
+        // sampler `s[8:11]`. The join's `image_sample_lz` is guarded by EXEC,
+        // so only the arm where `s[8:11]` was built can execute it.
+        let code: Vec<u8> = [
+            0xBE84_0300u32, // s_mov_b32 s4, s0
+            0xBE85_0380,    // s_mov_b32 s5, 0
+            0xF40C_0302,
+            0xFA00_0000,    // s_load_dwordx8 s[12:19], s[4:5], 0x0
+            0x7E04_0D00,    // v_cvt_f32_u32 v2, v0
+            0x7E06_0302,    // v_mov_b32 v3, v2
+            0x7D88_0090,    // v_cmp_gt_u32 vcc_lo, 16, v0
+            0xBF8C_C07F,    // s_waitcnt lgkmcnt(0)
+            0x877E_6A7E,    // s_and_b32 exec_lo, exec_lo, vcc_lo
+            0xBF88_0004,    // s_cbranch_execz -> join (skips 4 dwords)
+            0xBE88_0380,    // s_mov_b32 s8, 0
+            0xBE89_0380,    // s_mov_b32 s9, 0
+            0xBE8A_0380,    // s_mov_b32 s10, 0
+            0xBE8B_0380,    // s_mov_b32 s11, 0
+            0xF09C_0F08,
+            0x0043_0C02,    // image_sample_lz v[12:15], v[2:3], s[12:19], s[8:11]
+            S_ENDPGM,
+        ]
+        .iter()
+        .flat_map(|w| w.to_le_bytes())
+        .collect();
+        let p = crate::ir::build(&code, false, 256).unwrap();
+        let structured = lanes(&p).expect("structured form");
+        assert!(structured.guards[2][0].is_some(), "join access must carry an EXEC guard");
+        let r = track(&p, &[param(Table, 0, 1)], HwStage::Cs, Some(&structured)).unwrap();
+        assert!(
+            r.descriptors
+                .iter()
+                .any(|d| d.role == Role::Sampler && d.source == Source::Constant(vec![0; 4])),
+            "guarded join should resolve the immediate sampler from the live arm: {:?}",
+            r.descriptors
+        );
     }
 }

@@ -63,7 +63,7 @@ pub enum Fields {
     },
     Smem {
         data: Option<Operand>,
-        base: Option<Operand>,
+        base: Operand,
         /// Signed byte offset, added to `soffset`.
         offset: i32,
         soffset: Operand,
@@ -190,7 +190,7 @@ impl Instruction {
     /// Decodes the operand fields. `wave64` sizes lane masks.
     pub fn fields(&self, wave64: bool) -> Fields {
         let name = self.name().unwrap_or("");
-        let w = |i: usize| self.words().get(i).copied().unwrap_or(0);
+        let w = |i: usize| self.words.get(i).copied().unwrap_or(0);
         let (w0, w1) = (w(0), w(1));
         let bit = |word: u32, n: u32| word >> n & 1 != 0;
         let cache = |glc, slc, dlc| Cache { glc, slc, dlc };
@@ -235,16 +235,6 @@ impl Instruction {
             }
             Encoding::Sopp => Fields::Sopp { imm: w0 as u16 },
             Encoding::Smem => {
-                let no_offset = matches!(
-                    name,
-                    "s_gl1_inv"
-                        | "s_dcache_inv"
-                        | "s_dcache_wb"
-                        | "s_memtime"
-                        | "s_memrealtime"
-                        | "s_get_waveid_in_workgroup"
-                );
-                let no_base = no_offset || name.starts_with("s_scratch_");
                 let sdata = (w0 >> 6 & 0x7F) as u8;
                 // s_atc_probe*: SDATA is a 7-bit immediate, not an SGPR. The
                 // buffer form's resource is 4 dwords. GLC and DLC are not operands.
@@ -259,17 +249,13 @@ impl Instruction {
                         _ => Some(scalar(sdata, data_dwords(name))),
                     }
                 };
-                let base_dwords = 2
-                    + 2 * u8::from(name.starts_with("s_buffer_") || name == "s_atc_probe_buffer");
+                let base =
+                    2 + 2 * u8::from(name.starts_with("s_buffer_") || name == "s_atc_probe_buffer");
                 Fields::Smem {
                     data,
-                    base: (!no_base).then(|| scalar(((w0 & 0x3F) << 1) as u8, base_dwords)),
-                    offset: if no_offset { 0 } else { (w1 << 11) as i32 >> 11 },
-                    soffset: if no_offset {
-                        scalar(NULL, 1)
-                    } else {
-                        scalar((w1 >> 25) as u8, 1)
-                    },
+                    base: scalar(((w0 & 0x3F) << 1) as u8, base),
+                    offset: (w1 << 11) as i32 >> 11,
+                    soffset: scalar((w1 >> 25) as u8, 1),
                     cache: if probe {
                         Cache::default()
                     } else {
@@ -462,7 +448,7 @@ impl Instruction {
         if matches!(name, "v_nop" | "v_pipeflush" | "v_clrexcp") {
             return Valu::default();
         }
-        let w = |i: usize| self.words().get(i).copied().unwrap_or(0);
+        let w = |i: usize| self.words.get(i).copied().unwrap_or(0);
         let w0 = w(0);
         let (dst_n, src_n) = valu_dwords(name);
         let compare = match self.encoding {
@@ -569,7 +555,23 @@ impl Instruction {
             Encoding::Vop3 | Encoding::Vop3p => {
                 let w1 = w(1);
                 let field = |i: u32| w1 >> (9 * i) & 0x1FF;
-                let count = vop3_source_count(self.encoding, self.opcode, name);
+                let count = match self.opcode {
+                    _ if self.encoding == Encoding::Vop3p => {
+                        if name.starts_with("v_pk_")
+                            && !name.contains("_fma_")
+                            && !name.contains("_mad_")
+                        {
+                            2
+                        } else {
+                            3
+                        }
+                    }
+                    0x000..0x100 => 2,
+                    0x100..0x140 => 2 + usize::from(carry_in),
+                    0x180..0x200 => 1,
+                    _ if VOP3_TWO_SOURCES.contains(&name) => 2,
+                    _ => 3,
+                };
                 v.src = (0..count)
                     .map(|i| {
                         let code = field(i as u32);
@@ -602,10 +604,7 @@ impl Instruction {
                     }
                 }
                 let vdst = w0 & 0xFF;
-                v.dst = Some(if name.starts_with("v_cmpx") {
-                    // CMPX ignores VDST and writes EXEC only.
-                    scalar(EXEC, lanes)
-                } else if compare {
+                v.dst = Some(if compare {
                     scalar(vdst as u8, lanes)
                 } else {
                     valu_dst(name, vdst, dst_n)
@@ -614,28 +613,6 @@ impl Instruction {
             _ => unreachable!("not a VALU encoding"),
         }
         v
-    }
-}
-
-/// Active source operand count for a VOP3 or VOP3P opcode.
-pub(super) fn vop3_source_count(encoding: Encoding, opcode: u16, name: &str) -> usize {
-    if matches!(name, "v_nop" | "v_pipeflush" | "v_clrexcp") {
-        return 0;
-    }
-    if encoding == Encoding::Vop3p {
-        return if name.starts_with("v_pk_") && !name.contains("_fma_") && !name.contains("_mad_") {
-            2
-        } else {
-            3
-        };
-    }
-    let carry_in = name.ends_with("_co_ci_u32") || name == "v_cndmask_b32";
-    match opcode {
-        0x000..0x100 => 2,
-        0x100..0x140 => 2 + usize::from(carry_in),
-        0x180..0x200 => 1,
-        _ if VOP3_TWO_SOURCES.contains(&name) => 2,
-        _ => 3,
     }
 }
 

@@ -13,7 +13,7 @@ victory-loader.workspace = true
 victory-pe.workspace = true
 victory-formats.workspace = true
 opus-pure.workspace = true
-miniz_oxide.workspace = true
+zlib-rs.workspace = true
 tracing.workspace = true
 
 [target.'cfg(windows)'.dependencies]
@@ -26,6 +26,7 @@ windows-sys = { workspace = true, features = [
     "Win32_Security_Cryptography",
     "Win32_Storage_FileSystem",
     "Win32_System_Diagnostics_Debug",
+    "Win32_System_IO",
     "Win32_System_LibraryLoader",
     "Win32_System_Memory",
     "Win32_System_Power",
@@ -35,11 +36,8 @@ windows-sys = { workspace = true, features = [
     "Win32_UI_Input_XboxController",
     "Win32_UI_WindowsAndMessaging",
 ] }
-# The host's D3D12 objects handed to a host library (`modules::fidelityfx`);
-# diagnostics: recording our own audio (`modules::audio::capture`).
-windows = { workspace = true, features = [
-    "Win32_Graphics_Direct3D12",
-    "Win32_Graphics_Dxgi_Common",
+# Diagnostics only: recording our own audio (`modules::audio::capture`).
+windows = { workspace = true, optional = true, features = [
     "Win32_Media_Audio",
     "Win32_System_Com",
     "Win32_System_Com_StructuredStorage",
@@ -51,12 +49,10 @@ windows-core = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true
-# Reads into guarded title views (`modules::files`).
-victory-gpu = { workspace = true, features = ["test-support"] }
 
 [features]
 # Debugging switches (scripted keys and the like).
-diagnostics = ["victory-gpu/diagnostics", "victory-loader/diagnostics", "dep:windows-core"]
+diagnostics = ["victory-gpu/diagnostics", "victory-loader/diagnostics", "dep:windows", "dep:windows-core"]
 
 [lints]
 workspace = true

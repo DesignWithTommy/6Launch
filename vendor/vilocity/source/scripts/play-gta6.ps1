@@ -32,7 +32,11 @@ if (-not $Defaults) {
     $env:VILOCITY_ASYNC_SUBMIT = "1"     # submissions sent by a thread of our own
     $env:VILOCITY_QUEUE2 = "1"           # read-backs on a copy queue
     $env:VILOCITY_INDIRECT_WINDOW = "1"  # cheaper indirect draws
-    $env:VILOCITY_TEXTURE_NO_WAIT = "1"  # texture refreshes do not wait for remaps
+    # Texture refreshes wait for title memory to hold still (0). With 1 a refresh
+    # that met a remap read nothing and the texture kept zeros for the run: Lucia's
+    # hair a flat dark cap, neck black, no "INMATE" print in about 2 launches of 3
+    # (fxceless/victory-fork #923; hair in 4 of 4 cell captures with 0, same fps).
+    if (-not $env:VILOCITY_TEXTURE_NO_WAIT) { $env:VILOCITY_TEXTURE_NO_WAIT = "0" }
     $env:VILOCITY_COPY_PLAIN = "1"       # title memory copied in place (fork 0b0074e: 145 -> 124 ms at 4,500 draws)
     # 4.7 GB of the card's copies spilled into PC memory; levels the title
     # does not hold take no card memory with this (the fork: 2-3 GB saved).
@@ -49,7 +53,11 @@ if (-not $Defaults) {
     # which some 660 MB are ever made, held 16,000 textures back while the
     # card was half empty (the "INMATE" print, faces in the cutscenes).
     # 1,536 MB: all of them shown, 11 fps (run gta6-20261126-015721).
-    if (-not $env:VILOCITY_CARD_BUFFERS_MB) { $env:VILOCITY_CARD_BUFFERS_MB = "1536" }
+    if (-not $env:VILOCITY_CARD_BUFFERS_MB) { $env:VILOCITY_CARD_BUFFERS_MB = "2048" }
+    # Title buffers from 64 KiB up get card copies too, compared on the card
+    # (fxceless/victory-fork c36971b; trustno1-coder/VIctory-NVIDIA uses 64 / 2048):
+    # copying back 20-29 -> 14-18 ms a frame, picture unchanged (2026-11-26).
+    if (-not $env:VILOCITY_CARD_BUFFERS_MIN_KB) { $env:VILOCITY_CARD_BUFFERS_MIN_KB = "64" }
     # Ray passes trace a structure that is never built and write garbage:
     # rainbow speckles, black walls (list from puffnfresh/rebox's fast.c;
     # 2026-11-25 runs s15/s16: walls lit, fewer speckles without them).

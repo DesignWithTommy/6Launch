@@ -6,13 +6,36 @@
 
 # Kelvaroq
 
-![License](https://img.shields.io/github/license/fablinoo/kelvaroq) ![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-lightgrey) ![Language: Rust](https://img.shields.io/badge/language-Rust-orange) ![Status: playable · ~10 fps](https://img.shields.io/badge/status-playable%20%C2%B7%20~10%20fps-green) ![Target: 30 fps @ 3840×2160](https://img.shields.io/badge/target-30%20fps%20%40%203840%C3%972160-blue) ![Tested on RTX 5080](https://img.shields.io/badge/tested%20on-RTX%205080-lightgrey) [![Built with Moon AI](https://img.shields.io/badge/built%20with-Moon%20AI-7c3aed)](https://realmoon.ai) ![Ranked #1 on a public tracker](https://img.shields.io/badge/public%20tracker-%231%20of%2044-gold)
+[![Discord: live updates](https://img.shields.io/badge/Discord-live%20updates-5865F2?logo=discord&logoColor=white)](https://discord.gg/5Hvk5RFB3D) ![License](https://img.shields.io/github/license/stellarr-studio/kelvaroq) ![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-lightgrey) ![Language: Rust](https://img.shields.io/badge/language-Rust-orange) ![Status: playable · ~10 fps](https://img.shields.io/badge/status-playable%20%C2%B7%20~10%20fps-green) ![Target: 30 fps @ 3840×2160](https://img.shields.io/badge/target-30%20fps%20%40%203840%C3%972160-blue) ![Tested on RTX 5080](https://img.shields.io/badge/tested%20on-RTX%205080-lightgrey) [![Built with Moon AI](https://img.shields.io/badge/built%20with-Moon%20AI-7c3aed)](https://realmoon.ai) ![Ranked #1 on a public tracker](https://img.shields.io/badge/public%20tracker-%231%20of%2044-gold)
 
 Kelvaroq is an Xbox Series X|S compatibility runtime for Windows x64, written in Rust. Its native engine is built on VIctory and victory-fork. The goal is a playable scene at 3840×2160 and 30 rendered fps, with correct textures and steady frame pacing on NVIDIA and AMD GPUs.
 
+> [!IMPORTANT]
+> **You need your own copy of the game.** Kelvaroq contains and distributes no game files, no game code, no assets, no keys and no download links. It only runs a game that you own and that you installed yourself from your own lawful copy. We do not help anyone obtain a game: requests for game files, keys, dumps or download links are refused and removed, on GitHub and on Discord.
+
 > **Built entirely with [Moon AI](https://realmoon.ai).** All of the code, the research, the reverse-engineering notes, the measurements and the documentation in this project are produced with the Moon AI platform. Kelvaroq is developed by [Stellarr Studio SAS](https://stellarrstudio.com).
 >
+> [![Join the Kelvaroq Discord](https://img.shields.io/badge/Join%20the%20Discord-follow%20every%20announcement%20live-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/5Hvk5RFB3D)
+>
 > **Ranked #1 of 44 projects** on an independent public tracker of PC compatibility efforts for this console title (check of 25 November 2026, 21:02 UTC): furthest along, two steps short of its "playable" bar of 20 fps and 30 minutes without a crash.
+
+## Highlights
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/readme/highlights-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/readme/highlights-light.svg">
+  <img src="assets/readme/highlights-light.svg" alt="Unified memory, in testing: 100% of the game's graphics memory shared with the GPU from allocation; 97.4% of GPU memory views fit directly in shared memory; 64 million GPU lookups served with no copy in one live session; 121 million descriptor rows checked against real gameplay with zero errors; 300 times less memory bookkeeping per heavy frame (about 18 s to about 60 ms on an RTX 5080); 0 GB left behind after closing the game, down from about 19 GB.">
+</picture>
+
+- **100%** of the game's graphics memory is shared with the GPU from the moment it is allocated.
+- **97.4%** of the GPU's memory views fit directly in that shared memory, measured on real gameplay.
+- **64 million** GPU lookups served straight from the game's memory, with no copy, in one live session. That morning: zero.
+- **Translate once, like the console:** each GPU descriptor is now translated once, when the game writes it, instead of being re-sorted on every submission. Per-submission work dropped **under 1 ms**.
+- **121 million** descriptor rows checked against recorded real gameplay, with **zero errors**.
+- **300× less** memory bookkeeping per heavy frame on real gameplay: **~18 s → ~60 ms** on an RTX 5080.
+- **0 GB** left behind when the game closes, down from about 19 GB per session, with a clean shutdown in about one second.
+
+The unified memory layer is **in testing** and goes public as soon as the build is stable and clean. Follow it live on [Discord](https://discord.gg/5Hvk5RFB3D).
 
 ## The wall every project hits
 
@@ -26,6 +49,8 @@ We traced how the game really uses its memory, from the first instruction of the
 
 **Kelvaroq's memory layer is in testing now, and the first results are wild:** in the first scenes we tested, the memory copied every frame fell from over 100 MB to under 8 MB. We are tuning it for the open world before it ships.
 
+**Update, 26 November 2026: the memory layer now runs in the open world.** In a live test session, the GPU found more than half of the memory it needed, about 64 million of 115 million lookups, directly in the game's own memory instead of a copy; earlier the same day, it found none. What is left is speed: on recorded game data, translating each descriptor once, when the game writes it, brought the work per heavy frame from about 18 seconds down to about 60 ms, and the target is **5 ms per frame**. It is in testing now and goes public as soon as the build is stable and clean. Follow it live on [Discord](https://discord.gg/5Hvk5RFB3D).
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/memory-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="assets/readme/memory-light.svg">
@@ -36,7 +61,7 @@ We traced how the game really uses its memory, from the first instruction of the
 
 - **Goal:** the game runs from boot to credits exactly as it does on an Xbox Series X, with what a PC adds on top: DLSS super resolution, frame generation, higher resolutions and an unlocked frame rate.
 - **Modest PCs too:** the copy loop is what eats the processor today, and that is what shuts smaller machines out. Removing it lowers the bar for everyone, so the aim is a game that also runs well on mid-range and older PCs, not only on high-end ones. Minimum requirements will be published once they are measured.
-- **Release policy:** the next public engine changes will land once the memory layer is validated across the whole game, DLSS and frame generation are integrated, the remaining visual effects are in place, and every test suite passes. Until then, the public build stays on the current engine while the new layer is tested.
+- **Release policy:** the memory layer goes public as soon as its build is stable and clean and every test suite passes. DLSS, frame generation and the remaining visual effects follow. Until then, the public build stays on the current engine while the new layer is tested.
 
 ## Status
 
@@ -116,6 +141,8 @@ A tester played a build from this public repository and monitored it, on a Ryzen
 - [ ] Reach 30 rendered fps in the heavy prologue scene, then the whole game from boot to credits.
 
 ## Play (Windows package)
+
+**Before you start:** you need a game you own, installed from your own lawful copy. Kelvaroq does not include, download or unlock any game.
 
 1. Extract the entire Windows x64 ZIP into a folder.
 2. Open **Kelvaroq.exe** and select the game folder or its executable. You can also drag either onto Kelvaroq.exe.
@@ -222,6 +249,12 @@ These documents are written in French.
 - [Architecture, compatibility criteria and measurement protocol](documentation.md)
 - [Contribution guidelines for building, reviewing and testing changes](CONTRIBUTING.md)
 
+## Community
+
+Announcements, test results and new builds are posted first on the Kelvaroq Discord.
+
+[![Join the Kelvaroq Discord](https://img.shields.io/badge/Discord-join%20the%20server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/5Hvk5RFB3D)
+
 ## Contributing
 
 Contributions are welcome here: open an issue or a pull request against this repository. Please contribute upstream instead of republishing copies of the code. Split efforts are what keep every project in this space at a few frames per second.
@@ -249,7 +282,9 @@ The Windows package includes the native engine source in `sources/native.zip` an
 
 ## Disclaimer
 
-This repository contains no game files, game code or game assets. You supply the game from your own copy. Kelvaroq is not affiliated with or endorsed by any game developer or publisher.
+This repository contains no game files, game code, game assets, encryption keys or links to them. You supply the game from your own lawfully obtained copy; Kelvaroq does not decrypt, download or unlock games and does not bypass any copy protection. Kelvaroq is not affiliated with or endorsed by any console maker, game developer or publisher. All trademarks belong to their owners.
+
+Issues, pull requests and Discord messages that share or ask for game files, keys, dumps or download links are removed, and their authors may be banned.
 
 ## Legal Notice — Software Interoperability and European Union Law
 
@@ -300,6 +335,8 @@ All third-party trademarks and intellectual property remain the property of thei
 Rights holders who believe that specific repository content infringes their intellectual property rights are invited to identify the relevant files, code sections, protected works, and legal grounds for their claim through the project's designated contact channel ([stellarrstudio.com](https://stellarrstudio.com)).
 
 The maintainers are committed to reviewing legitimate intellectual property concerns in good faith while reserving all rights and statutory exceptions available under applicable law.
+
+Takedown notices, including notices under the U.S. Digital Millennium Copyright Act (DMCA), can be sent to Stellarr Studio SAS through [stellarrstudio.com](https://stellarrstudio.com) or through GitHub's own process. Please contact us first: we review every notice promptly and remove any content that turns out to belong to a third party.
 
 Nothing in this notice is intended to exclude applicable laws or confer rights beyond those recognized by the relevant jurisdiction.
 

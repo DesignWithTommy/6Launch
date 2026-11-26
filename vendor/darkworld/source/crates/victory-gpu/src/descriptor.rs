@@ -459,7 +459,7 @@ impl View {
     /// of resources or of memory) or memory the title placed a texture in:
     /// such views get host slots only for draws.
     #[cfg(windows)]
-    fn is_buffer(&self) -> bool {
+    pub(crate) fn is_buffer(&self) -> bool {
         match self {
             View::Constant(..) | View::Placed(..) => true,
             View::Shader(r, _) | View::Unordered(r, _, _) => {
@@ -633,6 +633,18 @@ impl Views {
         (desc[10], desc[11]) = (address as u32, (address >> 32) as u32);
         desc[12..].copy_from_slice(&rest[10..]);
         Some(View::Placed(unordered, resource, desc))
+    }
+
+    /// Whether the record words `i` and `generation` name a view now:
+    /// whether [`view_at`] would find one, without the copy it gives back.
+    #[cfg(windows)]
+    fn names(&self, i: u32, generation: u32) -> bool {
+        match generation >> KIND_SHIFT {
+            0 => self.list.get(i as usize).is_some_and(|(_, current)| *current == generation),
+            CONSTANT => true,
+            PLACED => self.shapes.get((payload(i, generation) >> PLACED_ADDRESS_BITS) as usize).is_some(),
+            _ => false,
+        }
     }
 
     /// The record words of `view` as a table entry, if it has one.

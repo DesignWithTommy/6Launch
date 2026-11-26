@@ -59,37 +59,8 @@ impl SigElement {
         }
     }
 
-    fn sig_name(&self) -> &str {
-        match self.kind {
-            1 => "SV_VertexID",
-            2 => "SV_InstanceID",
-            3 => "SV_Position",
-            4 => "SV_RenderTargetArrayIndex",
-            5 => "SV_ViewportArrayIndex",
-            6 => "SV_ClipDistance",
-            7 => "SV_CullDistance",
-            10 => "SV_PrimitiveID",
-            12 => "SV_SampleIndex",
-            13 => "SV_IsFrontFace",
-            14 => "SV_Coverage",
-            15 => "SV_InnerCoverage",
-            16 => "SV_Target",
-            17 => "SV_Depth",
-            18 => "SV_DepthLessEqual",
-            19 => "SV_DepthGreaterEqual",
-            20 => "SV_StencilRef",
-            28 => "SV_Barycentrics",
-            30 => "SV_CullPrimitive",
-            _ => &self.name,
-        }
-    }
-
-    fn effective_col(&self) -> u8 {
-        if self.row.is_some() { self.col } else { 0 }
-    }
-
     fn mask(&self) -> u8 {
-        ((1u8 << self.cols) - 1) << self.effective_col()
+        ((1u8 << self.cols) - 1) << self.col
     }
 }
 
@@ -101,8 +72,7 @@ pub(crate) fn signature(elements: &[SigElement], input: bool) -> Vec<u8> {
     // Validator 1.6 writes one name per element in element order, repeats
     // included, except that system values share theirs (it keys names by
     // the semantic's string, which is one static string per system value);
-    // the rows sorted by register (unallocated last), keeping element order
-    // within the same register.
+    // the rows sorted by register (unallocated last), then name offset.
     let mut offsets: Vec<u32> = Vec::new();
     let mut next = 8 + 32 * elements.len() as u32;
     let mut names = Vec::new();
@@ -113,18 +83,17 @@ pub(crate) fn signature(elements: &[SigElement], input: bool) -> Vec<u8> {
         match shared {
             Some(j) => offsets.push(offsets[j]),
             None => {
-                let name = e.sig_name();
                 offsets.push(next);
-                next += name.len() as u32 + 1;
-                names.push(name);
+                next += e.name.len() as u32 + 1;
+                names.push(&e.name);
             }
         }
     }
     let mut order: Vec<usize> = (0..elements.len()).collect();
-    order.sort_by_key(|&i| elements[i].row.unwrap_or(u32::MAX));
+    order.sort_by_key(|&i| (elements[i].row.unwrap_or(u32::MAX), offsets[i]));
     for i in order {
         let (e, offset) = (&elements[i], offsets[i]);
-        let used = e.usage << e.effective_col();
+        let used = e.usage << e.col;
         let rw = if input { used } else { !used & 0xf };
         for v in [
             0,
@@ -451,6 +420,60 @@ mod tests {
     use super::*;
 
     #[test]
+    fn packed_vertex_outputs_preserve_name_order_and_declared_interpolation() {
+        let integer = SigElement {
+            name: "TEXCOORD".into(),
+            index: 1,
+            kind: 0,
+            comp: 5,
+            interp: 1,
+            row: Some(0),
+            col: 2,
+            cols: 2,
+            usage: 3,
+            half: false,
+        };
+        let flat_float = SigElement {
+            name: "COLOR".into(),
+            index: 0,
+            comp: 9,
+            col: 0,
+            ..integer.clone()
+        };
+        let smooth_float = SigElement {
+            index: 2,
+            row: Some(1),
+            interp: 2,
+            comp: 9,
+            ..integer.clone()
+        };
+        let outputs = [integer, flat_float, smooth_float];
+        let mut recovered = super::super::signature(&signature(&outputs, false)).unwrap();
+        // DXC orders the row by semantic-name offset even though TEXCOORD
+        // occupies z/w and COLOR occupies x/y.
+        assert_eq!(recovered[0].name, "TEXCOORD");
+        assert_eq!(recovered[1].name, "COLOR");
+        // PSV records can be in a different order again.
+        let psv = psv(&Psv {
+            stage: 1,
+            flag: false,
+            inputs: &[],
+            outputs: &[outputs[2].clone(), outputs[1].clone(), outputs[0].clone()],
+            prims: &[],
+            mesh: None,
+            geometry: None,
+            bindings: &[],
+            threads: [0; 3],
+            wave_size: None,
+        });
+        recovered[1].interp = 2;
+        super::super::vertex_output_interpolation(&psv, &mut recovered).unwrap();
+        assert_eq!(recovered.iter().map(|e| e.interp).collect::<Vec<_>>(), [1, 1, 2]);
+        assert!(super::super::vertex_output_interpolation(&psv[..psv.len() - 1], &mut recovered)
+            .is_err());
+    }
+
+    #[test]
     fn md5_core_matches_the_standard() {
         // Standard MD5 of "abc" with standard padding, through md5_block.
         let mut block = b"abc".to_vec();
@@ -465,46 +488,5 @@ mod tests {
             .map(|b| format!("{b:02x}"))
             .collect();
         assert_eq!(hex, "900150983cd24fb0d6963f7d28e17f72");
-    }
-
-    #[test]
-    fn signature_keeps_same_row_order_canonical_sv_names_and_unalloc_mask() {
-        let mk = |name: &str, kind, row, col, cols, usage| SigElement {
-            name: name.into(),
-            index: 0,
-            kind,
-            comp: 9,
-            interp: 0,
-            row,
-            col,
-            cols,
-            usage,
-            half: false,
-        };
-        let bytes = signature(
-            &[
-                mk("COLOR", 0, Some(0), 2, 2, 0b10),
-                mk("TEXCOORD", 0, Some(0), 0, 2, 0b01),
-                mk("SV_POSITION", 3, Some(1), 0, 4, 0),
-                mk("SV_SAMPLEINDEX", 12, None, 2, 1, 1),
-            ],
-            true,
-        );
-        let name_at = |row: usize| {
-            let off = u32::from_le_bytes(bytes[8 + 32 * row + 4..8 + 32 * row + 8].try_into().unwrap()) as usize;
-            let end = bytes[off..].iter().position(|&b| b == 0).unwrap();
-            std::str::from_utf8(&bytes[off..off + end]).unwrap()
-        };
-        let mask_rw = |row: usize| (bytes[8 + 32 * row + 24], bytes[8 + 32 * row + 25]);
-        // Same-row elements keep element order (COLOR col 2 before TEXCOORD col 0).
-        assert_eq!(name_at(0), "COLOR");
-        assert_eq!(mask_rw(0), (0b1100, 0b1000));
-        assert_eq!(name_at(1), "TEXCOORD");
-        assert_eq!(mask_rw(1), (0b0011, 0b0001));
-        // System values use DXIL's canonical casing.
-        assert_eq!(name_at(2), "SV_Position");
-        // Unallocated elements do not shift mask/usage by `col`.
-        assert_eq!(name_at(3), "SV_SampleIndex");
-        assert_eq!(mask_rw(3), (0b0001, 0b0001));
     }
 }

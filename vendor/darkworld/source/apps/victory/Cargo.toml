@@ -29,6 +29,8 @@ diagnostics = [
     "victory-loader/diagnostics",
     "victory-shader/diagnostics",
 ]
+# The scripted keys alone (`VICTORY_KEYS`), without the diagnostics.
+scripted = ["victory-hle/scripted"]
 
 [lints]
 workspace = true

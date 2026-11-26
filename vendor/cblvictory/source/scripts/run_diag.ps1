@@ -8,7 +8,7 @@ param(
 
     [string] $SaveLocation,
 
-    [ValidateSet('Baseline', 'BatchRehash', 'ParallelCompare', 'StagedReadback', 'Combined', 'Community', 'TextureQueue', 'DrawWindows', 'Tracker', 'TrackerWindows')]
+    [ValidateSet('Baseline', 'BatchRehash', 'ParallelCompare', 'StagedReadback', 'Combined', 'Community', 'TextureQueue', 'DrawWindows', 'Tracker', 'TrackerWindows', 'OvernightControl', 'OvernightFPS', 'OvernightStreaming', 'OvernightWater', 'TuningControl', 'Tuning5080', 'Submission5080', 'SubmissionVerify', 'SubmissionControl', 'Range5080', 'RangeControl', 'RangeWater', 'RangeWaterAsync', 'MeshLaunch', 'MeshControl', 'AmbientControl', 'Ambient5080', 'AmbientTiming')]
     [string] $PerfCase
 )
 
@@ -34,7 +34,8 @@ if ($PSBoundParameters.ContainsKey('SaveLocation')) {
 Set-Location -LiteralPath (Split-Path -Parent $PSScriptRoot)
 
 $exe = '.\target\diag\victory.exe'
-$candidate = switch ($PerfCase) {
+$rangeProfile = if ($PerfCase -in 'RangeWaterAsync', 'MeshLaunch', 'MeshControl', 'AmbientControl', 'Ambient5080', 'AmbientTiming') { 'RangeWater' } else { $PerfCase }
+$candidate = switch ($rangeProfile) {
     'ParallelCompare' { 'parallel-compare' }
     'StagedReadback'  { 'staged-readback' }
     'Combined'        { 'combined' }
@@ -43,8 +44,25 @@ $candidate = switch ($PerfCase) {
     'DrawWindows'     { 'community' }
     'Tracker'         { 'tracker' }
     'TrackerWindows'  { 'tracker' }
+    'TuningControl'     { '5080-tuning' }
+    'Submission5080'    { 'submission-5080' }
+    'SubmissionVerify'  { 'submission-5080' }
+    'SubmissionControl' { 'submission-5080' }
+    'Range5080'         { 'range-5080' }
+    'RangeControl'      { 'range-5080' }
+    'RangeWater'        { if ($PerfCase -in 'AmbientControl', 'Ambient5080', 'AmbientTiming') { 'ambient-5080' } elseif ($PerfCase -in 'MeshLaunch', 'MeshControl') { 'mesh-5080' } else { 'range-5080' } }
+    'Tuning5080'        { '5080-tuning' }
+    'OvernightControl' { 'overnight' }
+    'OvernightFPS'     { 'overnight' }
+    'OvernightStreaming' { 'overnight' }
+    'OvernightWater'   { 'overnight' }
 }
-$communityMetrics = $PerfCase -in 'Community', 'TextureQueue', 'DrawWindows', 'Tracker', 'TrackerWindows'
+$rangeTrial = $rangeProfile -in 'Range5080', 'RangeControl', 'RangeWater'
+$submission = $rangeTrial -or $PerfCase -in 'Submission5080', 'SubmissionVerify', 'SubmissionControl'
+$tuning = $submission -or ($PerfCase -in 'TuningControl', 'Tuning5080')
+$overnightFast = $tuning -or ($PerfCase -in 'OvernightFPS', 'OvernightStreaming')
+$overnight = $overnightFast -or ($PerfCase -in 'OvernightControl', 'OvernightWater')
+$communityMetrics = $overnight -or ($PerfCase -in 'Community', 'TextureQueue', 'DrawWindows', 'Tracker', 'TrackerWindows')
 if ($candidate) {
     $candidateDir = Join-Path '.\target\diag\examples\fps-candidates' $candidate
     $exe = Join-Path $candidateDir 'victory.exe'
@@ -96,7 +114,7 @@ if ($Mode -eq 'Depth') { $prefix = 'prison-depth' }
 if ($PerfCase) {
     $prefix = 'fps-' + $PerfCase.ToLowerInvariant()
     if ($communityMetrics) {
-        $env:VICTORY_INDIRECT_WINDOW = if ($PerfCase -in 'DrawWindows', 'TrackerWindows') { '1' } else { '0' }
+        $env:VICTORY_INDIRECT_WINDOW = if ($overnightFast -or ($PerfCase -in 'DrawWindows', 'TrackerWindows')) { '1' } else { '0' }
         $env:VICTORY_COPY_PLAIN = '0'
         $env:VICTORY_QUEUE2 = '0'
         $env:VICTORY_ASYNC_SUBMIT = '0'
@@ -108,7 +126,45 @@ if ($PerfCase) {
         # Use the donor's default staging size and per-flight cap for both experiments.
         Remove-Item Env:VICTORY_CARD_FETCH_INFLIGHT_MB, Env:VICTORY_CARD_FETCH_INFLIGHT_MAX_KB -ErrorAction SilentlyContinue
     }
-    $env:VICTORY_CARD_REHASH_RUNS = if ($PerfCase -eq 'BatchRehash') { '1' } else { '0' }
+    $env:VICTORY_CARD_REHASH_RUNS = if ($overnightFast -or $PerfCase -eq 'BatchRehash') { '1' } else { '0' }
+    if ($overnight) {
+        if ($overnightFast) {
+            $env:VICTORY_COPY_PLAIN = '1'
+            $env:VICTORY_QUEUE2 = '1'
+            $env:VICTORY_ASYNC_SUBMIT = '1'
+        }
+        $env:VICTORY_JOIN_PARTS = if ($overnightFast) { '1' } else { '0' }
+        $env:VICTORY_BACK_OWN_VIEW = $env:VICTORY_JOIN_PARTS
+        $env:VICTORY_INDIRECT_GATHER = $env:VICTORY_JOIN_PARTS
+        $env:VICTORY_STEP_INDEX = if ($submission -or $PerfCase -eq 'Tuning5080') { '1' } else { '0' }
+        $env:VICTORY_SUBMISSION_INDEX = switch ($rangeProfile) {
+            'Range5080' { '1' }
+            'RangeWater' { '1' }
+            'RangeControl' { '1' }
+            'Submission5080' { '1' }
+            'SubmissionVerify' { 'verify' }
+            default { '0' }
+        }
+        $env:VICTORY_TEXTURE_RANGE_BATCH = switch ($rangeProfile) {
+            'Range5080' { '1' }
+            'RangeWater' { '1' }
+            'RangeControl' { 'measure' }
+            default { '0' }
+        }
+        $env:VICTORY_STAGING_SHARDS = $env:VICTORY_STEP_INDEX
+        $env:VICTORY_TEXTURE_BACK = if ($rangeProfile -in 'OvernightWater', 'RangeWater') { '1' } else { '0' }
+        if ($rangeProfile -eq 'RangeWater') {
+            $env:VICTORY_AMBIENT = if ($PerfCase -in 'Ambient5080', 'AmbientTiming') { '1' } else { '0' }
+            if ($PerfCase -eq 'AmbientTiming') {
+                $env:VICTORY_GPU_TIMING = '1'
+                $env:VICTORY_D3D12_DRED = '1'
+            }
+            $env:VICTORY_MESH_LAUNCH = if ($PerfCase -eq 'MeshLaunch') { '1' } else { '0' }
+            $env:VICTORY_ASYNC_PRESENT = if ($PerfCase -eq 'RangeWaterAsync') { '1' } else { '0' }
+            if ($PerfCase -eq 'RangeWaterAsync') { $env:VICTORY_LATE_WAIT = '3' }
+        }
+        $env:VICTORY_TEXTURE_NO_WAIT = if ($tuning -or $PerfCase -eq 'OvernightStreaming') { '1' } else { '0' }
+    }
 }
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 $run = Join-Path $PWD "target\diag\examples\$prefix-$stamp"
@@ -117,8 +173,13 @@ $log = Join-Path $run 'boot.log'
 Write-Host "Boot log $log"
 
 $revision = Join-Path $run 'revision.txt'
-git rev-parse HEAD | Set-Content -LiteralPath $revision
-git status --short | Add-Content -LiteralPath $revision
+if ($candidate -and (Test-Path -LiteralPath '.git' -PathType Leaf)) {
+    # Windows Git may not resolve the WSL pointer in a linked worktree.
+    $binaryRevision | Set-Content -LiteralPath $revision
+} else {
+    git rev-parse HEAD | Set-Content -LiteralPath $revision
+    git status --short | Add-Content -LiteralPath $revision
+}
 if ($PerfCase) {
     @(
         "case=$PerfCase"
@@ -135,6 +196,25 @@ if ($PerfCase) {
             "VICTORY_ASYNC_SUBMIT=$env:VICTORY_ASYNC_SUBMIT"
             "VICTORY_FRAME_LOG=$env:VICTORY_FRAME_LOG"
             "VICTORY_DRIVER_WATCH=$env:VICTORY_DRIVER_WATCH"
+        }
+        if ($rangeProfile -eq 'RangeWater') {
+            "VICTORY_AMBIENT=$env:VICTORY_AMBIENT"
+            "VICTORY_GPU_TIMING=$env:VICTORY_GPU_TIMING"
+            "VICTORY_D3D12_DRED=$env:VICTORY_D3D12_DRED"
+            "VICTORY_MESH_LAUNCH=$env:VICTORY_MESH_LAUNCH"
+            "VICTORY_LATE_WAIT=$env:VICTORY_LATE_WAIT"
+            "VICTORY_ASYNC_PRESENT=$env:VICTORY_ASYNC_PRESENT"
+        }
+        if ($overnight) {
+            "VICTORY_JOIN_PARTS=$env:VICTORY_JOIN_PARTS"
+            "VICTORY_BACK_OWN_VIEW=$env:VICTORY_BACK_OWN_VIEW"
+            "VICTORY_INDIRECT_GATHER=$env:VICTORY_INDIRECT_GATHER"
+            "VICTORY_SUBMISSION_INDEX=$env:VICTORY_SUBMISSION_INDEX"
+            "VICTORY_TEXTURE_RANGE_BATCH=$env:VICTORY_TEXTURE_RANGE_BATCH"
+            "VICTORY_STEP_INDEX=$env:VICTORY_STEP_INDEX"
+            "VICTORY_STAGING_SHARDS=$env:VICTORY_STAGING_SHARDS"
+            "VICTORY_TEXTURE_BACK=$env:VICTORY_TEXTURE_BACK"
+            "VICTORY_TEXTURE_NO_WAIT=$env:VICTORY_TEXTURE_NO_WAIT"
         }
     ) | Set-Content -LiteralPath (Join-Path $run 'settings.txt')
 }

@@ -4,19 +4,22 @@ CBL VIctory is a Windows compatibility layer based on Marvisak’s VIctory and f
 
 ## Project status
 
-As of 26 November 2026, the opening interior renders with characters, walls, furnishings and working ceiling lights. A repeat run passed the cashier, reached the exterior under player control and continued into Chapter 1. Some surfaces appear distorted or low-detail, shadowed characters lose detail and the cashier can become severely overexposed. The boat objective remains blocked.
+As of 26 November 2026, the opening interior renders with characters, furnishings and ceiling lights. With water texture readback enabled, the Chapter 1 boat floats and responds to throttle, and a replay continued into open-world driving and manual saving. Outdoor shadows remain very dark, some surfaces show block artifacts, and water reflections can appear unusually white.
 
 ## Renderer changes
 
 - **Texture streaming.** CBL’s upload scheduler sorts only the slots a pass can serve. It preserves retry priority and alternates between recent and older writes. PastiiJay’s overflow recovery refreshes texture views when remap records are lost, and myokex’s smaller-mip handling allows partially resident textures to be read. [Implementation credits](docs/cbl/patch-provenance.md)
 - **Graphics and memory.** The renderer incorporates fxceless’s frame scheduling and driver diagnostics, tightfall’s parallel buffer comparison submitted by pug205gti6, and shader and pipeline-library fixes carried by KLBF Lab. LooperSalty’s AnyXboxX stack supplied davutsimsekk’s BC7 dictionary fix and Jordan N’s half-float rounding fix. The provenance record credits the original implementations and downstream ports. [Patch history](docs/cbl/patch-provenance.md)
-- **Diagnostics.** Checkpoint replays record the executable hash and run settings. The diagnostic window shows output resolution, uptime, FPS, draws per frame and p95 frame time. The log records successful presents and elapsed time so a moving route and a stationary view can be measured independently. [Run and measurement guide](results.md)
+- **Water physics.** The boat replay uses Geckomacabre’s GPU texture readback, ported by cxy0072019-sketch, together with PastiiJay’s console XOR texture-addressing port from MiamiGame/XTP and Mesa addrlib. [Water patch credits](docs/cbl/5080-tuning.md#boat-readback-replay)
+- **Diagnostics.** Checkpoint replays record the executable hash and run settings. The diagnostic window shows output resolution, uptime, FPS, draws per frame and p95 frame time. The log records successful presents, elapsed time and memory use for scene-by-scene comparison. [Run and measurement guide](results.md)
 
 ## Test results
 
-On a Ryzen 9 9950X3D and GeForce RTX 5080, diagnostic build `cbaef90` on `integrate/community-fps` presented at 3840×2160 with the Series X profile. Measured stretches averaged **3.63–6.39 FPS**, depending on the scene. The repeat passed the previous crash point and ran for **27 min 38 s** before manual close. [Gameplay results](results.md) · [Benchmarks and reproduction steps](docs/cbl/tracker-run.md)
+On Windows with a Ryzen 9 9950X3D and GeForce RTX 5080, diagnostic build `d77c7395` on `5080-tuning` presented at **3840×2160 output** with the Series X profile. The longest recorded session ran **65 min 46 s** from a Chapter 1 checkpoint through the boat sequence into the open world. The player closed the window with no crash or graphics device loss logged during play.
 
-The next tests will replay the boat checkpoint to evaluate water physics and compare submission changes using the same Series X route. [Test plan and donor review](docs/cbl/next-session.md)
+Measured segments averaged **11.42 FPS** with the boat underway, **4.73 FPS** in a late city segment and **4.32 FPS** on foot. A five-second city window dipped to **2.16 FPS**. The session length includes loading and idle time. [Gameplay results](results.md) · [Open-world test plan](docs/cbl/5080-tuning.md#open-world-performance-replay)
+
+Two open-world comparisons at 3840×2160 output tested async presentation. The first moving sample rose from **4.86 to 5.27 FPS** with fewer draws per frame. The repeat measured **4.49 FPS** with the reference profile and **4.54 FPS** with async present. The gain did not replicate over equal-duration movement samples. [Async-present comparison](results.md#open-world-async-present-trial)
 
 ## Inherited project documentation
 
@@ -69,6 +72,66 @@ Tested on one machine: Windows 11, Intel i7-14700KF, NVIDIA RTX 4070 12 GB,
 | Stability | no driver hang or device loss in normal runs (a hang introduced by the wave64 update was found and fixed: its barrier form for 64-lane programs is now off unless `VICTORY_WAVE_WIDE=1`) |
 
 ### Newest (2026-11-25, later the same day)
+
+**Update, 2026-11-25 afternoon: what a frame is made of, measured, and two
+changes that hold.** First rooms, about 3,850 draws a frame: 104 ms a frame
+(9.6 frames a second) with the first two changes below, 97 ms (10.3)
+with all of them, from about 120 ms in the morning. Still far from the console's 33 ms.
+- How the title paces itself (new meters in `fence.rs` and
+  `console_insn.rs`): it never asks for an event. Each frame begins with
+  one small submission and a signal, and a title thread then waits for
+  that fence value by reading it in memory with `monitorx` / `mwaitx`
+  (AMD-only: about 280,000 emulated exceptions a second on an Intel
+  processor, all from this wait). The value is set when the layer has
+  finished the whole frame before. So a frame is the time the layer needs
+  for one frame's burst of submissions plus about 20 ms of the title's
+  own; putting presents behind the line, or giving the title's threads
+  more processors, changes nothing (both measured).
+- Two walls stand side by side and both are full: the layer's submit
+  thread (about 95 ms of a 120 ms frame in the morning) and the card
+  (about 102 ms busy, by a timestamp pair around every host list:
+  `cardmeter.rs`). Taking time off one alone moved the frame by 0 to 7 %.
+- `VICTORY_JOIN_PARTS=1` (off by default): the title's lists wait for
+  memory values, which cut its ~15 submissions a frame into ~29 parts;
+  parts that follow one another now go to the host as one submission
+  (9 a frame), the same lists in the same order. About 6 %.
+- `VICTORY_BACK_OWN_VIEW=1` (off by default): what shaders wrote goes
+  back into title view memory through a view of the layer's own, so the
+  copy that wrote it is not read in again. About 9 % (submit thread 93 ->
+  81 ms a frame, 104 -> 80 MB a frame checked). A CORRECTION: an earlier
+  run seemed to show washed-out frames with this switch; the same frames
+  turn up in about 6 of 21 runs with no switch at all (cause not known),
+  and `VICTORY_BACK_OWN_CHECK=1` counted 0 stores gone astray in 1.36
+  million.
+- Where the card's time goes now (`VICTORY_CARD_METER_PIPELINES=1`, a
+  table by pipeline): no pass is large. About 82 ms of the title's lists
+  are spread over ~3,400 pipeline bindings a frame; ~2,400 of the
+  indirect commands still get a clamp pass of the layer's with draw
+  windows on (960 are compute dispatches; about 1,000 are mesh records
+  the title keeps scattered through a 100 MB argument buffer, which a
+  window of records at one step cannot serve).
+- `VICTORY_INDIRECT_GATHER=1` (off by default): a single indirect record
+  that misses its window gets a slot in a scratch buffer of its list, and
+  the list's prelude clamps all such records in one pass by a table of
+  their offsets (the clamp shader with a gather bit), where each draw had
+  a compute pass of the layer's in front of it. Proved by clamping every
+  gathered record again at its draw and comparing on the card
+  (`VICTORY_INDIRECT_WINDOW_CHECK=1`): 7.9 million records, none differed.
+  About 600 of the ~1,600 draws that missed a window are served; the
+  others come after a dispatch or a storing draw in their list. With
+  `VICTORY_CARD_REHASH_RUNS=1`: 104 -> 97 ms a frame (10.3 frames a
+  second at 3,800 draws).
+- What the card's time is now, added up: of ~87 ms busy in a 97 ms
+  frame, the layer's own lists are ~19 ms and its clamp passes 10-20 ms;
+  about 50 ms are the title's own ~30 compute passes and its geometry at
+  2560x1440 as translated. With every pass of the layer's gone, this
+  scene would still be near 20 frames a second on this card: the
+  translated shaders have to get cheaper too.
+- Measured and found to give nothing (switches left in, off):
+  `VICTORY_REFRESH_ONCE`, `VICTORY_ASYNC_PRESENT`, `VICTORY_VIEW_KNOWN`,
+  `VICTORY_SPREAD`, `VICTORY_QUEUE2=3`, `VICTORY_WINDOW_JUMP`. Each has an
+  `=alt` form (twenty seconds on, twenty off, each change said in the
+  log) so that one run measures both in the same scene.
 
 **Update, the same night: the first room now renders right on the test
 machine** (walls, textures, people, lamps), at 190 to 450 ms a frame (2 to 5

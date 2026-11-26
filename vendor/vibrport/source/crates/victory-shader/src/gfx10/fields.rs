@@ -190,7 +190,7 @@ impl Instruction {
     /// Decodes the operand fields. `wave64` sizes lane masks.
     pub fn fields(&self, wave64: bool) -> Fields {
         let name = self.name().unwrap_or("");
-        let w = |i: usize| self.words().get(i).copied().unwrap_or(0);
+        let w = |i: usize| self.words.get(i).copied().unwrap_or(0);
         let (w0, w1) = (w(0), w(1));
         let bit = |word: u32, n: u32| word >> n & 1 != 0;
         let cache = |glc, slc, dlc| Cache { glc, slc, dlc };
@@ -418,6 +418,8 @@ impl Instruction {
                     saddr: (self.encoding != Encoding::Flat)
                         .then(|| scalar(saddr, 1 + u8::from(self.encoding == Encoding::Global))),
                     offset: match self.encoding {
+                        // GFX10 FLAT offsets are 11-bit and unsigned: the
+                        // hardware ignores bit 11.
                         Encoding::Flat => (w0 & 0x7FF) as i16,
                         _ => ((w0 << 4) as i16) >> 4,
                     },
@@ -446,7 +448,7 @@ impl Instruction {
         if matches!(name, "v_nop" | "v_pipeflush" | "v_clrexcp") {
             return Valu::default();
         }
-        let w = |i: usize| self.words().get(i).copied().unwrap_or(0);
+        let w = |i: usize| self.words.get(i).copied().unwrap_or(0);
         let w0 = w(0);
         let (dst_n, src_n) = valu_dwords(name);
         let compare = match self.encoding {

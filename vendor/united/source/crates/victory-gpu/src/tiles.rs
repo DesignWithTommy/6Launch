@@ -645,64 +645,16 @@ impl Drop for Tiled {
     }
 }
 
-/// Host textures with levels on demand let go while something else may
-/// still name them, with their tiles: a list recorded or in the air keeps
-/// the texture (`HostList::keep`), not its host copy, and the texture's
-/// tiles are in heaps of ours. Given back to the pool, they were given to
-/// other textures, and a heap with all its tiles free went back to the
-/// card, while a list still to run read through the old texture's
-/// mappings: the device was removed seconds after a sweep that let go 610
-/// host copies, with a heap given back. Here the tiles stay given until
-/// the texture is ours alone.
-static LET_GO: Mutex<Vec<(ID3D12Resource, Tiled)>> = Mutex::new(Vec::new());
-
-/// `texture`'s host copy is let go: its tiles go back once nothing else
-/// names `texture` ([`give_back_let_go`]); at once if nothing does now.
-pub(crate) fn let_go(texture: ID3D12Resource, tiled: Tiled) {
-    if crate::host::references(&texture) == 1 {
-        drop(texture);
-        drop(tiled);
-        return;
-    }
-    LET_GO.lock().unwrap_or_else(|e| e.into_inner()).push((texture, tiled));
-}
-
-/// The host copies let go whose tiles still wait (tests).
-#[cfg(test)]
-fn let_go_waiting() -> usize {
-    LET_GO.lock().unwrap_or_else(|e| e.into_inner()).len()
-}
-
-/// Gives back the tiles of textures let go that nothing else names now
-/// (the sweep calls it; lists drop what they keep when they are reset).
-pub(crate) fn give_back_let_go() {
-    let done: Vec<(ID3D12Resource, Tiled)> = {
-        let mut waiting = LET_GO.lock().unwrap_or_else(|e| e.into_inner());
-        if waiting.is_empty() {
-            return;
-        }
-        let (done, keep): (Vec<_>, Vec<_>) =
-            std::mem::take(&mut *waiting).into_iter().partition(|(texture, _)| crate::host::references(texture) == 1);
-        *waiting = keep;
-        done
-    };
-    // The texture first, then its tiles (`Tiled`'s drop gives them back).
-    for (texture, tiled) in done {
-        drop(texture);
-        drop(tiled);
-    }
-}
-
 /// Keeps a two-dimensional shader view (2D or 2D array) from the levels
 /// before `first` of a texture of `levels` levels: it starts at `first` if
 /// it started before it, shows as many levels fewer (clamped to the
-/// remaining levels), and reduces `ResourceMinLODClamp` by the same shift so
-/// the effective minimum LOD stays at the same resource level.
+/// remaining levels). `ResourceMinLODClamp` is measured from mip 0 of the
+/// resource, so moving the start of the view preserves that field.
 pub(crate) fn show_from(desc: &mut D3D12_SHADER_RESOURCE_VIEW_DESC, first: u32, levels: u32) {
     if first >= levels {
         return;
     }
-    let clamp = |most: &mut u32, mips: &mut u32, min_lod: &mut f32| {
+    let clamp = |most: &mut u32, mips: &mut u32| {
         if first <= *most {
             return;
         }
@@ -711,20 +663,17 @@ pub(crate) fn show_from(desc: &mut D3D12_SHADER_RESOURCE_VIEW_DESC, first: u32, 
         if *mips != u32::MAX {
             *mips = mips.saturating_sub(fewer).clamp(1, levels - first);
         }
-        if *min_lod > 0.0 {
-            *min_lod = (*min_lod - fewer as f32).max(0.0);
-        }
     };
     match desc.ViewDimension {
         D3D12_SRV_DIMENSION_TEXTURE2D => {
             // SAFETY: `ViewDimension` selects `Texture2D`.
             let view = unsafe { &mut desc.Anonymous.Texture2D };
-            clamp(&mut view.MostDetailedMip, &mut view.MipLevels, &mut view.ResourceMinLODClamp);
+            clamp(&mut view.MostDetailedMip, &mut view.MipLevels);
         }
         D3D12_SRV_DIMENSION_TEXTURE2DARRAY => {
             // SAFETY: `ViewDimension` selects `Texture2DArray`.
             let view = unsafe { &mut desc.Anonymous.Texture2DArray };
-            clamp(&mut view.MostDetailedMip, &mut view.MipLevels, &mut view.ResourceMinLODClamp);
+            clamp(&mut view.MostDetailedMip, &mut view.MipLevels);
         }
         _ => {}
     }
@@ -1312,10 +1261,10 @@ void look() {
         give_back(singles[1].1, &singles[1].2);
     }
 
-    /// (v) A view made by [`show_from`] of a texture whose level 0 has no
-    /// tiles returns level 1's colour for a sample at level 0; the view as
-    /// the title asked returns zero.
-    fn the_view_starts_at_the_first_level_with_tiles(rig: &mut Rig) -> Option<()> {
+    /// (v) Sample LOD 0 through the adjusted and original views. Level 0
+    /// has no tiles. A minimum LOD inside the resident range should select
+    /// the same resource level through either view.
+    fn sample_resident_views(rig: &mut Rig, min_lod: f32) -> Option<[u32; 2]> {
         rig.step = "step 5, the view from the first level with tiles";
         let cs = compile(LOOK, s!("look"), s!("cs_5_1")).ok()?;
         let format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -1361,7 +1310,7 @@ void look() {
                         MostDetailedMip: 0,
                         MipLevels: u32::MAX,
                         PlaneSlice: 0,
-                        ResourceMinLODClamp: 0.0,
+                        ResourceMinLODClamp: min_lod,
                     },
                 },
             };
@@ -1403,14 +1352,12 @@ void look() {
             let mut data = std::ptr::null_mut();
             let range = D3D12_RANGE { Begin: 0, End: 16 };
             back.Map(0, Some(&range), Some(&mut data)).unwrap();
-            let read = std::slice::from_raw_parts(data.cast::<u32>(), 2).to_vec();
+            let read = data.cast::<[u32; 2]>().read();
             back.Unmap(0, None);
             read
         };
-        eprintln!("a sample at level 0: {} through the view from level 1, {} through the view as asked", read[0], read[1]);
-        assert_eq!(read[0], 32, "the view from the first level with tiles reads level 1");
-        assert_eq!(read[1], 0, "the view from level 0 reads a level without tiles");
-        Some(())
+        eprintln!("sample at LOD 0, minimum {min_lod}: adjusted and original {read:?}");
+        Some(read)
     }
 
     fn a_full_card_keeps_new_levels_waiting(rig: &mut Rig) {
@@ -1483,36 +1430,6 @@ void look() {
         assert_eq!(tiled.claim(small), small);
     }
 
-    /// A host copy let go while a list still keeps its texture (as
-    /// `HostList::keep` does): the tiles stay given until nothing but the
-    /// let-go list names the texture (issue #776).
-    fn a_texture_kept_by_a_list_keeps_its_tiles(rig: &mut Rig) {
-        rig.step = "step 8, a texture let go while a list keeps it";
-        let desc = Rig::desc(DXGI_FORMAT_BC7_UNORM, SIDE, LEVELS, true);
-        let (texture, tiled) = rig.reserved(&desc);
-        rig.give(&tiled, &texture, tiled.with_level(0));
-        // (the mapping is on the queue: run it before the texture can go)
-        rig.run(|_| {});
-        assert!(tiled.given_bytes() > 0, "level 0 has tiles");
-        let waiting = super::let_go_waiting();
-        // A list recorded or in the air keeps the texture.
-        let kept_by_a_list = texture.clone();
-        super::let_go(texture, tiled);
-        assert_eq!(super::let_go_waiting(), waiting + 1, "the tiles wait while the list keeps the texture");
-        super::give_back_let_go();
-        assert_eq!(super::let_go_waiting(), waiting + 1, "still kept: still waiting");
-        // The list is reset: it lets go of the texture.
-        drop(kept_by_a_list);
-        super::give_back_let_go();
-        assert_eq!(super::let_go_waiting(), waiting, "nothing names the texture: its tiles go back");
-        // And a texture nothing else names gives them back at once.
-        let (texture, tiled) = rig.reserved(&desc);
-        rig.give(&tiled, &texture, tiled.with_level(0));
-        rig.run(|_| {});
-        super::let_go(texture, tiled);
-        assert_eq!(super::let_go_waiting(), waiting, "given back at once");
-    }
-
     /// On the software adapter unless `VICTORY_TILES_TEST_CARD=1`.
     #[test]
     #[ignore = "on the card: run it by name with --ignored --nocapture"]
@@ -1529,9 +1446,12 @@ void look() {
         a_level_on_several_ranges(&mut rig);
         a_full_card_keeps_new_levels_waiting(&mut rig);
         a_claim_given_up_is_made_again(&mut rig);
-        a_texture_kept_by_a_list_keeps_its_tiles(&mut rig);
-        if the_view_starts_at_the_first_level_with_tiles(&mut rig).is_none() {
-            eprintln!("the view test's shader or objects could not be made; that part was skipped");
+        for (min_lod, expected) in [(0.0, [32, 0]), (3.0, [64, 64])] {
+            let Some(read) = sample_resident_views(&mut rig, min_lod) else {
+                eprintln!("the view test's shader or objects could not be made; that part was skipped");
+                break;
+            };
+            assert_eq!(read, expected, "resource minimum LOD {min_lod}");
         }
         rig.step = "the end";
         rig.check("every step done");
@@ -1560,7 +1480,7 @@ void look() {
     }
 
     #[test]
-    fn show_from_clamps_2d_and_2d_array_and_adjusts_min_lod() {
+    fn show_from_preserves_resource_min_lod_for_2d_and_2d_array() {
         let mut srv2d = D3D12_SHADER_RESOURCE_VIEW_DESC {
             Format: DXGI_FORMAT_R8G8B8A8_UNORM,
             ViewDimension: D3D12_SRV_DIMENSION_TEXTURE2D,
@@ -1580,7 +1500,7 @@ void look() {
         assert_eq!(v2d.MostDetailedMip, 3);
         // Clamped to remaining levels (11 - 3 = 8), not 12 - 3 = 9.
         assert_eq!(v2d.MipLevels, 8);
-        assert_eq!(v2d.ResourceMinLODClamp, 0.5);
+        assert_eq!(v2d.ResourceMinLODClamp, 3.5);
 
         let mut srv_arr = D3D12_SHADER_RESOURCE_VIEW_DESC {
             Format: DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -1602,7 +1522,7 @@ void look() {
         let varr = unsafe { srv_arr.Anonymous.Texture2DArray };
         assert_eq!(varr.MostDetailedMip, 2);
         assert_eq!(varr.MipLevels, 4);
-        assert_eq!(varr.ResourceMinLODClamp, 0.0);
+        assert_eq!(varr.ResourceMinLODClamp, 1.5);
     }
 
     #[test]

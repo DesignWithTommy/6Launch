@@ -30,14 +30,14 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | Rank | Runtime | Based on | Its author reports | Here |
 |---:|---|---|---|---|
 | 1 | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | VIctory | Aims for "the world at 30 frames a second". 13 to 22 fps in most scenes, longest run 41 min, RX 7900 XTX | ⚠️ Past the intro at ~15 fps, then out of graphics memory |
-| 2 | [Kelvaroq](https://github.com/fablinoo/kelvaroq) | VIctory, victory-fork | ~10 fps in typical views on an RTX 5080; a tester's 36 min session without a crash | Testing |
+| 2 | [Kelvaroq](https://github.com/fablinoo/kelvaroq) | VIctory, victory-fork | ~10 fps in typical views on an RTX 5080; a tester's 36 min session without a crash; shaders now translated once (heavy frames ~18 s to ~60 ms) | Testing |
 | 3 | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | VIctory, victory-fork | Open world at "até 6 fps" on an RTX 5060 Ti | ✅ 3D prison scene at 2 to 3 fps |
 | 4 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | VIctory (Neptune) | "~14 fps in the world" on an RTX 4070 SUPER, 14 to 17 fps over the last minute | ✅ 10 min, no crash, ~14 fps (earlier build). Try this one first on NVIDIA |
 | 5 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | VIctory, victory-fork | "Player in control" through the prologue, ~5.7 to 7.3 fps, 77 min session, RX 9070 XT | Testing again. Its intro crash was i95 leaving TuxBox DLLs in the game folder (fixed). The intro video flickers |
 | 6 | [victory-fork](https://github.com/fxceless/victory-fork) | VIctory | Half-hour sessions at about 7 to 12 fps; shadowed areas still black | ✅ Intro at 30 fps, 3D scene ~1 fps |
 | 7 | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | VIctory | 30 min in the world without a crash, 7.0 fps median, RTX 4090 | Testing |
-| 8 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | victory-fork | "A versão para placas de 8 GB": 4 to 7 fps at 1080p, hour-long sessions, RTX 4060 Ti | ❌ The game stops about 20 s in |
-| 9 | CGBJ ([cool_fox](https://github.com/DoubleGhosty/cool_fox), a continuation) | VIctory | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; the original repo is no longer on GitHub | Not run yet |
+| 8 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | victory-fork | "A versão para placas de 8 GB": 4 to 7 fps at 1080p, hour-long sessions, RTX 4060 Ti; the opening cutscene at ~18–19 fps on the Series S profile | ❌ The game stops about 20 s in |
+| 9 | CGBJ ([cool_fox](https://github.com/DoubleGhosty/cool_fox), a continuation) | VIctory | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub | Not run yet |
 | 10 | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | VIctory | The world at 5 to 8 fps on an RX 9070 XT, a 15 min drive | ❌ |
 | 11 | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | VIctory-7900XTX | 20 to 22 fps indoors on an RTX 5070, at half render scale on the Series S profile; no session length given | Not run yet |
 | 12 | [Vertex](https://github.com/proneonn/Vertex) | VIctory | "Not playable yet." About 7 to 10 fps, no crash in 16 of 18 sessions, RTX 5070 | Not run yet |
@@ -53,7 +53,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 27 | [DexNom RayTime](https://github.com/DexNom/VIctory) | VIctory | Its "most complete tested build": 3.5 to 4 fps indoors, about 1 with ray tracing, RX 7900 XTX | Not run yet |
 | 28 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | victory-fork | About 4 fps in the opening mission, RTX 3060 | ✅ 3D at 2 to 3 fps |
 | 31 | [VIctory](https://github.com/Marvisak/VIctory) | (the original) | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | Not run yet |
-| – | [Victory-United](https://github.com/Fayberr/Victory-United) | VIctory | One tree of VIctory's best open pull requests; 9.3 fps median over 15 minutes after merging VIctory-7900XTX's speed work | Not run yet |
+| – | [Victory-United](https://github.com/Fayberr/Victory-United) | VIctory | VIctory's best open pull requests, now rebuilt on Vice-Tay's code; a 34.7 minute session played by hand ended normally | Not run yet |
 | – | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | VIctory-NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker | Not run yet |
 | – | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | CGBJ | cool_fox with VIctory-NVIDIA's 8 GB patches; 7.7 fps at half render scale, 2–3 fps native; not on the tracker | Not run yet |
 | – | i95-Victory (ours) | Kelvaroq | Our own fork: Kelvaroq plus the 8 GB and skin fixes from VI-BR-PORT, soldsawn and VItoriaBr | Not run yet |

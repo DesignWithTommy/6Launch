@@ -622,6 +622,8 @@ mod tests {
         )
         .unwrap();
         let shader = Arc::new(Shader {
+            #[cfg(windows)]
+            resolves_light: false,
             stage: "vertex",
             hash: "synthetic-standin".into(),
             container: vec![],
