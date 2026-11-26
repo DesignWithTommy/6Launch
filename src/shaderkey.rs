@@ -15,6 +15,9 @@ use std::path::{Path, PathBuf};
 /// The exe read, however each fork words the statement around it.
 const LINE: &str = "std::env::current_exe().and_then(std::fs::read)";
 const WITH: &str = "std::env::current_exe().and_then(|e| std::fs::read(e.with_file_name(\"neonbridge-key.bin\")).or_else(|_| std::fs::read(&e)))";
+/// Belobug's form (it may borrow another build's exe first).
+const LINE2: &str = "other.map_or_else(std::env::current_exe, Ok).and_then(std::fs::read)";
+const WITH2: &str = "other.map_or_else(std::env::current_exe, Ok).and_then(|e| std::fs::read(e.with_file_name(\"neonbridge-key.bin\")).or_else(|_| std::fs::read(&e)))";
 pub const KEY_BIN: &str = "neonbridge-key.bin";
 
 pub fn on() -> bool {
@@ -42,7 +45,7 @@ fn walk(dir: &Path, depth: u32, out: &mut Vec<PathBuf>) {
                 walk(&p, depth + 1, out);
             }
         } else if n == "shader_cache.rs" && p.parent().and_then(Path::parent).is_some_and(|g| g.ends_with("victory-gpu")) {
-            if fs::read_to_string(&p).is_ok_and(|t| t.contains(LINE)) {
+            if fs::read_to_string(&p).is_ok_and(|t| t.contains(LINE) || t.contains(LINE2)) {
                 out.push(p);
             }
         }
@@ -63,7 +66,7 @@ pub fn apply(root: &Path) -> Vec<(PathBuf, Vec<u8>)> {
     }
     for f in files(root) {
         let Ok(orig) = fs::read(&f) else { continue };
-        let text = String::from_utf8_lossy(&orig).replace(LINE, WITH);
+        let text = String::from_utf8_lossy(&orig).replace(LINE, WITH).replace(LINE2, WITH2);
         if fs::write(&f, text).is_ok() {
             println!("[launch] shader keys kept across rebuilds ({})", f.display());
             kept.push((f, orig));
