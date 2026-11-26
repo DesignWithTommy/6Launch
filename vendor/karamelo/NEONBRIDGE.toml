@@ -19,7 +19,7 @@ preset_series_x = ["--console=series-x", "VICTORY_OWN_UPSCALER=", "VICTORY_RENDE
 preset_8gb = ["VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours: its 1536 MB card buffers trimmed for 8 GB cards
 
 [env]   # play-nvidia.ps1:18-35
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"
 VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_RELAY = "2"
 VICTORY_WIDE_BACK = "1"

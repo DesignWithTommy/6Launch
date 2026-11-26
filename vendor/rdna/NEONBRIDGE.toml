@@ -23,7 +23,7 @@ preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]
 preset_8gb = ["--console=series-s", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours
 
 [env]   # rdna-preset.json base + fast
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"
 VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_RELAY = "2"
 VICTORY_WIDE_BACK = "1"

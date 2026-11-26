@@ -17,7 +17,7 @@ agility = false
 preset_half_scale = ["VICTORY_RENDER_SCALE=0.5", "VICTORY_OWN_UPSCALER=1"]   # README: its 7.7 fps row
 
 [env]   # Play-VIctory.cmd
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"
 VICTORY_AMBIENT_AIR = "1.5"
 VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_RELAY = "2"
