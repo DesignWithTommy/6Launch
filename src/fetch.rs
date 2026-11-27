@@ -32,7 +32,22 @@ pub fn has_sources(dir: &Path) -> bool {
 
 /// vendor/<name> holds a tree of its own.
 fn vendored(dir: &Path) -> bool {
-    ["Cargo.toml", "apps", "crates", "third_party", "src", "runtime"].iter().any(|p| dir.join(p).exists())
+    ["Cargo.toml", "apps", "crates", "third_party", "src", "runtime"].iter().any(|p| has_source_file(&dir.join(p)))
+}
+
+/// `p` is a file, or a folder with a file outside any `target` folder: a
+/// leftover build output alone (vendor/anyxboxx/third_party/victory/target,
+/// 1.2 GB) is not a source tree, and counting it built in a folder with no
+/// Cargo.toml ("manifest path ... does not exist").
+fn has_source_file(p: &Path) -> bool {
+    if p.is_file() {
+        return true;
+    }
+    let Ok(rd) = fs::read_dir(p) else { return false };
+    rd.flatten().any(|e| {
+        let q = e.path();
+        if q.is_dir() { q.file_name().is_some_and(|n| n != "target") && has_source_file(&q) } else { true }
+    })
 }
 
 /// The full commit in vendor/<name>/UPSTREAM.

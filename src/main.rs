@@ -1970,6 +1970,10 @@ static PANIC_LOG: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None
 /// ends every child through the job below.
 fn panic_hook() {
     std::panic::set_hook(Box::new(|info| {
+        // A closed stdout (`i95 --list x | head -1`) is the reader leaving, not a fault: exit quietly, no box.
+        if info.to_string().contains("failed printing to stdout") {
+            std::process::exit(0);
+        }
         let thread = std::thread::current().name().unwrap_or("unnamed").to_owned();
         let text = format!("[launch] neonbridge panicked on thread {thread}: {info}\n{}", std::backtrace::Backtrace::force_capture());
         eprintln!("{text}");
