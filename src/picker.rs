@@ -771,7 +771,11 @@ fn rows() -> Vec<Row> {
     // Our own runtimes (`pin = true`, e.g. cta) first, unranked: not a tracker rank.
     let pinned = crate::runtimes::pinned;
     keyed.sort_by_key(|k| (!pinned(&k.1.name), k.0.2, k.0.1.clone()));
-    let mut rows: Vec<Row> = keyed.into_iter().map(|((_, g, rk), mut r)| { r.title = if pinned(&r.name) { format!("Ours \u{00B7} {}", r.title) } else if rk == u32::MAX { format!("{g} \u{00B7} {}", r.title) } else { format!("#{rk} {g} \u{00B7} {}", r.title) }; r }).collect();
+    let mut rows: Vec<Row> = keyed.into_iter().map(|((_, g, rk), mut r)| {
+        // Name first, the fork on the second line beside the commit: easier to scan.
+        if g != r.title { r.version = format!("{g} fork \u{00B7} {}", r.version); }
+        r.title = if pinned(&r.name) { format!("Ours: {}", r.title) } else if rk == u32::MAX { r.title.clone() } else { format!("#{rk}  {}", r.title) };
+        r }).collect();
     for r in &mut old {
         r.title = format!("Archived \u{00B7} {}", r.title);
     }
