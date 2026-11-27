@@ -14,7 +14,10 @@ for d in vendor/*/; do
   [ ${#new} -eq 40 ] && [ "$new" != "$old" ] || continue
   # A commit touching the author's launch scripts, settings or README may change what
   # the toml should say: held for a hand check (listed in the run summary).
-  if gh api "repos/$repo/compare/$old...$new" -q '.files[].filename' 2>/dev/null | grep -qiE '\.(ps1|cmd|bat|toml|json)$|readme|settings\.rs|apps/[^/]+/src/main\.rs'; then
+  # A failed compare, or GitHub's 300-file cap (the list may be cut), is held too.
+  files=$(gh api "repos/$repo/compare/$old...$new" -q '.files[].filename' 2>/dev/null) || files="(compare failed)"
+  if [ "$files" = "(compare failed)" ] || [ "$(printf '%s\n' "$files" | wc -l)" -ge 300 ] ||
+     printf '%s\n' "$files" | grep -qiE '\.(ps1|cmd|bat|toml|json|sh|py|cs)$|readme|settings\.rs|(^|/)launcher/|(^|/)scripts/|apps/[^/]+/src/(main|play_launcher)\.rs'; then
     echo "$n: held for review (${new:0:7} changes launch files)"
     echo "- $n $repo ${old:0:7}..${new:0:7}" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
     continue

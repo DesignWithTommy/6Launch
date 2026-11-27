@@ -29,7 +29,7 @@ options = [
   "VICTORY_DISK_CORES=slow (default off): the DirectStorage workers ask for the slow cores (fxceless d827419), read at crates/victory-hle/src/modules/dstorage.rs:499",
 ]
 # ScarlettPort play-victory.ps1:51-59 settings, not this author's: optional (README.md:44 names RELAY=2 as a newer switch).
-preset_scarlettport_settings = ["VICTORY_RELAY=2", "VICTORY_PIPELINE_WAIT_MS=0"]   # the ScarlettPort switches this tree reads
+preset_scarlettport_settings = ["VICTORY_PIPELINE_WAIT_MS=0"]   # the ScarlettPort switches this tree reads
 preset_series_x = ["--console=series-x"]
 # Below: Neonbridge plumbing only, no change to how the author's build runs.
 preset_plain = ["VICTORY_AMBIENT=", "VICTORY_AMBIENT_AIR=", "VICTORY_CARD_AWAKE=", "VICTORY_CARD_BUFFERS_MIN_KB=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_CARD_STEPS=", "VICTORY_INDIRECT_BATCH=", "VICTORY_INDIRECT_WINDOW=", "VICTORY_JOIN_COPIES=", "VICTORY_JOIN_PARTS=", "VICTORY_LEVELS_ON_DEMAND=", "VICTORY_LOG=", "VICTORY_MAP_THREADS=", "VICTORY_RELAY=", "VICTORY_RELAY_COPY=", "VICTORY_SHOW_AFTER=", "VICTORY_TEXTURE_NO_WAIT=", "VICTORY_THIN=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_WIDE_BACK="]   # the tree's own defaults (none of Play-VIctory.cmd's switches)

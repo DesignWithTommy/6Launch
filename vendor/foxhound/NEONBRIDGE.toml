@@ -18,11 +18,12 @@ cache_env = "VICTORY_CACHE_DIR"
 prewarm = ["shaders", "{game}"]   # play-foxhound.ps1:115 (then warm, :119)
 agility = false
 
+# DLSS / frame generation: put the files of NVIDIA Streamline SDK bin\x64 in %LOCALAPPDATA%\6ixpack\streamline (not shipped: NVIDIA licence)
 preset_series_s = ["--console=series-s", "VICTORY_NATIVE_1440P="]   # play-foxhound.ps1:7,68 -SeriesS
 preset_1080to1440 = ["VICTORY_NATIVE_1440P=", "VICTORY_RENDER_1080P=1"]   # play-foxhound.ps1:70 -Res 1080to1440
 preset_4k = ["VICTORY_NATIVE_1440P="]   # play-foxhound.ps1:24-26 -Res 4k
-preset_dlss = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=C:\\dev\\sdk\\streamline-sdk-v2.14.16\\bin\\x64"]   # play-foxhound.ps1:72-80 (its default when Streamline is found; set your dir)
-preset_framegen = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=C:\\dev\\sdk\\streamline-sdk-v2.14.16\\bin\\x64", "VICTORY_FRAMEGEN=1"]   # play-foxhound.ps1:76 -FrameGen
+preset_dlss = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=%LOCALAPPDATA%\\6ixpack\\streamline"]   # play-foxhound.ps1:72-80 (its default when Streamline is found; set your dir)
+preset_framegen = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=%LOCALAPPDATA%\\6ixpack\\streamline", "VICTORY_FRAMEGEN=1"]   # play-foxhound.ps1:76 -FrameGen
 preset_60fps = ["VICTORY_FRAME_INTERVAL_US=16667"]   # play-foxhound.ps1:81 -Fps 60
 preset_play_victory = ["--console=series-s", "VICTORY_NATIVE_1440P=", "VICTORY_LEVELS_ON_DEMAND=1", "VICTORY_LOG=warn"]   # Play-VIctory.cmd:18-39 (its pareto set; foxhound's extra switches stay on)
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]

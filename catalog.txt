@@ -757,11 +757,12 @@ cache_env = "VICTORY_CACHE_DIR"
 prewarm = ["shaders", "{game}"]   # play-foxhound.ps1:115 (then warm, :119)
 agility = false
 
+# DLSS / frame generation: put the files of NVIDIA Streamline SDK bin\x64 in %LOCALAPPDATA%\6ixpack\streamline (not shipped: NVIDIA licence)
 preset_series_s = ["--console=series-s", "VICTORY_NATIVE_1440P="]   # play-foxhound.ps1:7,68 -SeriesS
 preset_1080to1440 = ["VICTORY_NATIVE_1440P=", "VICTORY_RENDER_1080P=1"]   # play-foxhound.ps1:70 -Res 1080to1440
 preset_4k = ["VICTORY_NATIVE_1440P="]   # play-foxhound.ps1:24-26 -Res 4k
-preset_dlss = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=C:\\dev\\sdk\\streamline-sdk-v2.14.16\\bin\\x64"]   # play-foxhound.ps1:72-80 (its default when Streamline is found; set your dir)
-preset_framegen = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=C:\\dev\\sdk\\streamline-sdk-v2.14.16\\bin\\x64", "VICTORY_FRAMEGEN=1"]   # play-foxhound.ps1:76 -FrameGen
+preset_dlss = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=%LOCALAPPDATA%\\6ixpack\\streamline"]   # play-foxhound.ps1:72-80 (its default when Streamline is found; set your dir)
+preset_framegen = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=%LOCALAPPDATA%\\6ixpack\\streamline", "VICTORY_FRAMEGEN=1"]   # play-foxhound.ps1:76 -FrameGen
 preset_60fps = ["VICTORY_FRAME_INTERVAL_US=16667"]   # play-foxhound.ps1:81 -Fps 60
 preset_play_victory = ["--console=series-s", "VICTORY_NATIVE_1440P=", "VICTORY_LEVELS_ON_DEMAND=1", "VICTORY_LOG=warn"]   # Play-VIctory.cmd:18-39 (its pareto set; foxhound's extra switches stay on)
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]
@@ -1229,12 +1230,11 @@ about = "Leonida 65f23c1 (GPL-3.0): static recompilation; about 10 fps in the fi
 upstream = "https://github.com/ProjectLeonidaL/leonida"
 updated = "2026-11-27 10:37"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 537   # GitHub stars when last checked
-build = ["cargo", "build", "--release", "-p", "leonida"]   # run-gta6.ps1:33, README.md:86
+build = ["cargo", "build", "--locked", "--release", "-p", "leonida"]   # run-gta6.ps1:33, README.md:86
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/leonida.exe"   # run-gta6.ps1:35
-diag_build = ["cargo", "build", "--profile", "diag", "-p", "leonida", "--features", "diagnostics"]   # README.md:290
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "leonida", "--features", "diagnostics"]   # README.md:290
 diag_exe = "target/diag/leonida.exe"   # Cargo.toml:79 [profile.diag]
-cwd = "target/release"
 run = ["run", "--execute"]   # run-gta6.ps1:86 (game folder from LEONIDA_GAME_DIR, run-gta6.ps1:61)
 game_env = "LEONIDA_GAME_DIR"   # leonida.example.toml:7
 cache_env = "LEONIDA_CACHE_DIR"   # leonida.example.toml:11
@@ -2447,7 +2447,8 @@ game_env = "VICTORY_GAME_DIR"   # Play-VIctory.cmd:7-8
 cache_env = "VICTORY_CACHE_DIR"   # Play-VIctory.cmd:19 (Neonbridge: this runtime's own cache dir)
 prewarm = ["shaders"]   # README.md:137-141 (then `warm`, README.md:188)
 agility = false   # not checked in the tree
-preset_framegen = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_FRAMEGEN=1", "VICTORY_FRAMEGEN_X=2", "VICTORY_TEXTURE_ROOM_PERCENT=80", "VICTORY_PLACED_ORDER=1", "VICTORY_PIPELINE_BOOK=1"]   # PLAY_FRAMEGEN.cmd mode 3 (scripts/play-framegen.ps1:49,118; play-VIctory_sm86.ps1:98-104): Series S + DLSS Quality + frame gen; needs VICTORY_STREAMLINE_DIR set by the user
+# DLSS / frame generation: put the files of NVIDIA Streamline SDK bin\x64 in %LOCALAPPDATA%\6ixpack\streamline (not shipped: NVIDIA licence)
+preset_framegen = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=%LOCALAPPDATA%\\6ixpack\\streamline", "VICTORY_FRAMEGEN=1", "VICTORY_FRAMEGEN_X=2", "VICTORY_TEXTURE_ROOM_PERCENT=80", "VICTORY_PLACED_ORDER=1", "VICTORY_PIPELINE_BOOK=1"]   # PLAY_FRAMEGEN.cmd mode 3 (scripts/play-framegen.ps1:49,118; play-VIctory_sm86.ps1:98-104): Series S + DLSS Quality + frame gen; needs VICTORY_STREAMLINE_DIR set by the user
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]
 
@@ -2847,7 +2848,7 @@ options = [
   "VICTORY_DISK_CORES=slow (default off): the DirectStorage workers ask for the slow cores (fxceless d827419), read at crates/victory-hle/src/modules/dstorage.rs:499",
 ]
 # ScarlettPort play-victory.ps1:51-59 settings, not this author's: optional (README.md:44 names RELAY=2 as a newer switch).
-preset_scarlettport_settings = ["VICTORY_RELAY=2", "VICTORY_PIPELINE_WAIT_MS=0"]   # the ScarlettPort switches this tree reads
+preset_scarlettport_settings = ["VICTORY_PIPELINE_WAIT_MS=0"]   # the ScarlettPort switches this tree reads
 preset_series_x = ["--console=series-x"]
 # Below: Neonbridge plumbing only, no change to how the author's build runs.
 preset_plain = ["VICTORY_AMBIENT=", "VICTORY_AMBIENT_AIR=", "VICTORY_CARD_AWAKE=", "VICTORY_CARD_BUFFERS_MIN_KB=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_CARD_STEPS=", "VICTORY_INDIRECT_BATCH=", "VICTORY_INDIRECT_WINDOW=", "VICTORY_JOIN_COPIES=", "VICTORY_JOIN_PARTS=", "VICTORY_LEVELS_ON_DEMAND=", "VICTORY_LOG=", "VICTORY_MAP_THREADS=", "VICTORY_RELAY=", "VICTORY_RELAY_COPY=", "VICTORY_SHOW_AFTER=", "VICTORY_TEXTURE_NO_WAIT=", "VICTORY_THIN=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_WIDE_BACK="]   # the tree's own defaults (none of Play-VIctory.cmd's switches)

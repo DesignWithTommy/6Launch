@@ -15,7 +15,8 @@ game_env = "VICTORY_GAME_DIR"   # Play-VIctory.cmd:7-8
 cache_env = "VICTORY_CACHE_DIR"   # Play-VIctory.cmd:19 (Neonbridge: this runtime's own cache dir)
 prewarm = ["shaders"]   # README.md:137-141 (then `warm`, README.md:188)
 agility = false   # not checked in the tree
-preset_framegen = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_FRAMEGEN=1", "VICTORY_FRAMEGEN_X=2", "VICTORY_TEXTURE_ROOM_PERCENT=80", "VICTORY_PLACED_ORDER=1", "VICTORY_PIPELINE_BOOK=1"]   # PLAY_FRAMEGEN.cmd mode 3 (scripts/play-framegen.ps1:49,118; play-VIctory_sm86.ps1:98-104): Series S + DLSS Quality + frame gen; needs VICTORY_STREAMLINE_DIR set by the user
+# DLSS / frame generation: put the files of NVIDIA Streamline SDK bin\x64 in %LOCALAPPDATA%\6ixpack\streamline (not shipped: NVIDIA licence)
+preset_framegen = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREAMLINE_DIR=%LOCALAPPDATA%\\6ixpack\\streamline", "VICTORY_FRAMEGEN=1", "VICTORY_FRAMEGEN_X=2", "VICTORY_TEXTURE_ROOM_PERCENT=80", "VICTORY_PLACED_ORDER=1", "VICTORY_PIPELINE_BOOK=1"]   # PLAY_FRAMEGEN.cmd mode 3 (scripts/play-framegen.ps1:49,118; play-VIctory_sm86.ps1:98-104): Series S + DLSS Quality + frame gen; needs VICTORY_STREAMLINE_DIR set by the user
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]
 
