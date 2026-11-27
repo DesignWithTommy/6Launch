@@ -3,10 +3,10 @@
 name = "vicetay"
 fork = "VIctory"
 rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vice-Tay 3e3fd57 (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
+about = "Vice-Tay 0148258 (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
-updated = "2026-11-27 15:31"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 332   # GitHub stars when last checked
+updated = "2026-11-27 15:33"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 335   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
 diag_build = []   # its default build is already the diagnostics one
@@ -18,8 +18,8 @@ cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
 preset_series_s = ["--console=series-s"]   # play.ps1 -Console series-s (play.ps1:93)
-preset_7900xtx = ["VICTORY_THIN_THREADS=", "VICTORY_UNDER_THREADS=", "VICTORY_LAND_THREADS=", "VICTORY_PLACED_ORDER=", "VICTORY_WAVE_WIDE_ONLY=", "VICTORY_MAP_THREADS=1", "VICTORY_CARD_AWAKE=1"]   # play.ps1 -Machine 7900xtx (play.ps1:32-35; auto picks it on a non-NVIDIA card)
-preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_INDIRECT_BATCH=", "VICTORY_MAP_THREADS=", "VICTORY_PLACED_ORDER=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe (play.ps1:41-49,58-65)
+preset_7900xtx = ["VICTORY_THIN_THREADS=", "VICTORY_UNDER_THREADS=", "VICTORY_LAND_THREADS=", "VICTORY_PLACED_ORDER=", "VICTORY_PLACED_FILL_REDIRECT=", "VICTORY_WAVE_WIDE_ONLY=", "VICTORY_MAP_THREADS=1", "VICTORY_CARD_AWAKE=1"]   # play.ps1 -Machine 7900xtx (play.ps1:32-35; auto picks it on a non-NVIDIA card)
+preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_INDIRECT_BATCH=", "VICTORY_MAP_THREADS=", "VICTORY_PLACED_ORDER=", "VICTORY_PLACED_FILL_REDIRECT=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe (play.ps1:41-49,58-65)
 preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing (play.ps1:66)
 preset_windowed = ["VICTORY_FULLSCREEN="]   # play.ps1 -Windowed (play.ps1:68)
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # full D3D12 breadcrumbs (play.ps1 sets faults); read in crates/victory-gpu/src/host.rs
@@ -59,6 +59,7 @@ VICTORY_UNDER_THREADS = "8"
 VICTORY_LAND_THREADS = "6"
 VICTORY_MAP_THREADS = "auto"
 VICTORY_PLACED_ORDER = "1"
+VICTORY_PLACED_FILL_REDIRECT = "1"   # play.ps1: beside PLACED_ORDER (RTX 5080: fewer refused submissions)
 VICTORY_WAVE_WIDE_ONLY = "6f225b641c5b0708,5dc3b25986622949,369cbe906ea72764,2cc4c197ee29e291"
 VICTORY_THIN = "1"   # play.ps1:60-65 (not -Safe)
 VICTORY_JOIN_PARTS = "8"
