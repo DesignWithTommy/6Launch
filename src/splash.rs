@@ -53,6 +53,16 @@ struct State {
 static STATE: Mutex<State> =
     Mutex::new(State { target: 0.0, pulse: true, since: None, shown: 0.0, text: String::new(), tick: 0 });
 static WINDOW: AtomicIsize = AtomicIsize::new(0);
+/// The title's own window, once watch() has found it.
+static GAME: AtomicIsize = AtomicIsize::new(0);
+/// Title mode: the game presents, but only its start screen; the art covers
+/// it (click-through, the game keeps the input) until 3D appears.
+static TITLE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+const WM_TITLE: u32 = WM_APP + 1;
+/// Draws per frame that mean the world is on screen (the start screen draws a few dozen).
+const WORLD_DRAWS: u64 = 300;
+/// Title mode gives up after this long, in timer ticks (33 ms): 90 s (runtimes that print no draw counts).
+const TITLE_TICKS: u32 = 90 * 30;
 
 fn state() -> std::sync::MutexGuard<'static, State> {
     STATE.lock().unwrap_or_else(|e| e.into_inner())
@@ -121,8 +131,40 @@ pub fn closed() -> bool {
     matches!(WINDOW.load(Ordering::Acquire), 0 | -2)
 }
 
+/// The title presented its first frame: with start-screen art, the loader
+/// turns into a click-through curtain over the game until [`line`] sees 3D;
+/// without art it closes.
+pub fn first_frame() {
+    let hwnd = WINDOW.load(Ordering::Acquire);
+    if hwnd <= 0 || TITLE.load(Ordering::Acquire) {
+        if hwnd == -1 {
+            close();
+        }
+        return;
+    }
+    if splash_art() == 0 || std::env::var("NEONBRIDGE_TITLE_ART").as_deref() == Ok("0") {
+        close();
+        return;
+    }
+    TITLE.store(true, Ordering::Release);
+    unsafe { PostMessageW(hwnd as HWND, WM_TITLE, 0, 0) };
+}
+
+/// A runtime log line: in title mode, the victory family's
+/// "N draws/frame" at world scale ends it.
+pub fn line(line: &str) {
+    if !TITLE.load(Ordering::Acquire) {
+        return;
+    }
+    let draws = line.find(" draws/frame").and_then(|at| line[..at].rsplit([' ', ',', ')']).next()?.parse::<u64>().ok());
+    if draws.is_some_and(|d| d >= WORLD_DRAWS) {
+        close();
+    }
+}
+
 /// Closes the loading screen.
 pub fn close() {
+    TITLE.store(false, Ordering::Release);
     let hwnd = WINDOW.swap(-2, Ordering::AcqRel);
     if hwnd > 0 {
         unsafe { PostMessageW(hwnd as HWND, WM_CLOSE, 0, 0) };
@@ -156,6 +198,7 @@ pub fn watch(exe: &std::path::Path) {
                 }
                 if fit(hwnd).is_some() {
                     game = hwnd;
+                    GAME.store(hwnd as isize, Ordering::Release);
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(if closed { 50 } else { 4 }));
@@ -304,7 +347,27 @@ fn run() {
 unsafe extern "system" fn proc_(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     unsafe {
         match msg {
+            WM_TITLE => {
+                // Click-through and never active: the game keeps the keyboard
+                // (its own A press on the start screen included).
+                let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, (ex | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE) as isize);
+                SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+                state().tick = 0;
+                cover_game(hwnd);
+                let game = GAME.load(Ordering::Acquire);
+                if game != 0 {
+                    SetForegroundWindow(game as HWND);
+                }
+                0
+            }
             WM_TIMER => {
+                if TITLE.load(Ordering::Acquire) {
+                    cover_game(hwnd);
+                    if state().tick > TITLE_TICKS {
+                        close();
+                    }
+                }
                 {
                     let mut s = state();
                     s.tick = s.tick.wrapping_add(1);
@@ -392,6 +455,13 @@ unsafe fn paint(hwnd: HWND) {
         GetClientRect(hwnd, &mut client);
         let (ox, oy) = ((client.right - WIDTH).max(0) / 2, (client.bottom - HEIGHT).max(0) / 2);
         let art = splash_art();
+        if TITLE.load(Ordering::Acquire) && art != 0 {
+            fill(screen, client, BACKGROUND);
+            let side = client.right.min(client.bottom);
+            blit_art(screen, art, (client.right - side) / 2, (client.bottom - side) / 2, side, side, 0, 0, ART_SIDE, ART_SIDE);
+            EndPaint(hwnd, &ps);
+            return;
+        }
         if ox > 0 || oy > 0 {
             fill(screen, client, BACKGROUND);
             if art != 0 {
@@ -554,5 +624,26 @@ unsafe fn blit_art(dst: HDC, art: isize, x: i32, y: i32, w: i32, h: i32, sx: i32
         StretchBlt(dst, x, y, w, h, src, sx, sy, sw, sh, SRCCOPY);
         SelectObject(src, old);
         DeleteDC(src);
+    }
+}
+
+/// Title mode: the curtain sits exactly over the game's client area.
+unsafe fn cover_game(hwnd: HWND) {
+    let game = GAME.load(Ordering::Acquire) as HWND;
+    if game.is_null() {
+        return;
+    }
+    unsafe {
+        let mut r: RECT = std::mem::zeroed();
+        if GetClientRect(game, &mut r) == 0 {
+            return;
+        }
+        let mut origin = POINT { x: 0, y: 0 };
+        ClientToScreen(game, &mut origin);
+        let mut now: RECT = std::mem::zeroed();
+        GetWindowRect(hwnd, &mut now);
+        if (now.left, now.top, now.right - now.left, now.bottom - now.top) != (origin.x, origin.y, r.right, r.bottom) {
+            SetWindowPos(hwnd, HWND_TOPMOST, origin.x, origin.y, r.right, r.bottom, SWP_NOACTIVATE);
+        }
     }
 }

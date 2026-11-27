@@ -1635,8 +1635,9 @@ fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<
                 }
                 // The loader stays up until the title presents its first frame.
                 if line.contains("PresentX #") || line.contains("frame times: ") || fps(&line).is_some() {
-                    crate::splash::close();
+                    crate::splash::first_frame();
                 }
+                crate::splash::line(&line);
                 if let Some(n) = line.split("frame times: ").nth(1).and_then(|s| s.split(' ').next()).and_then(|s| s.parse::<u64>().ok()) {
                     f.0 += n;
                     f.1 = true;
