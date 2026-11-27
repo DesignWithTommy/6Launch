@@ -2,7 +2,7 @@
 name = "vertex"
 fork = "VIctory"
 rank = 28   # #28 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vertex 33f26c4 (GPL-3.0): 'Not playable yet.' 6.4 to 9.9 fps median by run, longest run 25 min, RTX 5070; not yet run here"
+about = "Vertex 33f26c4 (GPL-3.0): 'Not playable yet.' 6.9 fps median in a 25-minute run, RTX 5070; not yet run here"
 upstream = "https://github.com/proneonn/Vertex"
 updated = "2026-11-25 21:00"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 15   # GitHub stars when last checked

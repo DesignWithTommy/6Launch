@@ -2,7 +2,7 @@
 name = "vinividivici"
 fork = "VIctory"
 rank = 23   # #23 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIniVIdiVIci daac379 (GPL-3.0): 6.6 fps median in a 280 s scripted first-room run, RTX 4060 Ti"
+about = "VIniVIdiVIci daac379 (GPL-3.0): 6.0 fps median in the first room on its defaults, 38 minutes in the world, RTX 4060 Ti; not yet run here"
 upstream = "https://github.com/KomanderDG88/VIniVIdiVIci"
 updated = "2026-11-26 23:44"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 6   # GitHub stars when last checked

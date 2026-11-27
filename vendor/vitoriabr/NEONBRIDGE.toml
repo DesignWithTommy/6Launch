@@ -1,7 +1,7 @@
 name = "vitoriabr"
 fork = "VIctory"
 rank = 7   # #7 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VItoriaBr 1361e19, GPL-3.0"
+about = "VItoriaBr 1361e19 (GPL-3.0): 4 to 6 fps on its current settings; not yet run here"
 upstream = "https://github.com/uiliannn/VItoriaBr"
 updated = "2026-11-25 23:09"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 231   # GitHub stars when last checked

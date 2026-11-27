@@ -3,7 +3,7 @@
 name = "rdna"
 fork = "VIctory"
 rank = 31   # #31 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-RDNA 2c5a395 (GPL-3.0): 23.1 fps median in gameplay at Series X 4K on an RX 7900 XT; about 40 minutes played by hand; not yet run here"
+about = "VIctory-RDNA 2c5a395 (GPL-3.0): 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds; not yet run here"
 upstream = "https://github.com/XaviFortes/VIctory-RDNA"
 updated = "2026-11-26 12:07"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 8   # GitHub stars when last checked
