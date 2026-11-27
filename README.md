@@ -67,6 +67,8 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 31 | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | VIctory | 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds | ✅ | Not run yet |
 | 32 | [Scarlett fork](https://github.com/op-lite/victory-scarlett) | CGBJ | cool_fox plus a local fork's work: 16 to 21 fps in hand-played heavy scenes (prison yard, open world), Series X at 1440p, ray tracing off, RTX 4080 SUPER | ✅ | Not run yet |
 | 33 | [mavis-9070xt](https://github.com/mavis140/mavis-9070xt) | VIctory-7900XTX | 18.9 fps median over a 27-minute session, Series X at 1440p, ray tracing off, RX 9070 XT 16 GB | ✅ | Not run yet |
+| – | [Victory-naixue2233](https://github.com/naixue2233/Victory-naixue2233) | victory-fork | About 11 fps at the first boat mission on an RTX 4070 (with its measured switches) | ✅ | Not run yet |
+| – | [victory-amd r13](https://github.com/tinygusie2/victory-amd) | victory-fork | About 3-5 fps in the open world on an RX 9060 XT | ✅ | Not run yet |
 | – | [Leonida](https://github.com/ProjectLeonidaL/leonida) | own (static recompilation) | About 10 fps in the first rooms with its newer switches; not a VIctory fork | ✅ | Not run yet |
 | – | [victory-sley-fork](https://github.com/Spaghetih/victory-sley-fork) | VIctory | 20.6 fps median at about 6,000 draws, 11-15 in dense night scenes; FSR 3.1 on NVIDIA | ✅ | Not run yet |
 | – | [victory-scarlett-3070](https://github.com/Yaekai/victory-scarlett-3070) | Scarlett fork | Tuned for 8 GB NVIDIA (RTX 3070): 16-21 fps in heavy scenes | ✅ | Not run yet |

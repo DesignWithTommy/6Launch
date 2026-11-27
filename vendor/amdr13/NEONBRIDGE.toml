@@ -1,0 +1,43 @@
+name = "amdr13"
+fork = "victory-amd r13"
+about = "victory-amd r13 bc646fa (GPL-3.0): victory-fork merged for AMD cards, about 3-5 fps in the open world on an RX 9060 XT 16 GB (its README); not yet run here"
+upstream = "https://github.com/tinygusie2/victory-amd"
+updated = "2026-11-26 11:50"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 1   # GitHub stars when last checked
+# Settings: scripts/start.ps1 (measured on an RX 9060 XT), as [env].
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md (+--locked)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # README.md
+diag_exe = "target/diag/victory.exe"
+run = ["run", "{game_exe}", "--execute"]   # README.md (Series X, its default and the profile it measures)
+prewarm = []   # no warm step in its scripts
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+preset_series_s = ["--console=series-s"]
+preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # crash breadcrumbs (diagnostics build)
+preset_plain = ["VICTORY_SHADER_LOOP_LIMIT=", "VICTORY_MAX_COMPUTE_KB=", "VICTORY_LATE_WAIT=", "VICTORY_WIDE_BACK=", "VICTORY_CARD_BUFFERS_MIN_MB=", "VICTORY_CARD_BUFFERS_MB=", "VICTORY_TEXTURE_BACK=", "VICTORY_INDIRECT_GATHER=", "VICTORY_JOIN_PARTS=", "VICTORY_INDIRECT_WINDOW=", "VICTORY_LEVELS_ON_DEMAND=", "VICTORY_COPY_PLAIN=", "VICTORY_REMAP_LEAN=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_SKIP_PIPELINES=", "VICTORY_DISPLAY_MODE=", "VICTORY_HEAP_WORKER=", "VICTORY_PARALLEL_REFRESH=", "VICTORY_SETTLE_ROOM=", "VICTORY_LOOKUP_CACHE="]   # the tree's own defaults, none of start.ps1's
+
+[env]   # scripts/start.ps1
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_SHADER_LOOP_LIMIT = "256"
+VICTORY_MAX_COMPUTE_KB = "48"
+VICTORY_LATE_WAIT = "3"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_BUFFERS_MIN_MB = "1"
+VICTORY_CARD_BUFFERS_MB = "1024"
+VICTORY_TEXTURE_BACK = "1"
+VICTORY_INDIRECT_GATHER = "1"
+VICTORY_JOIN_PARTS = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_COPY_PLAIN = "1"
+VICTORY_REMAP_LEAN = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_SKIP_PIPELINES = "072f5fe96efd27e1,0f1395e5942ca3b2,1a1089a18f7ff5f8,1b20028fc5fae124,1c02f8131c508c75,26fbf87d883e1381,27ce027e7188bed3,36bcbae3c6ee20b3,37d324dbc6c86d16,38047b50e3443232,38e7dedf37c90130,3fa1fda35402c93f,501f0865fdf45dfd,50949ebfee9eb51d,5c10a56026ce13dd,5ddd2ca380fd74d8,695febfd5efced05,70b1e13de6df8585,72ee7db2a361ed65,7b956e1f6d56609f,7fb216a0c6dee3a9,810e4e3cf4237f07,82d469a7fec64cb4,842de0c32bc8dcc5,8a13d3da7f64b8d1,96744a8cd6c0588f,a2d880ad5dea1f45,a4df980a1c65fdbe,a62731e90739f195,b740639a48e688c6,c2fed64ee9b4bf23,c5fc2bc7f3d416f4,d2c52fcd936985b4,d5784d991f3164ab,dc6ef2687950428a,dd66eddf464f4bb1,e2b858e568731a51,e932a28baa58153e,f33e805895d6dd30,fc0dcb1f5312423f,fcd45c3d0020311b,eeed82b877b44b5f"
+VICTORY_DISPLAY_MODE = "2560x1440"
+VICTORY_HEAP_WORKER = "1"
+VICTORY_PARALLEL_REFRESH = "1"
+VICTORY_SETTLE_ROOM = "1"
+VICTORY_LOOKUP_CACHE = "1"

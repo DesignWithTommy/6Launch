@@ -1,0 +1,23 @@
+name = "naixue"
+fork = "Victory-naixue2233"
+about = "Victory-naixue2233 1b50b3f (GPL-3.0): victory-fork with ztrx GPU work and crash/OOM fixes, about 11 fps at the first boat mission on an RTX 4070 12 GB (its README, with its measured switches); not yet run here"
+upstream = "https://github.com/naixue2233/Victory-naixue2233"
+updated = "2026-11-26 22:34"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 5   # GitHub stars when last checked
+# Its README: the measured figures use the switch set in diagnostics/README.md; the plain defaults are slower.
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md (+--locked)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # README.md
+diag_exe = "target/diag/victory.exe"
+run = ["run", "{game_exe}", "--execute"]   # README.md (Series X, its default and the profile it measures)
+prewarm = []   # no warm step in its scripts
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+preset_series_s = ["--console=series-s"]
+preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # crash breadcrumbs (diagnostics build)
+preset_measured = ["VICTORY_LEVELS_ON_DEMAND=1", "VICTORY_ASYNC_SUBMIT=1", "VICTORY_QUEUE2=1", "VICTORY_INDIRECT_WINDOW=1", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_MERGE_GAP=64", "VICTORY_MERGE_RUNS=4096", "VICTORY_STAGING_POOL=0", "VICTORY_COPY_PLAIN=1", "VICTORY_JOIN_PARTS=1", "VICTORY_BACK_OWN_VIEW=1", "VICTORY_INDIRECT_GATHER=1", "VICTORY_CARD_REHASH_RUNS=1", "VICTORY_CARD_WINDOWS_MB=2048", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1280", "VICTORY_TEXTURE_BACK=1", "VICTORY_CARD_HASH_LEN=1", "VICTORY_HEAP_WORKER=1"]   # diagnostics/README.md: the switches its timing runs used, plus HEAP_WORKER (README: the texture pass on its own thread)
+
+[env]
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
