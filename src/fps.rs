@@ -1,41 +1,47 @@
-//! Frame-rate overlay: a small topmost, click-through box in the game
-//! window's top-left corner with fps, ms/frame and a frame-time graph, for
-//! every runtime. It is fed from the log lines the launcher already reads:
-//! the victory family's "12.3 fps, 81.3 ms/frame" and TuxBox's heartbeat
-//! "completed PresentX #N (12.3 fps". F3 shows or hides it; off at start
-//! unless NEONBRIDGE_FPS=1.
+//! Frame-rate overlay for every runtime: Vice-Tay's HUD (src/hud.rs, copied
+//! from TaynanGT/Vice-Tay with credit) in a topmost, click-through window over
+//! the game's top-left corner. It is fed from the log lines the launcher
+//! already reads (the victory family's "12.3 fps, 81.3 ms/frame ... N
+//! draws/frame" and TuxBox's heartbeat "completed PresentX #N (12.3 fps") and
+//! from Windows' counters for the runtime's process. The runtimes' own
+//! overlays are switched off (runtimes.rs), so this is the one on screen.
+//! F3 shows or hides it; on at start unless NEONBRIDGE_FPS=0.
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
-use windows_sys::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
-const BACKGROUND: COLORREF = rgb(17, 18, 20);
-const BORDER: COLORREF = rgb(42, 43, 48);
-const TEXT: COLORREF = rgb(232, 232, 234);
-const SUB: COLORREF = rgb(139, 141, 148);
-const CYAN: COLORREF = rgb(0, 229, 255);
-pub const WIDTH: i32 = 200;
-pub const HEIGHT: i32 = 92;
-/// Samples the graph keeps (one per log line, about one a second).
-const KEEP: usize = 60;
+use crate::hud;
 
-const fn rgb(r: u8, g: u8, b: u8) -> COLORREF {
-    r as u32 | (g as u32) << 8 | (b as u32) << 16
+pub const WIDTH: i32 = hud::BASE_W as i32;
+pub const HEIGHT: i32 = hud::BASE_H as i32;
+/// Samples the graph keeps (one per log line).
+const KEEP: usize = 172;
+
+/// One frame-rate log line.
+#[derive(Clone, Default)]
+struct Sample {
+    fps: f64,
+    ms: f64,
+    draws: Option<u64>,
+    dropped: Option<u64>,
+    gpu_ms: Option<f64>,
+    preparing_ms: Option<f64>,
+    detail: Option<String>,
 }
 
-/// (fps, ms/frame) samples, oldest first.
-static SAMPLES: Mutex<Vec<(f64, f64)>> = Mutex::new(Vec::new());
+/// Samples, oldest first.
+static SAMPLES: Mutex<Vec<Sample>> = Mutex::new(Vec::new());
+/// What the window paints, rebuilt four times a second.
+static CANVAS: Mutex<Option<hud::Canvas>> = Mutex::new(None);
 static SHOWN: AtomicBool = AtomicBool::new(false);
 static STARTED: AtomicBool = AtomicBool::new(false);
 
 /// Whether the box is on screen now (the controls panel moves below it).
-/// The runtime draws its own fps overlay (toml own_overlay): ours starts hidden.
-pub static OWN_OVERLAY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
 pub fn shown() -> bool {
     SHOWN.load(Ordering::Relaxed)
 }
@@ -59,14 +65,83 @@ fn parse(line: &str) -> Option<(f64, f64)> {
     Some((fps, ms))
 }
 
+/// The number right before `key` in `line` ("1262 draws/frame").
+fn before(line: &str, key: &str) -> Option<f64> {
+    let at = line.find(key)?;
+    line[..at].trim_end().rsplit([' ', '(', ',']).next()?.parse::<f64>().ok().filter(|v| v.is_finite())
+}
+
+/// The number right after `key` in `line` ("copies 30.6 ms").
+fn after(line: &str, key: &str) -> Option<f64> {
+    line.split(key).nth(1)?.split(' ').next()?.parse::<f64>().ok().filter(|v| v.is_finite())
+}
+
 /// Takes one log line; frame-rate lines become samples.
 pub fn feed(line: &str) {
-    if let Some(s) = parse(line) {
-        let mut v = SAMPLES.lock().unwrap_or_else(|e| e.into_inner());
-        v.push(s);
-        if v.len() > KEEP {
-            v.remove(0);
-        }
+    let Some((fps, ms)) = parse(line) else { return };
+    let preparing_ms = before(line, " preparing");
+    let detail = preparing_ms.map(|p| format!("PREP {p:.1} | COPIES {:.1} | TEX {:.1}", after(line, "copies ").unwrap_or(0.0), after(line, "textures ").unwrap_or(0.0)));
+    let s = Sample {
+        fps,
+        ms,
+        draws: before(line, " draws/frame").map(|v| v as u64),
+        dropped: after(line, "dropped ").map(|v| v as u64),
+        gpu_ms: before(line, " on the GPU"),
+        preparing_ms,
+        detail,
+    };
+    let mut v = SAMPLES.lock().unwrap_or_else(|e| e.into_inner());
+    v.push(s);
+    if v.len() > KEEP {
+        v.remove(0);
+    }
+}
+
+/// The panel's numbers now.
+fn snapshot(runtime: &str, game: HWND, watch: &Option<hud::GpuWatch>, cpu: &hud::CpuMeter) -> hud::Snapshot {
+    let samples = SAMPLES.lock().map(|v| v.clone()).unwrap_or_default();
+    let last = samples.last().cloned().unwrap_or_default();
+    let (gpu_name, vram_total) = hud::gpu_info().clone();
+    let (load, dedicated, shared) = watch.as_ref().map_or((0.0, 0.0, 0.0), |w| w.sample());
+    let pid = watch.as_ref().map_or(0, |w| w.pid());
+    let (used, total, commit, _) = hud::system_memory();
+    let mut client: RECT = unsafe { std::mem::zeroed() };
+    unsafe { GetClientRect(game, &mut client) };
+    let gb = |b: f64| b / (1u64 << 30) as f64;
+    let recent = &samples[samples.len().saturating_sub(100)..];
+    let low = recent.iter().map(|s| s.fps).fold(f64::INFINITY, f64::min);
+    hud::Snapshot {
+        fps: last.fps,
+        frame_ms: last.ms,
+        gpu_ms: last.gpu_ms.unwrap_or(0.0),
+        gpu_pct: load.round() as u32,
+        gpu_measured: watch.is_some(),
+        submit_ms: last.preparing_ms.unwrap_or(0.0),
+        low1_fps: if low.is_finite() { low } else { 0.0 },
+        max_ms: recent.iter().map(|s| s.ms).fold(0.0, f64::max),
+        draws: last.draws.unwrap_or(0),
+        dropped: last.dropped.unwrap_or(0),
+        width: client.right.max(0) as u32,
+        height: client.bottom.max(0) as u32,
+        gpu_name,
+        vram_used_gb: gb(dedicated),
+        vram_budget_gb: gb(vram_total as f64),
+        vram_shared_gb: gb(shared),
+        vram_rt_gb: 0.0,
+        vram_tex_gb: 0.0,
+        vram_buf_gb: 0.0,
+        vram_bvh_gb: 0.0,
+        vram_oth_gb: 0.0,
+        cpu_name: hud::cpu_name().to_owned(),
+        cpu_pct: cpu.total_pct,
+        cores_pct: cpu.cores_pct.clone(),
+        proc_ram_gb: gb(hud::process_private_bytes(pid) as f64),
+        sys_ram_used_gb: gb(used as f64),
+        sys_ram_total_gb: gb(total as f64),
+        sys_commit_gb: gb(commit as f64),
+        history_ms: samples.iter().map(|s| s.ms as f32).collect(),
+        runtime: runtime.to_owned(),
+        detail: last.detail.unwrap_or_default(),
     }
 }
 
@@ -106,13 +181,13 @@ fn run(name: String, window: fn(&str) -> Option<HWND>) {
         if hwnd.is_null() {
             return;
         }
-        SetLayeredWindowAttributes(hwnd, 0, 215, LWA_ALPHA);
-        // A runtime with its own fps overlay (toml own_overlay) starts with
-        // ours hidden, whatever NEONBRIDGE_FPS says; F3 still shows it.
-        let own = OWN_OVERLAY.load(Ordering::Relaxed);
-        let mut wanted = !own && std::env::var("NEONBRIDGE_FPS").is_ok_and(|v| v.trim() == "1");
+        SetLayeredWindowAttributes(hwnd, 0, 235, LWA_ALPHA);
+        let mut wanted = std::env::var("NEONBRIDGE_FPS").map_or(true, |v| v.trim() != "0");
         let mut f3 = false;
-        let mut count = 0usize;
+        let mut watch: Option<hud::GpuWatch> = None;
+        let mut cpu = hud::CpuMeter::default();
+        let mut painted = std::time::Instant::now() - hud::EVERY;
+        let label = name.trim_end_matches(".exe").to_owned();
         let mut msg: MSG = std::mem::zeroed();
         loop {
             while PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
@@ -128,16 +203,21 @@ fn run(name: String, window: fn(&str) -> Option<HWND>) {
             f3 = f3_now;
             let show = wanted && crate::splash::closed() && focused;
             if let (true, Some(g)) = (show, game) {
-                let mut r: RECT = std::mem::zeroed();
-                GetWindowRect(g, &mut r);
-                // Top-right: runtimes draw their own overlays top-left (Flamingo's perf panel).
-                let mut me: RECT = std::mem::zeroed();
-                GetWindowRect(hwnd, &mut me);
-                SetWindowPos(hwnd, HWND_TOPMOST, r.right - 24 - (me.right - me.left), r.top + 48, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
-                let n = SAMPLES.lock().map(|v| v.len()).unwrap_or(0);
-                if n != count || !SHOWN.load(Ordering::Relaxed) {
+                // Top-left of the picture, where Vice-Tay draws it.
+                let mut origin = POINT { x: 0, y: 0 };
+                ClientToScreen(g, &mut origin);
+                SetWindowPos(hwnd, HWND_TOPMOST, origin.x, origin.y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                if painted.elapsed() >= hud::EVERY || !SHOWN.load(Ordering::Relaxed) {
+                    painted = std::time::Instant::now();
+                    let mut pid = 0;
+                    GetWindowThreadProcessId(g, &mut pid);
+                    if watch.as_ref().is_none_or(|w| w.pid() != pid) {
+                        watch = hud::GpuWatch::new(pid);
+                    }
+                    cpu.sample();
+                    let snap = snapshot(&label, g, &watch, &cpu);
+                    *CANVAS.lock().unwrap_or_else(|e| e.into_inner()) = Some(hud::paint_hud(&snap));
                     InvalidateRect(hwnd, std::ptr::null(), 0);
-                    count = n;
                 }
             } else if SHOWN.load(Ordering::Relaxed) {
                 ShowWindow(hwnd, SW_HIDE);
@@ -155,49 +235,17 @@ unsafe extern "system" fn proc_(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> L
         }
         let mut ps: PAINTSTRUCT = std::mem::zeroed();
         let dc = BeginPaint(hwnd, &mut ps);
-        let mut r: RECT = std::mem::zeroed();
-        GetClientRect(hwnd, &mut r);
-        let fill = |r: RECT, c: COLORREF| {
-            let b = CreateSolidBrush(c);
-            FillRect(dc, &r, b);
-            DeleteObject(b as _);
-        };
-        fill(r, BACKGROUND);
-        let frame = CreateSolidBrush(BORDER);
-        FrameRect(dc, &r, frame);
-        DeleteObject(frame as _);
-        SetBkMode(dc, TRANSPARENT as _);
-        let face = wide("Segoe UI Variable Text");
-        let font = |size: i32, weight: i32| CreateFontW(size, 0, 0, 0, weight, 0, 0, 0, 0, 0, 0, CLEARTYPE_QUALITY as _, 0, face.as_ptr());
-        let (big, small) = (font(24, 600), font(14, 400));
-        let text = |s: &str, x: i32, y: i32, color: COLORREF, f: HFONT| {
-            SelectObject(dc, f as _);
-            SetTextColor(dc, color);
-            let w: Vec<u16> = s.encode_utf16().collect();
-            TextOutW(dc, x, y, w.as_ptr(), w.len() as i32);
-        };
-        let samples = SAMPLES.lock().map(|v| v.clone()).unwrap_or_default();
-        match samples.last() {
-            Some(&(fps, ms)) => {
-                text(&format!("{fps:.1}"), 12, 8, TEXT, big);
-                text("fps", 12 + 8 + 13 * format!("{fps:.1}").len() as i32, 16, SUB, small);
-                text(&format!("{ms:.1} ms"), WIDTH - 72, 16, SUB, small);
-            }
-            None => text("Waiting for frames", 12, 14, SUB, small),
+        if let Some(c) = CANVAS.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+            let bgra: Vec<u32> = c.rgb.iter().map(|&[r, g, b]| (r as u32) << 16 | (g as u32) << 8 | b as u32).collect();
+            let mut info: BITMAPINFO = std::mem::zeroed();
+            info.bmiHeader.biSize = size_of::<BITMAPINFOHEADER>() as u32;
+            info.bmiHeader.biWidth = c.w as i32;
+            info.bmiHeader.biHeight = -(c.h as i32);
+            info.bmiHeader.biPlanes = 1;
+            info.bmiHeader.biBitCount = 32;
+            info.bmiHeader.biCompression = BI_RGB;
+            SetDIBitsToDevice(dc, 0, 0, c.w as u32, c.h as u32, 0, 0, 0, c.h as u32, bgra.as_ptr().cast(), &info, DIB_RGB_COLORS);
         }
-        // Frame times, newest on the right; the scale is the window's worst.
-        let graph = RECT { left: 12, top: 44, right: WIDTH - 12, bottom: HEIGHT - 12 };
-        fill(graph, rgb(26, 27, 30));
-        let worst = samples.iter().map(|s| s.1).fold(1.0f64, f64::max);
-        let bar = (graph.right - graph.left) / KEEP as i32;
-        let h = (graph.bottom - graph.top) as f64;
-        for (i, &(_, ms)) in samples.iter().rev().enumerate() {
-            let x = graph.right - (i as i32 + 1) * bar;
-            let top = graph.bottom - ((ms / worst) * h).round().max(1.0) as i32;
-            fill(RECT { left: x, top, right: x + bar.max(1) - (bar > 2) as i32, bottom: graph.bottom }, CYAN);
-        }
-        DeleteObject(big as _);
-        DeleteObject(small as _);
         EndPaint(hwnd, &ps);
         0
     }

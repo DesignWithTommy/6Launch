@@ -2089,8 +2089,11 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         env.push(("VICTORY_DATA_DIR".to_owned(), family_saves().display().to_string()));
     }
     env.extend(spec.env.iter().map(|(k, v)| (k.clone(), fill(v, &places))));
-    if spec.flag("own_overlay") {
-        crate::fps::OWN_OVERLAY.store(true, std::sync::atomic::Ordering::Relaxed);
+    // One fps panel for every runtime: i95's (Vice-Tay's HUD, src/hud.rs).
+    // The runtimes' own overlays are switched off; NEONBRIDGE_RUNTIME_OVERLAY=1 keeps them.
+    if std::env::var("NEONBRIDGE_RUNTIME_OVERLAY").map_or(true, |v| v.trim() != "1") {
+        env.retain(|(k, _)| !matches!(k.as_str(), "VICTORY_PANEL" | "FLAMINGO_OSD" | "VICTORY_DEBUG_HUD"));
+        env.extend([("VICTORY_PANEL", "0"), ("FLAMINGO_OSD", "0"), ("VICTORY_DEBUG_HUD", "0")].map(|(k, v)| (k.to_owned(), v.to_owned())));
     }
     if name == "xcl" && std::env::var_os("XCL_DXIL_CACHE").is_none() {
         env.push(("XCL_DXIL_CACHE".to_owned(), xcl_cache().display().to_string()));

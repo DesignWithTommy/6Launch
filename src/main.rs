@@ -33,6 +33,7 @@ mod shaders;
 mod splash;
 mod controls;
 mod fps;
+mod hud;
 
 use std::{
     collections::HashMap,
