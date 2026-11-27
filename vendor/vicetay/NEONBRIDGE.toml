@@ -3,10 +3,10 @@
 name = "vicetay"
 fork = "VIctory"
 rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vice-Tay 4fb1569 (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
+about = "Vice-Tay 2532474 (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
-updated = "2026-11-27 08:23"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 269   # GitHub stars when last checked
+updated = "2026-11-27 08:43"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 272   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
 diag_build = []   # its default build is already the diagnostics one
@@ -22,7 +22,7 @@ preset_7900xtx = ["VICTORY_THIN_THREADS=", "VICTORY_UNDER_THREADS=", "VICTORY_LA
 preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_INDIRECT_BATCH=", "VICTORY_MAP_THREADS=", "VICTORY_PLACED_ORDER=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe (play.ps1:41-49,58-65)
 preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing (play.ps1:66)
 preset_windowed = ["VICTORY_FULLSCREEN="]   # play.ps1 -Windowed (play.ps1:68)
-preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # full D3D12 breadcrumbs (play.ps1:25 sets light); read in crates/victory-gpu/src/host.rs
+preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # full D3D12 breadcrumbs (play.ps1 sets faults); read in crates/victory-gpu/src/host.rs
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (slow; crates/victory-gpu/src/host.rs, diagnostics build)
 preset_8gb = ["--console=series-s", "VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads (VICTORY_FILL_WAIT is not)
 
@@ -49,7 +49,7 @@ VICTORY_CARD_STEPS = "2"
 VICTORY_TITLE_PRIORITIES = "0"
 VICTORY_SHOW_AFTER = "1"
 VICTORY_AMBIENT = "0.8"
-VICTORY_D3D12_DRED = "light"
+VICTORY_D3D12_DRED = "faults"   # play.ps1 (#274): page faults kept as the launcher default
 VICTORY_THIN_THREADS = "12"   # play.ps1:36-57: -Machine auto on an NVIDIA card (4090 settings)
 VICTORY_UNDER_THREADS = "8"
 VICTORY_LAND_THREADS = "6"
