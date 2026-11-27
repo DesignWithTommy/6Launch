@@ -1,6 +1,7 @@
 # Neonbridge launcher spec for i95-Victory: Kelvaroq's patched victory-fork plus 8 GB fixes (README.md).
 name = "i95-victory"
 fork = "victory-fork"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 about = "i95-Victory dfb89ed: Kelvaroq 0a3c30d + VI-BR-PORT heap marks, TEXTURE_DROP_MIPS, AMBIENT (GPL-3.0); not yet run"
 upstream = "https://github.com/DesignWithTommy/i95-Victory"
 updated = "2026-11-25 23:09"   # the pinned upstream commit's date (scripts/runtime-info.py)

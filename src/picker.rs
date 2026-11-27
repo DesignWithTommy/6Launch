@@ -269,6 +269,35 @@ struct Row {
     frames: Option<u64>,
     /// A missing prerequisite: (reason, official download pages). Greyed out.
     missing: Option<(String, Vec<&'static str>)>,
+    /// What the filter reads: the card it is tuned for (toml gpu =), the
+    /// translator it forks (fork =), and its about text, lower case.
+    gpu: String,
+    fork: String,
+    about: String,
+}
+
+/// The list filters, cycled by clicking "Show:" (right click goes back).
+fn filters(all: &[Row]) -> Vec<String> {
+    let mut f: Vec<String> = ["All", "NVIDIA", "AMD", "8 GB cards", "16 GB RAM"].iter().map(|s| s.to_string()).collect();
+    let mut forks: Vec<String> = all.iter().map(|r| r.fork.clone()).collect();
+    forks.sort();
+    forks.dedup();
+    f.extend(forks.into_iter().map(|k| format!("{k} translator")));
+    f
+}
+
+fn shown(r: &Row, filter: &str) -> bool {
+    let g = r.gpu.to_ascii_lowercase();
+    // The first number before "GB" in its card: 4, 6-8, 8, 8-12 GB count as 8 GB cards.
+    let gb = g.split("gb").next().filter(|_| g.contains("gb")).and_then(|s| s.split(|c: char| !c.is_ascii_digit()).find(|n| !n.is_empty()).and_then(|n| n.parse::<u32>().ok()));
+    match filter {
+        "All" => true,
+        "NVIDIA" => g.contains("nvidia") || g.contains("any"),
+        "AMD" => g.contains("amd") || g.contains("any"),
+        "8 GB cards" => gb.is_some_and(|n| n <= 8) || r.about.contains("8 gb vram"),
+        "16 GB RAM" => ["16 gb ram", "16 gb of ram", "16-32 gb ram", "16 gb system ram"].iter().any(|k| r.about.contains(k)),
+        f => f.strip_suffix(" translator").is_some_and(|k| k == r.fork),
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -278,6 +307,7 @@ enum Hit {
     Output,
     Row(usize),
     Preset(usize),
+    Filter,
     Change,
     Advanced,
     Play,
@@ -286,6 +316,9 @@ enum Hit {
 
 struct State {
     rows: Vec<Row>,
+    /// Every runtime; rows is the part the filter shows.
+    all: Vec<Row>,
+    filter: usize,
     sel: usize,
     hover: Hit,
     presets: Vec<String>,
@@ -492,7 +525,14 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
     let foot = h - FOOTER;
     fill_rect(dc, rect(0, HEADER + 1, LEFT, foot), PANEL);
     fill_rect(dc, rect(LEFT, HEADER + 1, LEFT + 1, foot), BORDER);
-    text(dc, "Runtimes", rect(24, HEADER + 12, LEFT, HEADER + 36), SUB, f.small, DT_LEFT | DT_VCENTER);
+    text(dc, &format!("Runtimes ({})", s.rows.len()), rect(24, HEADER + 12, LEFT, HEADER + 36), SUB, f.small, DT_LEFT | DT_VCENTER);
+    let fl = filters(&s.all);
+    let fr = rect(LEFT - 190, HEADER + 10, LEFT - 16, HEADER + 38);
+    if s.hover == Hit::Filter {
+        fill_rect(dc, fr, ROW_HOT);
+    }
+    text(dc, &format!("Show: {} \u{25B8}", fl.get(s.filter).map_or("All", |x| x.as_str())), rect(fr.left, fr.top, fr.right - 6, fr.bottom), PINK, f.small, DT_RIGHT | DT_VCENTER | DT_END_ELLIPSIS);
+    s.targets.push((fr, Hit::Filter));
     // Rows shrink to fit above the footer (nine runtimes overran it at 56 px):
     // two lines down to 40 px, then the name alone; a row that still doesn't
     // fit is not drawn over the footer.
@@ -755,7 +795,7 @@ fn rows() -> Vec<Row> {
             let repo = fs::read_to_string(crate::runtimes::vendor().join(&n).join("NEONBRIDGE.toml")).ok().and_then(|t| {
                 t.lines().find_map(|l| l.strip_prefix("upstream = \"").and_then(|r| r.split('"').next()).filter(|u| u.starts_with("https://")).map(str::to_owned))
             });
-            Row { frames: crate::runtimes::last_run_frames(&n), missing: crate::runtimes::missing(&n), updated: crate::runtimes::field(&n, "updated").unwrap_or_else(|| "-".into()), stars: crate::runtimes::field(&n, "stars").unwrap_or_else(|| "-".into()), name: n, title: name_part, version, licence, upstream, repo }
+            Row { frames: crate::runtimes::last_run_frames(&n), missing: crate::runtimes::missing(&n), updated: crate::runtimes::field(&n, "updated").unwrap_or_else(|| "-".into()), stars: crate::runtimes::field(&n, "stars").unwrap_or_else(|| "-".into()), gpu: crate::runtimes::field(&n, "gpu").unwrap_or_default(), fork: crate::runtimes::fork(&n).unwrap_or_else(|| "Own engine".into()), about: about.to_ascii_lowercase(), name: n, title: name_part, version, licence, upstream, repo }
         })
         .collect();
     // Best first by each toml's rank (as runs come in, the ranks change);
@@ -917,6 +957,30 @@ fn change_output(hwnd: HWND) {
     }
 }
 
+/// Next (or previous) filter; keeps the picked runtime if it is still shown.
+fn cycle_filter(hwnd: HWND, step: isize) {
+    let pick = with_state(|s| {
+        let fl = filters(&s.all);
+        let keep = s.rows.get(s.sel).map(|r| r.name.clone());
+        // Skip filters that would show nothing.
+        for _ in 0..fl.len() {
+            s.filter = (s.filter as isize + step).rem_euclid(fl.len() as isize) as usize;
+            if s.all.iter().any(|r| shown(r, &fl[s.filter])) {
+                break;
+            }
+        }
+        s.rows = s.all.iter().filter(|r| shown(r, &fl[s.filter])).cloned().collect();
+        s.scroll = 0;
+        let i = keep.and_then(|k| s.rows.iter().position(|r| r.name == k));
+        s.sel = usize::MAX;
+        i.unwrap_or(0)
+    });
+    if let Some(i) = pick {
+        select(hwnd, i);
+    }
+    unsafe { InvalidateRect(hwnd, null(), 0) };
+}
+
 fn click(hwnd: HWND, h: Hit) {
     match h {
         Hit::Row(i) => select(hwnd, i),
@@ -924,6 +988,7 @@ fn click(hwnd: HWND, h: Hit) {
             with_state(|s| s.preset = i);
             unsafe { InvalidateRect(hwnd, null(), 0) };
         }
+        Hit::Filter => cycle_filter(hwnd, 1),
         Hit::Change => change_game(hwnd),
         Hit::Output => change_output(hwnd),
         Hit::Advanced => show_advanced(),
@@ -1047,6 +1112,11 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                     InvalidateRect(hwnd, null(), 0);
                 }
             }
+            0
+        }
+        // Right click on "Show:" steps the filter back.
+        WM_RBUTTONUP if with_state(|s| s.hover) == Some(Hit::Filter) => {
+            cycle_filter(hwnd, -1);
             0
         }
         WM_LBUTTONUP => {
@@ -1428,7 +1498,7 @@ pub fn pick() -> Option<Pick> {
     // The last pick, else NEONBRIDGE_RUNTIME, else the top-ranked runtime.
     let want = get("runtime").map(|r| crate::runtimes::alias(&r)).or_else(|| std::env::var("NEONBRIDGE_RUNTIME").ok().filter(|v| !v.trim().is_empty()).map(|v| crate::runtimes::name(Some(&v)))).unwrap_or_else(|| rows[0].name.clone());
     let sel = rows.iter().position(|r| r.name == want).unwrap_or(0);
-    STATE.with(|s| *s.borrow_mut() = Some(State { rows, sel, hover: Hit::None, presets: Vec::new(), preset: 0, game: detect_game(), targets: Vec::new(), scroll: 0, row_h: ROW, view_h: 0, thumb_grab: None }));
+    STATE.with(|s| *s.borrow_mut() = Some(State { all: rows.clone(), filter: 0, rows, sel, hover: Hit::None, presets: Vec::new(), preset: 0, game: detect_game(), targets: Vec::new(), scroll: 0, row_h: ROW, view_h: 0, thumb_grab: None }));
 
     let class = wide("NeonbridgePicker");
     let title = wide("i95");

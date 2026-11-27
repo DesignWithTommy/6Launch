@@ -4,6 +4,7 @@
 # here, not wrapped: the wrapper builds victory itself and can't take i95's warm placeholders.
 name = "anyxboxx"
 fork = "Neptune"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 15   # i95 rank: score 62.9 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "AnyXboxX bebcfb1 (GPL-3.0): 'About 24 fps median in the world in Full HD', 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"

@@ -1,5 +1,6 @@
 name = "cblvictory"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 34   # i95 rank: score 57.6 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "cblvictoryvi 4bb264b (GPL-3.0): now on Vice-Tay's renderer: about 12-15 fps at Series X 1440p, RTX 5080"
 upstream = "https://github.com/cocainebunnylaboratories/cblvictoryvi"

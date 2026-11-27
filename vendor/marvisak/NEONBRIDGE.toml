@@ -1,6 +1,7 @@
 # i95 launcher spec for Marvisak/VIctory: author build and run from its README.
 name = "marvisak"
 fork = "VIctory"
+gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 49   # i95 rank: score 50.3 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "VIctory 63bcca4 (GPL-3.0): The opening mission at about 1 fps on an RX 6700 XT, 'not playable'"
 upstream = "https://github.com/Marvisak/VIctory"

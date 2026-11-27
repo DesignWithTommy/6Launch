@@ -1,6 +1,7 @@
 # i95 launcher spec for DexNom/VIctory: what its own launcher runs (apps/victory/src/play_launcher.rs).
 name = "dexnom"
 fork = "VIctory"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 2   # i95 rank: score 77.4 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "DexNom RayTime 4ad8692 (GPL-3.0): 1 fps with ray tracing on, 3.5 to 4 without, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/DexNom/VIctory"

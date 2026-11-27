@@ -2,6 +2,7 @@
 # victory-fork f85101b plus its patches (scripts/build_native.py fetches and builds it).
 name = "kelvaroq"
 fork = "victory-fork"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 4   # i95 rank: score 68.8 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "Kelvaroq 92606ea (GPL-3.0): ~10 fps in typical views (7 to 8 in the heaviest) at 4K on an RTX 5080; a tester's 36 min session without a crash; its unreleased direct memory path needs 22 ms of GPU work an open-world frame and holds 30 fps on loading screens; not yet run here"
 upstream = "https://github.com/stellarr-studio/kelvaroq"

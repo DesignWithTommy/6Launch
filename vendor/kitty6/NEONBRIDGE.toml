@@ -2,6 +2,7 @@
 # Build, run and env are its README "Build" and scripts/play.ps1 (default: no switches, Series X, diag build, its mods on).
 name = "kitty6"
 fork = "VIctory-7900XTX"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 17   # i95 rank: score 62.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Kitty6 c8defbb (GPL-3.0): 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker; not yet run here"
 upstream = "https://github.com/kitty-core/Kitty6"

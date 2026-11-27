@@ -1,5 +1,6 @@
 name = "viscosity"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 31   # i95 rank: score 59.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "VIscosity e446866 (GPL-3.0): 17.9 fps median on an RTX 5070 Ti 16 GB (Series S, world at 1080p, diag build); not yet run here"
 upstream = "https://github.com/FrancescoGelosoEterea/VIscosity"

@@ -1,5 +1,6 @@
 name = "victory8gb"
 fork = "victory-8gb"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 8   # i95 rank: score 67.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-8gb 6fbceb7 (GPL-3.0): victory-fork snapshot for Series S on 8 GB NVIDIA; first Chapter I mission played, 5h45m session without a crash, about 115-215 ms a frame, RTX 3070 8 GB (its README); not yet run here"
 upstream = "https://github.com/CuteBooty/victory-8gb"

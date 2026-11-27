@@ -2,6 +2,7 @@
 # Build, run and env are its README and Play-VIctory.cmd (4 GB cards: Play-VIctory-4GB.cmd).
 name = "sleyfork"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 26   # i95 rank: score 60.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-sley-fork ba6ce8e (GPL-3.0): 20.6 fps median at about 6,000 draws, 11-15 fps in dense night scenes; not yet run here"
 upstream = "https://github.com/Spaghetih/victory-sley-fork"

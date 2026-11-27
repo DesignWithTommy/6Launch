@@ -2,6 +2,7 @@
 # GTA VI 1.0.2.1. Build and run are its README and docs/running.md (b42886f). Early: unranked, listed last.
 name = "fivestar"
 fork = "Five Star Recomp"
+gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 50   # i95 rank: score 30 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "Five Star Recomp f2436d7 (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
 upstream = "https://github.com/ThatRecompDev/five-star-recomp"

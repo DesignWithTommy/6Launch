@@ -2,6 +2,7 @@
 # Build is tools/build.ps1 (cargo in source/); run and env are tools/play.ps1 and tools/settings.ps1 (7dbe793).
 name = "grimkaaah"
 fork = "VIctory"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 11   # i95 rank: score 63.7 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Victory Grimkaaah 7dbe793 (GPL-3.0): 24.3 fps average in busy world scenes with ray tracing off, 13.9 with it on, 3-9 min sessions, RX 7900 XTX, Series X; AMD cards only; not yet run here"
 upstream = "https://github.com/Grimkaaah/Victory-Grimkaaah"

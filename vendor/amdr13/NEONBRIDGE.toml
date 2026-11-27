@@ -1,5 +1,6 @@
 name = "amdr13"
 fork = "victory-amd r13"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 45   # i95 rank: score 54.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-amd r13 bc646fa (GPL-3.0): victory-fork merged for AMD cards, about 3-5 fps in the open world on an RX 9060 XT 16 GB (its README); not yet run here"
 upstream = "https://github.com/tinygusie2/victory-amd"

@@ -4,6 +4,7 @@
 # "Quick Play"; the environment is its scripts/play.ps1 (tuned on an RTX 3070 8 GB).
 name = "unified"
 fork = "Belobug"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 19   # i95 rank: score 62.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-unified 92dc878 (GPL-3.0): 'A unified fork' tuned for an RTX 3070 8 GB: 2 to 3 fps, about 58 minutes without a crash; not yet run here"
 upstream = "https://github.com/Itsbatt/victory-unified"

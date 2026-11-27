@@ -4,6 +4,7 @@
 # Build and run are its README.md "Building" (README.md:391-392); its defaults need no switches.
 name = "amd"
 fork = "VIctory"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 36   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-amd aa8399e (GPL-3.0): 2 to 3 fps in the world over 8-minute runs, RTX 4070; not yet run here"
 upstream = "https://github.com/myokex/victory-amd"
@@ -49,6 +50,7 @@ menu = "Esc"
 === amdr13 bc646facd68cce4d77f9bc5fd93aec6cba5773ea
 name = "amdr13"
 fork = "victory-amd r13"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 45   # i95 rank: score 54.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-amd r13 bc646fa (GPL-3.0): victory-fork merged for AMD cards, about 3-5 fps in the open world on an RX 9060 XT 16 GB (its README); not yet run here"
 upstream = "https://github.com/tinygusie2/victory-amd"
@@ -98,6 +100,7 @@ VICTORY_LOOKUP_CACHE = "1"
 # here, not wrapped: the wrapper builds victory itself and can't take i95's warm placeholders.
 name = "anyxboxx"
 fork = "Neptune"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 15   # i95 rank: score 62.9 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "AnyXboxX bebcfb1 (GPL-3.0): 'About 24 fps median in the world in Full HD', 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
@@ -185,6 +188,7 @@ menu = "Esc"
 # Build and run are its README "How to run it" (README.md:79-80) and scripts/play.ps1 (9a17be6).
 name = "apexvi"
 fork = "VIctory"
+gpu = "NVIDIA 6-8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 22   # i95 rank: score 61.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "ApexVI 9a17be6 (GPL-3.0): a controllable character at 6.35 to 7.5 fps by scene, 14 to 15 min runs without a crash, laptop RTX 4050 6 GB, Series S 1080p; not yet run here"
 upstream = "https://github.com/KevinPratap/ApexVI"
@@ -274,6 +278,7 @@ VICTORY_LEGACY_FMAD = "1"   # newest (-Safe drops it)
 # Its real-GPU path needs AMD's RDNA2 ISA XML (not included), so this runs the boot harness only. Early: unranked.
 name = "boottest"
 fork = "GTA6-BootTest"
+gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 51   # i95 rank: score 10 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "GTA6-BootTest 32683d8 (no licence): boots, streams archives, runs the frame loop and draws its first UI screen; harness stops the game after 60 s; needs Visual Studio 2022 C tools; early, not yet run here"
 upstream = "https://github.com/OnlyMoisties/GTA6-BootTest"
@@ -288,6 +293,7 @@ agility = false
 === cblvictory 4bb264b5961bc13dea5984d71890ecef14f0ed56
 name = "cblvictory"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 34   # i95 rank: score 57.6 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "cblvictoryvi 4bb264b (GPL-3.0): now on Vice-Tay's renderer: about 12-15 fps at Series X 1440p, RTX 5080"
 upstream = "https://github.com/cocainebunnylaboratories/cblvictoryvi"
@@ -362,6 +368,7 @@ menu = "Esc"
 === ccs03 a00b2f79bf3f20abc4aec3de1f957c82fc0bd4cf
 name = "ccs03"
 fork = "CCS03"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 37   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "CCS03 a00b2f7 (GPL-3.0): victory-fork with 8 GB NVIDIA tuning; Lucia's prologue played to chapter 1, 3 to 7.8 fps in the prison and on the water, menus 30 fps, RTX 4060 Laptop 8 GB (its README); not yet run here"
 upstream = "https://github.com/JozefDeTremmerie/CCS03"
@@ -413,6 +420,7 @@ NO_COLOR = "1"
 # Build, run and env are its README and Play-VIctory.cmd (VICTORY_LOG=warn left out: the loader reads the info-level fps line).
 name = "cgbj"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 20   # i95 rank: score 61.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "CGBJ 42b95b9 (cool_fox, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
@@ -485,6 +493,7 @@ menu = "Esc"
 # Build, run and env are its README and Play-VIctory.cmd.
 name = "coolfox12"
 fork = "VIctory"
+gpu = "NVIDIA 8-12 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 41   # i95 rank: score 55.7 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "cool-fox-12gb 67298e8 (GPL-3.0): cool_fox with VIctory-NVIDIA's 8 GB patches; 7.7 fps at half render scale, 2–3 fps native; not on the tracker; not yet run here"
 upstream = "https://github.com/miaohaixiang1-netizen/cool-fox-12gb"
@@ -546,6 +555,7 @@ menu = "Esc"
 # Build, run and env are its README and scripts/play.ps1 (default: Series S, not -Safe; FidelityFX parts in preset_fsr4).
 name = "darkvictory"
 fork = "VIctory"
+gpu = "AMD 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 38   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Dark-Victory a0e8954 (GPL-3.0): stable around 10 fps (9.5-10.7) on an RX 6600; 20 fps is its target; not yet run here"
 upstream = "https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI"
@@ -604,6 +614,7 @@ VICTORY_WINDOW_TAILS = "1"
 # i95 launcher spec for darkworldhm/victory-fork-darkworldhm: author build and run from its README.
 name = "darkworld"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 47   # i95 rank: score 54.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "darkworldhm 840243e (GPL-3.0): A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070"
 upstream = "https://github.com/darkworldhm/victory-fork-darkworldhm"
@@ -648,6 +659,7 @@ menu = "Esc / P"
 # i95 launcher spec for DexNom/VIctory: what its own launcher runs (apps/victory/src/play_launcher.rs).
 name = "dexnom"
 fork = "VIctory"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 2   # i95 rank: score 77.4 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "DexNom RayTime 4ad8692 (GPL-3.0): 1 fps with ray tracing on, 3.5 to 4 without, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/DexNom/VIctory"
@@ -696,6 +708,7 @@ menu = "Esc"
 # GTA VI 1.0.2.1. Build and run are its README and docs/running.md (b42886f). Early: unranked, listed last.
 name = "fivestar"
 fork = "Five Star Recomp"
+gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 50   # i95 rank: score 30 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "Five Star Recomp f2436d7 (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
 upstream = "https://github.com/ThatRecompDev/five-star-recomp"
@@ -717,6 +730,7 @@ preset_debug = ["--debug"]   # docs/running.md:26
 # window and 9-12 fps in the room on an RTX 4070; shadowed areas dark.
 name = "flamingo"
 fork = "victory-fork"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 21   # i95 rank: score 61.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Flamingo 0d0128f (GPL-3.0): 8.6 fps average over a 24-minute session, RTX 4070, unconfirmed; not yet run here"
 upstream = "https://github.com/realblastex/flamingo"
@@ -792,6 +806,7 @@ menu = "Esc"
 # Build, run and env are its README and scripts/play-foxhound.ps1 (Series X, 1440p); Play-VIctory.cmd -> preset_play_victory.
 name = "foxhound"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 29   # i95 rank: score 59.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "foxhound 3d52ac8 (GPL-3.0): 30 fps (the title's cap) on a 4070 SUPER + 7800X3D, 16-21 fps in heavier scenes; not yet run here"
 upstream = "https://github.com/readmet3xt-lab/foxhound"
@@ -875,6 +890,7 @@ VICTORY_NATIVE_1440P = "1"
 # Build is tools/build.ps1 (cargo in source/); run and env are tools/play.ps1 and tools/settings.ps1 (7dbe793).
 name = "grimkaaah"
 fork = "VIctory"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 11   # i95 rank: score 63.7 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Victory Grimkaaah 7dbe793 (GPL-3.0): 24.3 fps average in busy world scenes with ray tracing off, 13.9 with it on, 3-9 min sessions, RX 7900 XTX, Series X; AMD cards only; not yet run here"
 upstream = "https://github.com/Grimkaaah/Victory-Grimkaaah"
@@ -929,6 +945,7 @@ VICTORY_COPY_AHEAD = "1"
 # Neonbridge launcher spec for i95-Victory: Kelvaroq's patched victory-fork plus 8 GB fixes (README.md).
 name = "i95-victory"
 fork = "victory-fork"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 about = "i95-Victory dfb89ed: Kelvaroq 0a3c30d + VI-BR-PORT heap marks, TEXTURE_DROP_MIPS, AMBIENT (GPL-3.0); not yet run"
 upstream = "https://github.com/DesignWithTommy/i95-Victory"
 updated = "2026-11-25 23:09"   # the pinned upstream commit's date (scripts/runtime-info.py)
@@ -969,6 +986,7 @@ menu = "Esc"
 # i95 launcher spec for ka1qux/BRVIctory-ka1qux: build from its README "How to run it", run as scripts/play.ps1 does.
 name = "ka1qux"
 fork = "VIctory"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 18   # i95 rank: score 62.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "BRVIctory-ka1qux 05e4d50 (GPL-3.0): 10.5 fps on Series X with its patches on (no run length on this base; 4 to 4.7 fps over 25 min on the earlier one), RX 7800 XT; not yet run here"
 upstream = "https://github.com/ka1qux/BRVIctory-ka1qux"
@@ -1033,6 +1051,7 @@ menu = "Esc"
 # Not done: its Smooth Motion copy (victory_sm.exe); the launcher runs victory.exe itself, like -NoSmoothMotion.
 name = "karamelo"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 35   # i95 rank: score 56.8 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "VKarameloVI 2711f62 (GPL-3.0): 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker; not yet run here"
 upstream = "https://github.com/badDevelopper/VKarameloVI"
@@ -1104,6 +1123,7 @@ menu = "Esc"
 # victory-fork f85101b plus its patches (scripts/build_native.py fetches and builds it).
 name = "kelvaroq"
 fork = "victory-fork"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 4   # i95 rank: score 68.8 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "Kelvaroq 92606ea (GPL-3.0): ~10 fps in typical views (7 to 8 in the heaviest) at 4K on an RTX 5080; a tester's 36 min session without a crash; its unreleased direct memory path needs 22 ms of GPU work an open-world frame and holds 30 fps on loading screens; not yet run here"
 upstream = "https://github.com/stellarr-studio/kelvaroq"
@@ -1151,6 +1171,7 @@ menu = "Esc"
 # Build, run and env are its README "Build" and scripts/play.ps1 (default: no switches, Series X, diag build, its mods on).
 name = "kitty6"
 fork = "VIctory-7900XTX"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 17   # i95 rank: score 62.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Kitty6 c8defbb (GPL-3.0): 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker; not yet run here"
 upstream = "https://github.com/kitty-core/Kitty6"
@@ -1228,6 +1249,7 @@ menu = "Esc"
 # 5-9 fps on an AMD RX 9070 XT. Not yet confirmed on NVIDIA by its author.
 name = "klbf"
 fork = "victory-fork"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 7   # i95 rank: score 67.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "KLBF Lab 619cc12 (GPL-3.0): 14.0 fps average over 37 minutes of play, player in control through the prologue (77 min on an earlier build), RX 9070 XT; not yet run here"
 upstream = "https://github.com/PastiiJay/klbf-lab"
@@ -1288,6 +1310,7 @@ menu = "Esc"
 # Build, run and env are its run-gta6.ps1, leonida.example.toml and README.
 name = "leonida"
 fork = "Leonida"
+gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 39   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Leonida 2313b8a (GPL-3.0): static recompilation; about 10 fps in the first rooms with its newer switches; not yet run here"
 upstream = "https://github.com/ProjectLeonidaL/leonida"
@@ -1311,6 +1334,7 @@ LEONIDA_LOG = "warn"
 === lnx 05ad122878578a12ec7df2121d006892ea331435
 name = "lnx"
 fork = "LNX-victory"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 44   # i95 rank: score 55.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "LNX-victory 05ad122 (GPL-3.0): VIctory tuned for 8 GB NVIDIA; reaches the prison yard at about 4 fps (3.3-4.6) Series X, 7-8 fps Series S + FSR, RTX 5060 Ti 8 GB (its README); not yet run here"
 upstream = "https://github.com/Linox-IDK/LNX-victory"
@@ -1351,6 +1375,7 @@ VICTORY_PRESENT_PLANE = "0"
 # Env: M1LK_* is copied to VICTORY_* at start (crates/victory-core/src/env_alias.rs:1-10); the launcher sets VICTORY_* so both spellings work.
 name = "m1lk"
 fork = "VIctory"   # README.md:7 (VIctory + the DexNom fork)
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 46   # i95 rank: score 54.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "M1LK 5ae478a (GPL-3.0): about 4.5 fps walking median on an RTX 4060 Laptop 8 GB / 16 GB RAM (Series S, no RT); not yet run here"   # README.md:3,33
 upstream = "https://github.com/3cvil/M1LK"
@@ -1388,6 +1413,7 @@ VICTORY_NO_WATCHDOG = "1"   # play_launcher.rs:265-266
 # i95 launcher spec for Marvisak/VIctory: author build and run from its README.
 name = "marvisak"
 fork = "VIctory"
+gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 49   # i95 rank: score 50.3 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "VIctory 63bcca4 (GPL-3.0): The opening mission at about 1 fps on an RX 6700 XT, 'not playable'"
 upstream = "https://github.com/Marvisak/VIctory"
@@ -1430,6 +1456,7 @@ menu = "Esc"
 # Build, run and env are scripts/play-9070xt.ps1 (its measured settings) calling scripts/play.ps1 (diag build, not -Safe).
 name = "mavis9070xt"
 fork = "VIctory-7900XTX"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 10   # i95 rank: score 64.9 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "mavis-9070xt 3904d23 (GPL-3.0): an 18.9 fps median over a 27-minute session, Series X at 1440p, ray tracing off, RX 9070 XT 16 GB with 32 GB RAM; not yet run here"
 upstream = "https://github.com/mavis140/mavis-9070xt"
@@ -1508,6 +1535,7 @@ menu = "Esc"
 # Build, run and env are its README and Play-VIctory.cmd (default: Series X); Play-VIctory-4GB.cmd and Play-VIctory-AMD.cmd are presets.
 name = "minivi"
 fork = "cool_fox"   # README.md:3 (built on DoubleGhosty/cool_fox)
+gpu = "Any 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 48   # i95 rank: score 53.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "MiniVI 42d79e2 (GPL-3.0): 5-7 fps in its own notes (Play-VIctory.cmd:40), tuned for 8 GB VRAM GPUs; not yet run here"
 upstream = "https://github.com/Androtim/MiniVI"
@@ -1559,6 +1587,7 @@ VICTORY_LOG = "warn"   # Play-VIctory.cmd:60 (only when RUST_LOG is unset)
 === naixue 1b50b3f028df0991fc7890f8c2419f8a220b21a6
 name = "naixue"
 fork = "Victory-naixue2233"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 33   # i95 rank: score 58.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Victory-naixue2233 1b50b3f (GPL-3.0): victory-fork with ztrx GPU work and crash/OOM fixes, about 11 fps at the first boat mission on an RTX 4070 12 GB (its README, with its measured switches); not yet run here"
 upstream = "https://github.com/naixue2233/Victory-naixue2233"
@@ -1584,6 +1613,7 @@ VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings fo
 === neptune 99b231fae9392f50643e27b9a8f01319bc1c11e5
 name = "neptune"
 fork = "VIctory"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 12   # i95 rank: score 63.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Neptune (neptune-dolberth-nvidia-8gb) 99b231f (GPL-3.0): no fps figure in its README, tuned for 8 GB NVIDIA + 6-core Ryzen + 16 GB RAM; not yet run here"
 upstream = "https://github.com/Dolberthi/neptune-dolberth-nvidia-8gb"
@@ -1700,6 +1730,7 @@ VICTORY_WINDOW_SIZE = "fullscreen"
 # Build and env are scripts/play-foxhound.ps1 (play-nvidia.ps1 now calls it): release build, Series X at 1440p, no frame cap; DLSS only with NVIDIA's files, so off here.
 name = "nvidia"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 1   # i95 rank: score 90.0 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "VIctory-NVIDIA df2daaf (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
@@ -1786,6 +1817,7 @@ menu = "Esc"
 === peppa 14d8e9dafddb77cbdc61429709fb191ec05d16b7
 name = "peppa"
 fork = "playablegames-peppa"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 9   # i95 rank: score 66.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "playablegames-peppa 14d8e9d (GPL-3.0): victory-fork with the RTX 4080 recipe and A/B-measured switches; 23.5 fps over 12 minutes in a house interior, Series S, RTX 5080 16 GB (its README); not yet run here"
 upstream = "https://github.com/Peppacodes/playablegames-peppa"
@@ -1852,6 +1884,7 @@ VICTORY_LOG = "warn"
 # VIctory copy in runtime/victory. Build and run are its scripts/play-prologue.ps1 (e44c465). Early: unranked, listed last.
 name = "percyscarlett"
 fork = "PercyScarlett"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 52   # i95 rank: score 10 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "PercyScarlett e44c465 (GPL-2.0): reaches the lit opening prison scene on Series S, 2-3 fps on an RTX 2060 SUPER 8 GB; shaded areas too dark; early, not yet run here"
 upstream = "https://github.com/rpatty-dev/PercyScarlett"
@@ -1874,6 +1907,7 @@ VICTORY_LEVELS_ON_DEMAND = "1"   # play-prologue.ps1:42: about 3 GB less video m
 # Build and run are its README "Quick start" (75321b2): `pilotebox play` sets its own measured settings.
 name = "pilotebox"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 25   # i95 rank: score 60.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "PiloteBox 75321b2 (GPL-3.0): 20.5 to 21.5 fps (46.6 to 48.8 ms a frame) in the prologue's first playable scene on 0.13.1, Series X, RTX 5090 (53.7 ms on 0.13.0); Series S at 60.6 ms a frame on 0.13.0; not yet run here"
 upstream = "https://github.com/PiloteCode/PiloteBox"
@@ -1898,6 +1932,7 @@ VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/sett
 # Build, run and env are its README and scripts/play-rdna.ps1 + rdna-preset.json (default: base + fast, Series X).
 name = "rdna"
 fork = "VIctory"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 6   # i95 rank: score 68.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "VIctory-RDNA c0d38c3 (GPL-3.0): 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds; not yet run here"
 upstream = "https://github.com/XaviFortes/VIctory-RDNA"
@@ -1977,6 +2012,7 @@ menu = "Esc"
 # i95 launcher spec for LoverCatys/ruff-lab: author build and run from its README.
 name = "rufflab"
 fork = "klbf-lab"
+gpu = "AMD 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 13   # i95 rank: score 63.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "ruff-lab 3e603f2 (GPL-3.0): Built for 8 GB cards and 16 GB RAM: 6 to 7 fps by scene at 720p upscaled, 30 to 39 min runs without a crash, RX 6600 XT; not yet run here"
 upstream = "https://github.com/LoverCatys/ruff-lab"
@@ -2050,6 +2086,7 @@ menu = "Esc"
 # Build, run and env are its README and Play-Scarlett.cmd -> scripts/play-scarlett.ps1 (Play-VIctory.cmd -> preset_play_victory).
 name = "scarlett3070"
 fork = "VIctory"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 30   # i95 rank: score 59.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-scarlett-3070 ae29c7b (GPL-3.0): 16-21 fps in heavy scenes, lower when driving; not yet run here"
 upstream = "https://github.com/Yaekai/victory-scarlett-3070"
@@ -2129,6 +2166,7 @@ VICTORY_PROBE_RAYS = "1"
 # scripts/play.ps1:34 `xcl run <game>` with XCL_DXC_THREADS=4, XCL_NO_WATCHDOG=1, XCL_PRESS_FILE); not modelled here.
 name = "scarlettport"
 fork = "victory-fork"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 42   # i95 rank: score 55.6 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "ScarlettPort 47aca82 (GPL-3.0): about 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060; not yet run here"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
@@ -2478,6 +2516,7 @@ menu = "P"
 === slaktarn e5b0dc814f8d27757a9def285cb37232945df45b
 name = "slaktarn"
 fork = "VIctory"
+gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 23   # i95 rank: score 60.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "SlaktarnVI (Valhalla) e5b0dc8 (GPL-3.0): Linux/Proton build tuned for an AMD RX 9070 XT, about 19-25 fps in gameplay (S70 preset, frame gen not counted); Windows path is its scripts/play.ps1; not yet run here"
 upstream = "https://github.com/Slaktarn700/SlaktarnVI"
@@ -2528,6 +2567,7 @@ VICTORY_CARD_STEPS_LEARN = "1"   # play.ps1: on unless -Safe
 # Build, run and env are its README and Play-VIctory.cmd (4 GB cards: Play-VIctory-4GB.cmd).
 name = "sleyfork"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 26   # i95 rank: score 60.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-sley-fork ba6ce8e (GPL-3.0): 20.6 fps median at about 6,000 draws, 11-15 fps in dense night scenes; not yet run here"
 upstream = "https://github.com/Spaghetih/victory-sley-fork"
@@ -2579,6 +2619,7 @@ VICTORY_LOG = "warn"
 === sm86 f890cb55679b877beeabd8162d47688fe708a252
 name = "sm86"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 16   # i95 rank: score 62.6 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "VIctory_sm86 f890cb5 (GPL-3.0): 27-30 fps in the opening on an RTX 3090 (Series X 1440p, DLSS Quality); not yet run here"
 upstream = "https://github.com/whiteh4cker-tr/VIctory_sm86"
@@ -2634,6 +2675,7 @@ VICTORY_LOG = "warn"
 # "Quick Play"; the environment is its scripts/play.ps1 (tuned on an RTX 3070 8 GB).
 name = "unified"
 fork = "Belobug"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 19   # i95 rank: score 62.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-unified 92dc878 (GPL-3.0): 'A unified fork' tuned for an RTX 3070 8 GB: 2 to 3 fps, about 58 minutes without a crash; not yet run here"
 upstream = "https://github.com/Itsbatt/victory-unified"
@@ -2701,6 +2743,7 @@ menu = "Esc"
 # Build and run are its README "How to run it" and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "united"
 fork = "VIctory"
+gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 32   # i95 rank: score 59.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Victory-United 006bb6d (GPL-3.0): VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with scripted movement, three 7-minute runs, Series S; 'not playable yet'; not yet run here"
 upstream = "https://github.com/Fayberr/Victory-United"
@@ -2777,6 +2820,7 @@ menu = "Esc"
 # 8 GB NVIDIA cards (its author's RTX 4060 Ti 8 GB). Default launch is scripts/play.ps1.
 name = "vibrport"
 fork = "victory-fork"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 24   # i95 rank: score 60.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "VI-BR-PORT 2954325 (GPL-3.0): 24.0 fps on a scripted prison walk (30 standing, the cap) and 21.2 fps in the opening cutscene, RTX 4060 Ti 8 GB; the author now calls it playable with known picture problems"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
@@ -2845,6 +2889,7 @@ menu = "Esc"
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 3   # i95 rank: score 73.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Vice-Tay 0148258 (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
@@ -2933,6 +2978,7 @@ menu = "Esc"
 # stay off unless set in the environment, which passes them on.
 name = "victory"
 fork = "victory-fork"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 27   # i95 rank: score 59.8 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "VIctory-fxceless 2eade68 (GPL-3.0): its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and light, 5 to 9 min runs ending in a crash in the game's script code, RTX 4070; without it about 11 fps at the first boat mission"
 upstream = "https://github.com/fxceless/victory-fork"
@@ -3021,6 +3067,7 @@ menu = "Esc"
 # Build, run and env are its README and scripts/play-4gb.ps1 (default: -Build diag, -Scale 0.5, Series S).
 name = "victory4gb"
 fork = "VIctory"   # README.md:3 (two lines of VIctory; base fxceless victory-fork, README.fxceless.md)
+gpu = "NVIDIA 4 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 43   # i95 rank: score 55.4 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-4gb 803ebfa (GPL-3.0): 6.5 to 7 fps open-world free play on an RTX 3050 Laptop 4 GB (README.md:20); not yet run here"
 upstream = "https://github.com/Dathinel/victory-4gb"
@@ -3071,6 +3118,7 @@ VICTORY_FULLSCREEN = "1"   # play-4gb.ps1:25 (a framed window with fps in the ti
 === victory8gb 6fbceb72ecce152c4dde88361fb4b69332335d0e
 name = "victory8gb"
 fork = "victory-8gb"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 8   # i95 rank: score 67.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-8gb 6fbceb7 (GPL-3.0): victory-fork snapshot for Series S on 8 GB NVIDIA; first Chapter I mission played, 5h45m session without a crash, about 115-215 ms a frame, RTX 3070 8 GB (its README); not yet run here"
 upstream = "https://github.com/CuteBooty/victory-8gb"
@@ -3117,6 +3165,7 @@ VICTORY_UPSCALE_HISTORY_MV = "2"
 # i95 launcher spec for vitutu1/victory-perf: build and run from its README ("Recommended Launch Profile").
 name = "victoryperf"
 fork = "victory-fork"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 40   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-perf 3bc7937 (GPL-3.0): 14 fps in the prison corridor, 9 to 11 in interiors, 4.5 to 6.5 in heavy scenes, Series S at half render scale, RTX 4070 SUPER; lighting stand-ins for dark interiors; not yet run here"
 upstream = "https://github.com/vitutu1/victory-perf"
@@ -3169,6 +3218,7 @@ menu = "Esc"
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 5   # i95 rank: score 68.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Vilocity 2c20a77 (GPL-3.0): 33 fps median through the opening and 25 to 29 in the open world, 12 minutes of each unattended without a crash or driver timeout, Series S, RTX 5080; 'not playable yet'; not yet run here"
 upstream = "https://github.com/voidopcode/vilocity"
@@ -3241,6 +3291,7 @@ menu = "Esc"
 # i95 launcher spec for KomanderDG88/VIniVIdiVIci: author build and run from its README.
 name = "vinividivici"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 14   # i95 rank: score 63.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "VIniVIdiVIci 31609f4 (GPL-3.0): 6.0 fps median in the first room on its defaults, 38 minutes in the world, RTX 4060 Ti; not yet run here"
 upstream = "https://github.com/KomanderDG88/VIniVIdiVIci"
@@ -3285,6 +3336,7 @@ menu = "Esc"
 === viscosity e44686605ab6ace43f3bfd902f132bfdcee24829
 name = "viscosity"
 fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 31   # i95 rank: score 59.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "VIscosity e446866 (GPL-3.0): 17.9 fps median on an RTX 5070 Ti 16 GB (Series S, world at 1080p, diag build); not yet run here"
 upstream = "https://github.com/FrancescoGelosoEterea/VIscosity"
@@ -3353,6 +3405,7 @@ VICTORY_RENDER_SCALE = "1.0"
 === vitoriabr 15779f8197fe846b0cdf4509c15a8ef00433e216
 name = "vitoriabr"
 fork = "VIctory"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 28   # i95 rank: score 59.6 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "VItoriaBr 15779f8 (GPL-3.0): 4 to 6 fps on its current settings; not yet run here"
 upstream = "https://github.com/uiliannn/VItoriaBr"
