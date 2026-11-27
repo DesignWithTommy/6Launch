@@ -3,7 +3,7 @@
 name = "nvidia"
 fork = "VIctory"
 rank = 29   # #29 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-NVIDIA caab8b4 (GPL-3.0): CGBJ renderer with DLSS and frame generation; 15 to 17 fps on an RTX 5070 before generated frames; here without DLSS: Series X at native 1440p, uncapped"
+about = "VIctory-NVIDIA 9d6300f (GPL-3.0): CGBJ renderer with DLSS and frame generation; 15 to 17 fps on an RTX 5070 before generated frames; here without DLSS: Series X at native 1440p, uncapped"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
 updated = "2026-11-27"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 125   # GitHub stars when last checked
@@ -22,7 +22,7 @@ preset_8gb = ["--console=series-s", "VICTORY_NATIVE_1440P=", "VICTORY_TEXTURE_BU
 preset_30fps = ["VICTORY_FRAME_INTERVAL_US=33333"]   # play-foxhound.ps1 -Fps 30: the title's own rate
 preset_4k = ["VICTORY_NATIVE_1440P="]   # play-foxhound.ps1 -Res 4k: the stock Series X output
 
-[env]   # play-foxhound.ps1 (caab8b4) $settings, without NVIDIA's DLSS files
+[env]   # play-foxhound.ps1 (9d6300f) $settings, without NVIDIA's DLSS files
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_THIN = "1"
 VICTORY_JOIN_PARTS = "8"
