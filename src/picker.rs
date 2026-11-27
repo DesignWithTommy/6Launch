@@ -308,7 +308,7 @@ thread_local! {
     static BRUSHES: RefCell<Option<(HBRUSH, HBRUSH)>> = const { RefCell::new(None) };
     static ADVANCED: Cell<HWND> = const { Cell::new(null_mut()) };
     static UI: RefCell<Option<Ui>> = const { RefCell::new(None) };
-    /// The Diagnostics box (on by default; NEONBRIDGE_DIAG=0 for the run when off).
+    /// The Diagnostics box (off by default; NEONBRIDGE_DIAG=1 for the run when on).
     static DIAG: Cell<bool> = const { Cell::new(false) };
 }
 
@@ -871,7 +871,7 @@ fn play(hwnd: HWND) {
     for s in &sets {
         memory.push_str(&format!("opt={s}\n"));
     }
-    // Diagnostics is on by default; the box's state is remembered either way.
+    // Diagnostics is off by default; the box's state is remembered either way.
     memory.push_str(if DIAG.get() { "diag=1\n" } else { "diag=0\n" });
     // SAFETY: the picker's thread is the launcher's only one here.
     unsafe { std::env::set_var("NEONBRIDGE_DIAG", if DIAG.get() { "1" } else { "0" }) };

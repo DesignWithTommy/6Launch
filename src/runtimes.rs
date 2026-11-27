@@ -841,11 +841,11 @@ fn stale(root: &Path, spec: &Spec, exe: &Path) -> bool {
 }
 
 /// Diagnostics builds, on by default for every runtime (the user's rule);
-/// NEONBRIDGE_DIAG=0 or the picker's Diagnostics box turns them off. A tree
+/// Off by default; NEONBRIDGE_DIAG=1 or the picker's Diagnostics box turns them on. A tree
 /// builds with its toml's `diag` line, else (victory family) with its
 /// `diagnostics` cargo feature, and runs with VICTORY_D3D12_DRED=1.
 pub fn diag() -> bool {
-    std::env::var("NEONBRIDGE_DIAG").map_or(true, |v| v.trim() != "0")
+    std::env::var("NEONBRIDGE_DIAG").map_or(false, |v| v.trim() == "1")
 }
 
 /// Under [`diag`], a victory tree whose app has a `diagnostics` feature and
@@ -914,7 +914,7 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
     let line = spec.list("build").map(<[String]>::to_vec).unwrap_or_default();
     let (line, target, exe) = match diag_build(name, root, spec, &line, &exe) {
         Some((l, t, e)) => {
-            println!("[launch] {name}: diagnostics build ({}) -> {} (NEONBRIDGE_DIAG=0 builds release)", l.join(" "), e.display());
+            println!("[launch] {name}: diagnostics build ({}) -> {} (the Diagnostics box or NEONBRIDGE_DIAG=1)", l.join(" "), e.display());
             (l, Some(t).filter(|t| !t.as_os_str().is_empty()), e)
         }
         None => (line, None, exe),
