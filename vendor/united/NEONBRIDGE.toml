@@ -3,9 +3,9 @@
 name = "united"
 fork = "VIctory"
 rank = 30   # #30 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Victory-United 76f929c (GPL-3.0): VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with scripted movement, three 7-minute runs, Series S; 'not playable yet'; not yet run here"
+about = "Victory-United 1f9a974 (GPL-3.0): VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with scripted movement, three 7-minute runs, Series S; 'not playable yet'; not yet run here"
 upstream = "https://github.com/Fayberr/Victory-United"
-updated = "2026-11-27 07:22"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 10:00"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 7   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:59
 exe = "target/diag/victory.exe"   # play.ps1:80 ($Build = diag)
