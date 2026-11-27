@@ -68,7 +68,7 @@ const fn rgb(r: u8, g: u8, b: u8) -> COLORREF {
 }
 
 const WIDTH: i32 = 880;
-const HEIGHT: i32 = 560;
+const HEIGHT: i32 = 680;   // room for eight detail lines and three rows of presets above the footer
 const HEADER: i32 = 56;
 const FOOTER: i32 = 72;
 const LEFT: i32 = 280;
@@ -555,11 +555,30 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
                 ("Leaderboard", crate::runtimes::rank(&row.name).map_or("-".into(), |r| format!("#{r} on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)"))),
             ]
         };
+        // The preset rows' height, measured first: when the details and presets would
+        // not fit above the footer, the detail lines close up (32 px down to 22) so the
+        // presets never run into the footer.
+        let preset_rows = {
+            let (mut rows, mut sx) = (1, x);
+            for (i, p) in s.presets.iter().enumerate() {
+                let sw = width_of(dc, if i == 0 { "Default" } else { p }, f.body) + 24;
+                if sx > x && sx + sw > w - 32 {
+                    rows += 1;
+                    sx = x;
+                }
+                sx += sw;
+            }
+            rows
+        };
+        let extra = (row.repo.is_some() as i32) * 32 + if row.missing.is_some() { 76 } else { 0 };
+        let below = 8 + 1 + 14 + 24 + preset_rows * 36 + 12;
+        let room = foot - (HEADER + 84) - extra - below;
+        let step = (room / lines.len().max(1) as i32).clamp(22, 32);
         let mut y = HEADER + 84;
         for (k, v) in &lines {
-            text(dc, k, rect(x, y, x + 104, y + 28), SUB, f.body, DT_LEFT | DT_VCENTER);
-            text(dc, v, rect(x + 112, y, w - 32, y + 28), TEXT, f.body, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
-            y += 32;
+            text(dc, k, rect(x, y, x + 104, y + step - 4), SUB, f.body, DT_LEFT | DT_VCENTER);
+            text(dc, v, rect(x + 112, y, w - 32, y + step - 4), TEXT, f.body, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+            y += step;
         }
         // Source: the runtime's own repo, opened in the browser.
         if let Some(repo) = &row.repo {
