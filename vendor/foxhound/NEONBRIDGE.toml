@@ -2,10 +2,10 @@
 # Build, run and env are its README and scripts/play-foxhound.ps1 (Series X, 1440p); Play-VIctory.cmd -> preset_play_victory.
 name = "foxhound"
 fork = "VIctory"
-about = "foxhound 9f8838b (GPL-3.0): 30 fps (the title's cap) on a 4070 SUPER + 7800X3D, 16-21 fps in heavier scenes; not yet run here"
+about = "foxhound b364baa (GPL-3.0): 30 fps (the title's cap) on a 4070 SUPER + 7800X3D, 16-21 fps in heavier scenes; not yet run here"
 upstream = "https://github.com/readmet3xt-lab/foxhound"
-updated = "2026-11-27 08:38"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 68   # GitHub stars when last checked
+updated = "2026-11-27 14:50"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 71   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:76
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"   # play-foxhound.ps1:22,85
