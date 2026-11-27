@@ -11,6 +11,7 @@ build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "thi
 watch = ["third_party/victory/apps", "third_party/victory/crates", "third_party/victory/Cargo.toml", "third_party/victory/Cargo.lock"]
 exe = "third_party/victory/target/release/victory.exe"   # steps.rs:41-44
 diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--manifest-path", "third_party/victory/Cargo.toml"]   # steps.rs:67-69 (--diag; exe target/diag/victory.exe)
+diag_exe = "third_party/victory/target/diag/victory.exe"   # steps.rs:39-42: the diag profile's exe (without this i95 looked for the release exe after a diag build)
 run = ["run", "{game_exe}", "--execute"]   # steps.rs:107-113 (console defaults to series-x, apps/victory/src/main.rs:155)
 prewarm = ["warm"]   # steps.rs (2225a8e): on the Vice-Tay base warm takes no archives (it refuses them); it makes the pipelines earlier runs noted
 game_env = "VICTORY_GAME_DIR"   # settings.rs:84,116
