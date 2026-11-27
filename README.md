@@ -103,7 +103,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 
 **The loader.** Shows what's happening before the game starts.
 
-![The loader preparing the shaders](assets/loader.png)
+![The loader building a runtime over your own picture](assets/loader.png)
 
 **On-screen keys and frame rate.**
 
