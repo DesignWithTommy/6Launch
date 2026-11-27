@@ -260,6 +260,9 @@ struct Row {
     version: String,
     licence: String,
     upstream: String,
+    /// The pinned upstream commit's date and the repo's GitHub stars (toml updated =, stars =).
+    updated: String,
+    stars: String,
     /// The runtime's GitHub page (its toml's upstream), opened by the Source link.
     repo: Option<String>,
     frames: Option<u64>,
@@ -541,6 +544,8 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
                 ("Version", row.version.clone()),
                 ("Licence", row.licence.clone()),
                 ("Upstream", row.upstream.clone()),
+                ("Updated", row.updated.clone()),
+                ("Stars", row.stars.clone()),
                 ("Last run", match row.frames {
                     None => "Not run yet".into(),
                     Some(0) => "Started, no frames presented".into(),
@@ -731,7 +736,7 @@ fn rows() -> Vec<Row> {
             let repo = fs::read_to_string(crate::runtimes::vendor().join(&n).join("NEONBRIDGE.toml")).ok().and_then(|t| {
                 t.lines().find_map(|l| l.strip_prefix("upstream = \"").and_then(|r| r.split('"').next()).filter(|u| u.starts_with("https://")).map(str::to_owned))
             });
-            Row { frames: crate::runtimes::last_run_frames(&n), missing: crate::runtimes::missing(&n), name: n, title: name_part, version, licence, upstream, repo }
+            Row { frames: crate::runtimes::last_run_frames(&n), missing: crate::runtimes::missing(&n), updated: crate::runtimes::field(&n, "updated").unwrap_or_else(|| "-".into()), stars: crate::runtimes::field(&n, "stars").unwrap_or_else(|| "-".into()), name: n, title: name_part, version, licence, upstream, repo }
         })
         .collect();
     // Best first by each toml's rank (as runs come in, the ranks change);

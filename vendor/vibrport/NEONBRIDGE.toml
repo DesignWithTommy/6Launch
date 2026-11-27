@@ -5,6 +5,8 @@ fork = "victory-fork"
 rank = 24   # #24 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VI-BR-PORT 8bb5142 (GPL-3.0): ~5.6 fps on Series X at 1080p and ~14 fps on Series S in the prison, RTX 4060 Ti 8 GB; the opening cutscene at ~18–19 fps; 'Ainda não está jogável' (not playable yet)"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
+updated = "2026-11-27"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 18   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # play.ps1:5 (diag is its default; README.md:75 builds release)
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)
 diag_build = []   # its default build is already the diagnostics one

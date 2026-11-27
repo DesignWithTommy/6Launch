@@ -1183,6 +1183,11 @@ pub fn controls_of(name: &str) -> Vec<(String, String)> {
     crate::controls::rows(|k| spec.str(&format!("controls.{k}")).map(str::to_owned))
 }
 
+/// A plain string or number field of the runtime's toml (updated =, stars =).
+pub fn field(name: &str, key: &str) -> Option<String> {
+    load(name).ok().and_then(|(_, s)| s.str(key).map(str::to_owned))
+}
+
 /// The runtime's options entries ("KEY=values (default X): text").
 pub fn options_of(name: &str) -> Vec<String> {
     load(name).ok().and_then(|(_, s)| s.list("options").map(<[String]>::to_vec)).unwrap_or_default()
