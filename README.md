@@ -24,7 +24,7 @@ i95 is a Windows launcher for the projects trying to run the Xbox Series version
 
 ## Standings
 
-Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 31 runtimes, and the launcher lists them in one list in that order.
+Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 34 runtimes, and the launcher lists them in one list in that order.
 
 "Its author reports" is what each project says about itself, in its own words where we could. "Here" is our own PC: i5-14400F, RTX 4060 8 GB, 16 GB RAM, Windows 11. Most authors test on faster cards, so expect less on yours if it's like ours.
 
@@ -60,6 +60,9 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | – | [Kitty6](https://github.com/kitty-core/Kitty6) | VIctory-7900XTX | 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker | Not run yet |
 | – | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | VIctory-NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker | Not run yet |
 | – | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | CGBJ | cool_fox with VIctory-NVIDIA's 8 GB patches; 7.7 fps at half render scale, 2–3 fps native; not on the tracker | Not run yet |
+| – | [PercyScarlett](https://github.com/rpatty-dev/PercyScarlett) | VIctory | Lit opening prison scene on Series S, 2-3 fps on an RTX 2060 SUPER; early, from PortWatch's watch list | Not run yet |
+| – | [Five Star Recomp](https://github.com/ThatRecompDev/five-star-recomp) | own (C#) | Intro and opening cutscene at 30 fps, world surfaces still black; needs the .NET SDK; early | Not run yet |
+| – | [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) | own (C) | Boot harness: frame loop and first UI screen; needs Visual Studio 2022 C tools; early | Not run yet |
 | – | i95-Victory (ours) | Kelvaroq | Our own fork: Kelvaroq plus the 8 GB and skin fixes from VI-BR-PORT, soldsawn and VItoriaBr | Not run yet |
 
 **Watching (not in i95 yet):** early projects from [PortWatch](https://portwatch-vi.xyz/) that don't reach the game's world on Windows; summaries are PortWatch's, unverified.
@@ -79,7 +82,6 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | – | [anyxboxseries](https://github.com/edupode/anyxboxseries) | GTA VI-only translation layer with a PE mapper borrowed from Xbox2Windows, an early scalar shader lifter and a sample game that tests presentation and input | Watch only |
 | – | [SCARAB](https://github.com/p-portela/SCARAB) | Found that the console d3d12_xs uses the same 28 interface IDs as PC D3D12, so standard calls can be forwarded and only the console extensions need building | Watch only |
 | – | [AnyBox](https://github.com/Dark3581/AnyBox) | Relinks GDK executables against reimplemented system libraries, AnyPS5-style | Watch only |
-| – | [PercyScarlett](https://github.com/rpatty-dev/PercyScarlett) | Rust layer with stand-in system DLLs and an early shader recompiler | Watch only |
 | – | [GrandTheftXbox](https://github.com/zohaiblazuli/GrandTheftXbox) | Wine-style layer planned for Series and One titles | Watch only |
 | – | [NativeX-Runtime](https://github.com/ProhorovIlja/NativeX-Runtime) | Clean-room test programs for how Game Core software meets Windows, covering loading, memory, presentation and input, plus a radar that watches other projects | Watch only |
 | – | [DedSec](https://github.com/Hylanderry/DedSec) | Portuguese-language GTA VI port targeting DirectX 12 with an RDNA2-to-HLSL translator | Watch only |
@@ -89,9 +91,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | – | [xlaunch-vi](https://github.com/JPTuba9/xlaunch-vi) | Multi-contributor C++ layer with a PE loader, a D3D12 backend and an RDNA2 shader translator that matches AMD-compiled test shaders bit for bit | Watch only |
 | – | [OpenScarlett](https://github.com/OpenCommunityEdition/OpenScarlett) | AGPL C++ layer, separate from the other OpenScarlett, that swaps console DLLs for PC Direct3D 12 ones and translates console GPU code | Watch only |
 | – | [port-of-the-americas](https://github.com/Steinkoloss/port-of-the-americas) | Linux layer that runs GTA VI's own exe under Proton with replacement console DLLs on a patched vkd3d-proton | Watch only |
-| – | [five-star-recomp](https://github.com/ThatRecompDev/five-star-recomp) | C# layer and toolkit for GTA VI | Watch only |
 | – | [G6Recomp](https://github.com/Kajcsi/G6Recomp) | Carefully tested C++ loader and console-runtime rewrite for GTA VI, with its own code throughout | Watch only |
-| – | [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) | C stand-in DLLs and a debugger harness that run GTA VI's exe on Windows through its frame loop | Watch only |
 | – | [palmetto](https://github.com/luizwidmer/palmetto) | Open continuation of Leonida after its repo went private | Watch only |
 
 **Not in i95:** ztrx (#6), victory-perf (#8) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub. omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. From #33 down the projects are early-stage layers (Linux/Proton, macOS, recompilations or boot-only builds) that don't reach the game's world on Windows yet.

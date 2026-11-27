@@ -1,0 +1,15 @@
+# Launcher spec for vendor/fivestar: ThatRecompDev's Five Star Recomp, a C# loader and shader translator for
+# GTA VI 1.0.2.1. Build and run are its README and docs/running.md (b42886f). Early: unranked, listed last.
+name = "fivestar"
+fork = "Five Star Recomp"
+about = "Five Star Recomp b42886f (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
+upstream = "https://github.com/ThatRecompDev/five-star-recomp"
+build = ["dotnet", "build", "FiveStar.slnx"]   # README.md:46
+watch = ["src", "FiveStar.slnx", "global.json"]
+exe = "artifacts/bin/FiveStar.Cli/debug/fivestar.exe"   # docs/running.md:20
+run = ["run", "{game}"]   # docs/running.md:12,26
+prewarm = ["setup", "{game}"]   # README.md:58-59: the one-time setup (re-runs skip finished steps)
+agility = false
+
+preset_warm = ["--warm"]   # docs/running.md:95: builds journaled pipelines before the boot
+preset_debug = ["--debug"]   # docs/running.md:26

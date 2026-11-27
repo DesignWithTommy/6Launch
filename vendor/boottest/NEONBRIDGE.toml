@@ -1,0 +1,12 @@
+# Launcher spec for vendor/boottest: OnlyMoisties' GTA6-BootTest, C stand-in DLLs and a debugger harness.
+# Build and run are its README "Build and run" and run.bat (32683d8). No licence: fetched from GitHub, never copied.
+# Its real-GPU path needs AMD's RDNA2 ISA XML (not included), so this runs the boot harness only. Early: unranked.
+name = "boottest"
+fork = "GTA6-BootTest"
+about = "GTA6-BootTest 32683d8 (no licence): boots, streams archives, runs the frame loop and draws its first UI screen; harness stops the game after 60 s; needs Visual Studio 2022 C tools; early, not yet run here"
+upstream = "https://github.com/OnlyMoisties/GTA6-BootTest"
+build = ["cmd", "/c", "src\build.bat"]   # README.md:33
+watch = ["src"]
+exe = "bin/harness.exe"   # run.bat:9
+run = ["{game_exe}", "{root}/bin/stubs", "{root}/logs", "60", "run", "-skip"]   # run.bat:9
+agility = false

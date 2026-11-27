@@ -196,6 +196,19 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
+=== boottest 32683d8fe2841bddeb0b437109e97bc32cf55724
+# Launcher spec for vendor/boottest: OnlyMoisties' GTA6-BootTest, C stand-in DLLs and a debugger harness.
+# Build and run are its README "Build and run" and run.bat (32683d8). No licence: fetched from GitHub, never copied.
+# Its real-GPU path needs AMD's RDNA2 ISA XML (not included), so this runs the boot harness only. Early: unranked.
+name = "boottest"
+fork = "GTA6-BootTest"
+about = "GTA6-BootTest 32683d8 (no licence): boots, streams archives, runs the frame loop and draws its first UI screen; harness stops the game after 60 s; needs Visual Studio 2022 C tools; early, not yet run here"
+upstream = "https://github.com/OnlyMoisties/GTA6-BootTest"
+build = ["cmd", "/c", "src\build.bat"]   # README.md:33
+watch = ["src"]
+exe = "bin/harness.exe"   # run.bat:9
+run = ["{game_exe}", "{root}/bin/stubs", "{root}/logs", "60", "run", "-skip"]   # run.bat:9
+agility = false
 === cblvictory 0d6022cec08dc91fa0847129aed83a2500126947
 # i95 launcher spec for cocainebunnylaboratories/cblvictoryvi: author build and run from its README.
 name = "cblvictory"
@@ -449,6 +462,22 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
+=== fivestar b42886f8c662510b3a65b1b799c52f92c769479f
+# Launcher spec for vendor/fivestar: ThatRecompDev's Five Star Recomp, a C# loader and shader translator for
+# GTA VI 1.0.2.1. Build and run are its README and docs/running.md (b42886f). Early: unranked, listed last.
+name = "fivestar"
+fork = "Five Star Recomp"
+about = "Five Star Recomp b42886f (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
+upstream = "https://github.com/ThatRecompDev/five-star-recomp"
+build = ["dotnet", "build", "FiveStar.slnx"]   # README.md:46
+watch = ["src", "FiveStar.slnx", "global.json"]
+exe = "artifacts/bin/FiveStar.Cli/debug/fivestar.exe"   # docs/running.md:20
+run = ["run", "{game}"]   # docs/running.md:12,26
+prewarm = ["setup", "{game}"]   # README.md:58-59: the one-time setup (re-runs skip finished steps)
+agility = false
+
+preset_warm = ["--warm"]   # docs/running.md:95: builds journaled pipelines before the boot
+preset_debug = ["--debug"]   # docs/running.md:26
 === flamingo 89e131c5bca563c165319ebc21504657e9b770f7
 # Neonbridge launcher spec for vendor/flamingo: realblastex's Flamingo, a victory
 # fork vendored clean. Build, run and env are its README.md "Building and running"
@@ -963,6 +992,25 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
+=== percyscarlett e44c465e47ab5b29ca87777cd00875e2ae0d8c0d
+# Launcher spec for vendor/percyscarlett: rpatty-dev's PercyScarlett, a Rust layer whose GTA VI runtime is the
+# VIctory copy in runtime/victory. Build and run are its scripts/play-prologue.ps1 (e44c465). Early: unranked, listed last.
+name = "percyscarlett"
+fork = "PercyScarlett"
+about = "PercyScarlett e44c465 (GPL-2.0): reaches the lit opening prison scene on Series S, 2-3 fps on an RTX 2060 SUPER 8 GB; shaded areas too dark; early, not yet run here"
+upstream = "https://github.com/rpatty-dev/PercyScarlett"
+build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "runtime/victory/Cargo.toml"]   # play-prologue.ps1:20-23
+watch = ["runtime/victory/apps", "runtime/victory/crates", "runtime/victory/Cargo.toml", "runtime/victory/Cargo.lock"]
+exe = "runtime/victory/target/release/victory.exe"   # play-prologue.ps1:16
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play-prologue.ps1:47 (README: Series S profile)
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = true   # play-prologue.ps1:28-39 puts Agility 1.614.1 beside the exe
+
+preset_series_x = ["--console=series-x", "VICTORY_DISPLAY_MODE=1920x1080"]   # play-prologue.ps1:43
+
+[env]
+VICTORY_LEVELS_ON_DEMAND = "1"   # play-prologue.ps1:42: about 3 GB less video memory
 === rdna 2c5a395292c0c4bc3c31815a2ccb2abb846ebaad
 # Launcher spec for vendor/rdna: XaviFortes's VIctory-RDNA (RDNA3-tuned VIctory, RX 7900 XT).
 # Build, run and env are its README and scripts/play-rdna.ps1 + rdna-preset.json (default: base + fast, Series X).

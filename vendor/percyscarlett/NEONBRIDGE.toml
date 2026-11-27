@@ -1,0 +1,18 @@
+# Launcher spec for vendor/percyscarlett: rpatty-dev's PercyScarlett, a Rust layer whose GTA VI runtime is the
+# VIctory copy in runtime/victory. Build and run are its scripts/play-prologue.ps1 (e44c465). Early: unranked, listed last.
+name = "percyscarlett"
+fork = "PercyScarlett"
+about = "PercyScarlett e44c465 (GPL-2.0): reaches the lit opening prison scene on Series S, 2-3 fps on an RTX 2060 SUPER 8 GB; shaded areas too dark; early, not yet run here"
+upstream = "https://github.com/rpatty-dev/PercyScarlett"
+build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "runtime/victory/Cargo.toml"]   # play-prologue.ps1:20-23
+watch = ["runtime/victory/apps", "runtime/victory/crates", "runtime/victory/Cargo.toml", "runtime/victory/Cargo.lock"]
+exe = "runtime/victory/target/release/victory.exe"   # play-prologue.ps1:16
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play-prologue.ps1:47 (README: Series S profile)
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = true   # play-prologue.ps1:28-39 puts Agility 1.614.1 beside the exe
+
+preset_series_x = ["--console=series-x", "VICTORY_DISPLAY_MODE=1920x1080"]   # play-prologue.ps1:43
+
+[env]
+VICTORY_LEVELS_ON_DEMAND = "1"   # play-prologue.ps1:42: about 3 GB less video memory
