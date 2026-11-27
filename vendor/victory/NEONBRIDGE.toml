@@ -5,7 +5,7 @@
 name = "victory"
 fork = "victory-fork"
 rank = 2   # #2 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-fxceless 4c60466 (GPL-3.0): 7.5 to 8.5 fps at the first boat mission, 10 to 14 in light scenes, RTX 4070"
+about = "VIctory-fxceless b1d777a (GPL-3.0): 7.5 to 8.5 fps at the first boat mission, 10 to 14 in light scenes, RTX 4070"
 upstream = "https://github.com/fxceless/victory-fork"
 # fxceless's victory has no Agility opt-in (no D3D12SDKVersion/D3D12SDKPath
 # exports, unlike ScarlettPort's copy): it runs on the system's D3D12.
