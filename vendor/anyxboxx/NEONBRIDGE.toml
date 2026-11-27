@@ -5,7 +5,7 @@
 name = "anyxboxx"
 fork = "Neptune"
 rank = 3   # #3 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "AnyXboxX 2225a8e (GPL-3.0): '25–29 fps in the world in Full HD, about 20 in 4K' (Series X, Vice-Tay base), RTX 4070 SUPER; not yet run here"
+about = "AnyXboxX 4340aac (GPL-3.0): 'About 24 fps median in the world in Full HD', 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
 build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml"]   # crates/anyxboxx/src/run/steps.rs:71-73
 watch = ["third_party/victory/apps", "third_party/victory/crates", "third_party/victory/Cargo.toml", "third_party/victory/Cargo.lock"]
@@ -25,7 +25,7 @@ options = [
 preset_quality = ["VICTORY_CARD_WINDOWS_MB=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_STAGE_MB=192"]   # settings.rs:78-82 (--quality): picture first
 preset_linux_amd = ["VICTORY_FETCH_CHECK=1", "VICTORY_PIPELINE_WAIT_MS=0", "VICTORY_PORT_CONSTANTS=1", "VKD3D_CONFIG=descriptor_heap"]   # settings.rs:36-47 (--profile linux-amd, Proton only)
 preset_defaults = ["VICTORY_TEXTURE_NO_WAIT=", "VICTORY_RELAY=", "VICTORY_WIDE_BACK=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_JOIN_COPIES=", "VICTORY_INDIRECT_WINDOW=", "VICTORY_RELAY_COPY=", "VICTORY_CARD_STEPS=", "VICTORY_TITLE_PRIORITIES=", "VICTORY_SHOW_AFTER=", "VICTORY_AMBIENT=", "VICTORY_D3D12_DRED=", "VICTORY_WAVE_WIDE_ONLY=", "VICTORY_THIN_THREADS=", "VICTORY_UNDER_THREADS=", "VICTORY_LAND_THREADS=", "VICTORY_MAP_THREADS=", "VICTORY_PIPELINE_WORKERS=", "VICTORY_CARD_RESERVE_BUDGETS=", "VICTORY_CARD_BUFFERS_MIN_KB=", "VICTORY_CARD_BUFFERS_MB=", "VICTORY_CARD_WINDOWS_MB=", "VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_INDIRECT_BATCH="]   # settings.rs (--no-tuned-settings): VIctory's own defaults
-preset_1080p = ["VICTORY_OUTPUT=1920x1080"]   # README.md (5a08a33): "Force Full HD, not 4K, to gain fps"
+preset_4k = ["VICTORY_OUTPUT="]   # the title's own size (4K as a Series X wrote it): about 20 fps on its RTX 4070 SUPER
 preset_16_cores = ["VICTORY_THIN_THREADS=12", "VICTORY_UNDER_THREADS=8", "VICTORY_LAND_THREADS=6"]   # settings.rs BIG_POOLS (2225a8e): applied by its wrapper on 16+ logical CPUs; 19.6 -> 23.8 fps on its i7-13700KF
 preset_series_s = ["--console=series-s"]   # apps/victory/src/main.rs:155,179: Series S profile (less GPU memory)
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305); every var still read by this tree
@@ -59,6 +59,7 @@ VICTORY_JOIN_PARTS = "8"
 VICTORY_UPLOAD_AHEAD = "1"
 VICTORY_INDIRECT_BATCH = "2"
 VICTORY_DISCORD = "0"
+VICTORY_OUTPUT = "1920x1080"   # anyxboxx-launcher options.rs (4340aac): Full HD by default, 1280x720 inside
 
 [controls]   # third_party/victory/crates/victory-hle/src/modules/gameinput.rs:64-80,133-138 (mouse and Shift/Ctrl gone)
 left_stick = "W A S D"
