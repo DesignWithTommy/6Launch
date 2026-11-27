@@ -20,7 +20,6 @@ preset_series_x = ["--console=series-x"]
 preset_full_scale = ["VICTORY_RENDER_SCALE=1.0"]   # README.md:46 (0.2 to 1.0)
 
 [env]   # README.md:72-83, its recommended profile
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_CARD_BUFFERS_MIN_MB = "1"
 VICTORY_CARD_BUFFERS_MB = "2048"
 VICTORY_RELAY = "2"

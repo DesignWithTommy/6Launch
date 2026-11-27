@@ -41,7 +41,6 @@ preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB
 VICTORY_WIDE_TEXTURES = "1"   # flamingo-log.cmd:49-51
 VICTORY_VIEW_GUARD = "0"
 FLAMINGO_BVH_MISS = "1"
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
 VICTORY_NO_WATCHDOG = "1"   # README.md:104-113, its run settings
 VICTORY_PIPELINE_WAIT_MS = "24"
 VICTORY_RELAY = "1"

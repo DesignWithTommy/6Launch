@@ -887,18 +887,9 @@ fn select(hwnd: HWND, i: usize) {
     }
 }
 
-fn play(hwnd: HWND) {
-    let Some(game) = with_state(|s| s.game.clone()).flatten() else {
-        change_game(hwnd);
-        return;
-    };
-    let Ok((folder, exe)) = resolve(&game.display().to_string()) else {
-        message(hwnd, "The game folder is gone; choose it again.", MB_ICONWARNING);
-        return;
-    };
-    let _ = fs::create_dir_all(saved().parent().unwrap_or(Path::new(".")));
-    let _ = fs::write(saved(), game.display().to_string());
-    let runtime = running();
+/// Saves the picks (runtime, preset, options, Diagnostics) to last_pick.txt:
+/// at Play and when the picker is closed, so a choice is kept either way.
+fn remember_picks() -> (Option<String>, Vec<String>) {
     let (sel_name, preset) = with_state(|s| (s.rows.get(s.sel).map(|r| r.name.clone()).unwrap_or_default(), (s.preset > 0).then(|| s.presets.get(s.preset).cloned()).flatten())).unwrap_or_default();
     let sets: Vec<String> = UI.with(|u| u.borrow().as_ref().map(|ui| edit_text(ui.options).lines().map(str::trim).filter(|l| l.contains('=')).map(str::to_owned).collect()).unwrap_or_default());
     let mut memory = format!("runtime={sel_name}\n");
@@ -922,6 +913,22 @@ fn play(hwnd: HWND) {
     // SAFETY: the picker's thread is the launcher's only one here.
     unsafe { std::env::set_var("NEONBRIDGE_DIAG", if DIAG.get() { "1" } else { "0" }) };
     let _ = fs::write(last_pick(), memory);
+    (preset, sets)
+}
+
+fn play(hwnd: HWND) {
+    let Some(game) = with_state(|s| s.game.clone()).flatten() else {
+        change_game(hwnd);
+        return;
+    };
+    let Ok((folder, exe)) = resolve(&game.display().to_string()) else {
+        message(hwnd, "The game folder is gone; choose it again.", MB_ICONWARNING);
+        return;
+    };
+    let _ = fs::create_dir_all(saved().parent().unwrap_or(Path::new(".")));
+    let _ = fs::write(saved(), game.display().to_string());
+    let runtime = running();
+    let (preset, sets) = remember_picks();
     PICKED.with(|p| *p.borrow_mut() = Some(Pick { folder, exe, runtime: Some(runtime), preset, sets }));
     unsafe { DestroyWindow(hwnd) };
 }
@@ -1143,6 +1150,10 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
             0
         }
         WM_DESTROY => {
+            // Closed without Play: the picks are kept too.
+            if PICKED.with(|p| p.borrow().is_none()) {
+                remember_picks();
+            }
             unsafe { PostQuitMessage(0) };
             0
         }

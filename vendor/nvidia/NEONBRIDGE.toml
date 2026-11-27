@@ -26,7 +26,6 @@ preset_1080to1440 = ["VICTORY_NATIVE_1440P=", "VICTORY_RENDER_1080P=1"]   # play
 preset_60fps = ["VICTORY_FRAME_INTERVAL_US=16667"]   # README.md:259, play-foxhound.ps1:107
 
 [env]   # play-foxhound.ps1 (c437b05) $settings, without NVIDIA's DLSS files
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_THIN = "1"
 VICTORY_JOIN_PARTS = "8"
 VICTORY_RELAY = "2"

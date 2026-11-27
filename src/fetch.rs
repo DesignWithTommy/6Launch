@@ -266,7 +266,8 @@ const KEY_FILES: [(&str, &str); 3] = [
 /// patches the key line (once) and returns the translator folder to hash.
 /// NEONBRIDGE_SHADER_KEY_PATCH=0 leaves trees as their authors ship them.
 pub fn shader_key_patch(name: &str, root: &Path) -> Option<PathBuf> {
-    if std::env::var("NEONBRIDGE_SHADER_KEY_PATCH").is_ok_and(|v| v.trim() == "0") {
+    // Off by default (runtimes run as their authors ship them); NEONBRIDGE_SHADER_KEY_PATCH=1 turns it on.
+    if !std::env::var("NEONBRIDGE_SHADER_KEY_PATCH").is_ok_and(|v| v.trim() == "1") {
         return None;
     }
     for (file, shader) in KEY_FILES {

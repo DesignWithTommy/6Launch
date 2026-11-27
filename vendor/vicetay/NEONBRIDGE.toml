@@ -42,7 +42,6 @@ preset_nvidia_10_14gb = ["VICTORY_CARD_RESERVE_BUDGETS=1", "VICTORY_CARD_BUFFERS
 preset_nvidia_15_19gb = ["VICTORY_CARD_RESERVE_BUDGETS=1", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1536", "VICTORY_CARD_WINDOWS_MB=1024", "VICTORY_WINDOWS_BAR_MB=4096"]   # play.ps1 -Machine auto on a 15-19 GB NVIDIA card
 
 [env]   # play.ps1 default path
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"   # play.ps1:21-26 defaults
 VICTORY_RELAY = "2"
 VICTORY_WIDE_BACK = "1"

@@ -1169,7 +1169,8 @@ fn clear_leftovers(c: &mut Command) {
 
 /// The VICTORY_* variables [`clear_leftovers`] takes out of a runtime's environment.
 fn leftovers() -> Vec<std::ffi::OsString> {
-    if std::env::var("NEONBRIDGE_KEEP_ENV").is_ok_and(|v| v.trim() == "1") {
+    // Kept by default; NEONBRIDGE_KEEP_ENV=0 clears them.
+    if std::env::var("NEONBRIDGE_KEEP_ENV").map_or(true, |v| v.trim() != "0") {
         return Vec::new();
     }
     std::env::vars_os()
@@ -1204,7 +1205,8 @@ pub fn elevated() -> bool {
 
 /// NEONBRIDGE_PATCHES=0: the trees build as vendored, without vendor/patches.
 pub fn patching() -> bool {
-    std::env::var("NEONBRIDGE_PATCHES").map_or(true, |v| v.trim() != "0")
+    // Off by default: NEONBRIDGE_PATCHES=1 applies them.
+    std::env::var("NEONBRIDGE_PATCHES").is_ok_and(|v| v.trim() == "1")
 }
 
 /// The victory tree a runtime's patches apply to: scarlettport's is its
@@ -2171,7 +2173,10 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     let family = victory_tree(name).is_some() && matches!(name, "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo");
     // The victory family's cache is the one shared folder; this runtime's
     // own files (press.txt, warm-total.txt, last-run.log) stay in its own.
-    let data = if family {
+    // Shared cache and saves are opt-in (NEONBRIDGE_SHARED=1): by default each
+    // runtime keeps its own, as its author ships it.
+    let shared_on = std::env::var("NEONBRIDGE_SHARED").is_ok_and(|v| v.trim() == "1");
+    let data = if family && shared_on {
         let shared = family_cache();
         let _ = fs::create_dir_all(&shared);
         migrate_caches(&shared);
@@ -2227,13 +2232,14 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     env.extend(spec.env.iter().map(|(k, v)| (k.clone(), fill(v, &places))));
     // One save folder for the family, even where a toml names another (after
     // the toml's [env], so it wins).
-    if family {
+    if family && shared_on {
         env.retain(|(k, _)| k != "VICTORY_DATA_DIR");
         env.push(("VICTORY_DATA_DIR".to_owned(), family_saves().display().to_string()));
     }
     // One fps panel for every runtime: i95's (Vice-Tay's HUD, src/hud.rs).
     // The runtimes' own overlays are switched off; NEONBRIDGE_RUNTIME_OVERLAY=1 keeps them.
-    if std::env::var("NEONBRIDGE_RUNTIME_OVERLAY").map_or(true, |v| v.trim() != "1") {
+    // Kept by default; NEONBRIDGE_RUNTIME_OVERLAY=0 switches them off.
+    if std::env::var("NEONBRIDGE_RUNTIME_OVERLAY").is_ok_and(|v| v.trim() == "0") {
         env.retain(|(k, _)| !matches!(k.as_str(), "VICTORY_PANEL" | "FLAMINGO_OSD" | "VICTORY_DEBUG_HUD"));
         env.extend([("VICTORY_PANEL", "0"), ("FLAMINGO_OSD", "0"), ("VICTORY_DEBUG_HUD", "0")].map(|(k, v)| (k.to_owned(), v.to_owned())));
     }

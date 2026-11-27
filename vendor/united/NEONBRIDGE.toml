@@ -29,7 +29,6 @@ preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTUR
 
 [env]   # play.ps1 default path
 VICTORY_PRESS_FILE = "{press}"   # read at crates/victory-core/src/config.rs:4
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"   # play.ps1:21-26 defaults
 VICTORY_RELAY = "2"
 VICTORY_WIDE_BACK = "1"

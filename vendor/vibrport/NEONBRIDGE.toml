@@ -27,7 +27,6 @@ preset_8gb = ["--console=series-s", "VICTORY_RT_MISS=1", "VICTORY_THIN=0", "VICT
 
 [env]   # play.ps1 default path
 VICTORY_PORT_CONSTANTS = "1"   # play.ps1 (2aa1895)
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"   # play.ps1:15-20 defaults
 VICTORY_RELAY = "2"
 VICTORY_WIDE_BACK = "1"

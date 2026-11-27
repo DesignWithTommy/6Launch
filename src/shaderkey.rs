@@ -21,7 +21,8 @@ const WITH2: &str = "other.map_or_else(std::env::current_exe, Ok).and_then(|e| s
 pub const KEY_BIN: &str = "neonbridge-key.bin";
 
 pub fn on() -> bool {
-    std::env::var("NEONBRIDGE_SHADER_KEY_FIX").map_or(true, |v| v.trim() != "0")
+    // Off by default: NEONBRIDGE_SHADER_KEY_FIX=1 turns it on.
+    std::env::var("NEONBRIDGE_SHADER_KEY_FIX").is_ok_and(|v| v.trim() == "1")
 }
 
 /// The exe-keyed shader_cache.rs files under a runtime's tree.

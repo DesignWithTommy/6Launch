@@ -26,7 +26,6 @@ preset_amd = ["VICTORY_THIN=1", "VICTORY_JOIN_PARTS=8", "VICTORY_PORT_CONSTANTS=
 preset_120fps = ["VICTORY_FRAME_INTERVAL_MS=8.333"]   # README.md:29
 
 [env]   # Play-VIctory.cmd
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_AMBIENT_AIR = "1.5"
 VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_RELAY = "2"

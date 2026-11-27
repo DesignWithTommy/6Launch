@@ -27,7 +27,6 @@ preset_10gb = ["VICTORY_TEXTURE_STAGE_MB=128", "VICTORY_CARD_BUFFERS_MB=512", "V
 preset_16gb = ["VICTORY_TEXTURE_STAGE_MB=192", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_QUEUE2_LANDING_MB=96"]   # README.md:194-196
 
 [env]
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 
 [controls]
 left_stick = "W A S D"

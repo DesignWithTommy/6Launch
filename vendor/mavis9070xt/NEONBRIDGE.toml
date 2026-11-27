@@ -25,7 +25,6 @@ preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing
 preset_series_s = ["--console=series-s"]
 
 [env]   # play-9070xt.ps1 measured settings over play.ps1 defaults
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_RELAY = "2"
 VICTORY_WIDE_BACK = "1"

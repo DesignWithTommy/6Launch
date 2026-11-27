@@ -41,7 +41,6 @@ preset_warm_all = ["VICTORY_EARLY_ALL=1", "VICTORY_PIPELINE_BOOK=1"]   # ours: e
 preset_windowed = ["VICTORY_FULLSCREEN="]   # windowed instead of fullscreen
 
 [env]   # crates/anyxboxx/src/run/settings.rs TUNED + ALWAYS (5a08a33: Vice-Tay base, its play.ps1 -Machine 4070)
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_RELAY = "2"
 VICTORY_WIDE_BACK = "1"

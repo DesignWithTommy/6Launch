@@ -45,7 +45,6 @@ preset_no_ray_tracing = ["VICTORY_BVH_BUILDER=0"]   # README.md: ray tracing on 
 preset_no_dynamic_wait = ["VICTORY_DYNAMIC_WAIT=0"]   # README.md: dynamic wait on by default now
 
 [env]
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
 # Play-VIctory.cmd (its Windows launcher): the author's defaults
 VICTORY_AMBIENT = "0.8"
 VICTORY_AMBIENT_AIR = "1.5"

@@ -21,4 +21,3 @@ preset_ray_tracing = ["--rt"]   # README: the ray-tracing structure builder (dar
 preset_safe = ["--safe"]   # README: the newest speed-ups left out
 
 [env]
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
