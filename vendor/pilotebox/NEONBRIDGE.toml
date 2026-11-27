@@ -1,10 +1,10 @@
 # Launcher spec for vendor/pilotebox: PiloteCode's PiloteBox, a VIctory-based layer tuned for NVIDIA cards.
-# Build and run are its README "Quick start" (0d76a3c): `pilotebox play` sets its own measured settings.
+# Build and run are its README "Quick start" (28e08fa): `pilotebox play` sets its own measured settings.
 name = "pilotebox"
 fork = "VIctory"
-about = "PiloteBox 0d76a3c (GPL-3.0): 10.5 to 12.5 fps in the prologue's first playable scenes, Series X, no crash in eleven 4-5 min automated runs, RTX 5090; not yet run here"
+about = "PiloteBox 28e08fa (GPL-3.0): 10.5 to 12.5 fps in the prologue's first playable scenes, Series X, no crash in eleven 4-5 min automated runs, RTX 5090; not yet run here"
 upstream = "https://github.com/PiloteCode/PiloteBox"
-updated = "2026-11-26 19:52"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 03:41"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 0   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory"]   # README.md:75
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]

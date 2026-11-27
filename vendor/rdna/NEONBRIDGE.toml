@@ -3,9 +3,9 @@
 name = "rdna"
 fork = "VIctory"
 rank = 31   # #31 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-RDNA 2c5a395 (GPL-3.0): 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds; not yet run here"
+about = "VIctory-RDNA d166058 (GPL-3.0): 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds; not yet run here"
 upstream = "https://github.com/XaviFortes/VIctory-RDNA"
-updated = "2026-11-26 12:07"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 03:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 9   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:88
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -23,6 +23,7 @@ preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play-rdna.ps1 -RayTracing
 preset_60fps = ["VICTORY_FRAME_INTERVAL_MS=16.667"]   # play-rdna.ps1 -Fps 60
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]
 preset_8gb = ["--console=series-s", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours
+preset_fsr_4k = ["VICTORY_FSR_4K=quality"]   # play.ps1 -Fsr4K quality: PC FidelityFX 4.1.2 at 3840x2160
 
 [env]   # rdna-preset.json base + fast
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"
