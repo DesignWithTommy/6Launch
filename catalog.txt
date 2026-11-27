@@ -1219,14 +1219,14 @@ rt = "C"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== scarlettport 5ad3155eb9b11c53518e568980141a2c83711e36
+=== scarlettport ba42a57e92076742b41fb073428c1aea0b46dd95
 # ScarlettPort's victory runtime (engine). Its second runtime, runtime/xcl, is a distinct
 # playable path (scripts/setup.ps1:15 `cargo build --release` in runtime\xcl -> runtime\xcl\target\release\xcl.exe,
 # scripts/play.ps1:34 `xcl run <game>` with XCL_DXC_THREADS=4, XCL_NO_WATCHDOG=1, XCL_PRESS_FILE); not modelled here.
 name = "scarlettport"
 fork = "victory-fork"
 rank = 9   # #9 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ScarlettPort 5ad3155 (victory runtime), GPL-3.0"
+about = "ScarlettPort ba42a57 (victory runtime), GPL-3.0"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 # scripts/setup-scarlett.ps1:18,21 (run in engine; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "engine/Cargo.toml", "--release", "-p", "scarlett", "--bin", "scarlett", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]
@@ -1811,13 +1811,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vicetay cc9ed86c78ee44dae1392d0e101f7b3d2a91a9ec
+=== vicetay 2dd3479b5e485d20184f30fce93a8ba21ef48377
 # Neonbridge launcher spec for vendor/vicetay: TaynanGT's Vice-Tay. Build and run are its README "How to run it"
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
 fork = "VIctory"
 rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vice-Tay cc9ed86 (GPL-3.0): The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet; not yet run here"
+about = "Vice-Tay 2dd3479 (GPL-3.0): The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet; not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
@@ -1887,7 +1887,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== victory 1f5d17a6b149f5ef95ba6d0be8826f4f9b62e363
+=== victory 81d54b06f728ade90e450acb67e8c2e0735b024d
 # Neonbridge launcher spec for vendor/victory (src/runtimes.rs reads it).
 # Settings are play-victory.ps1's (ScarlettPort scripts, credit to its authors);
 # its user choices (VICTORY_FAST_BOOT, VICTORY_SAVE_SLOT, VICTORY_AUTO_INPUT)
@@ -1895,7 +1895,7 @@ menu = "Esc"
 name = "victory"
 fork = "victory-fork"
 rank = 2   # #2 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-fxceless 1f5d17a (GPL-3.0): 9.7 fps at the first boat mission, 10 to 14 in light scenes, RTX 4070"
+about = "VIctory-fxceless 81d54b0 (GPL-3.0): 9.7 fps at the first boat mission, 10 to 14 in light scenes, RTX 4070"
 upstream = "https://github.com/fxceless/victory-fork"
 # fxceless's victory has no Agility opt-in (no D3D12SDKVersion/D3D12SDKPath
 # exports, unlike ScarlettPort's copy): it runs on the system's D3D12.
