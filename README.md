@@ -67,35 +67,30 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | – | [Five Star Recomp](https://github.com/ThatRecompDev/five-star-recomp) | own (C#) | Intro and opening cutscene at 30 fps, world surfaces still black; needs the .NET SDK; early | Not run yet |
 | – | [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) | own (C) | Boot harness: frame loop and first UI screen; needs Visual Studio 2022 C tools; early | Not run yet |
 | – | i95-Victory (ours) | Kelvaroq | Our own fork: Kelvaroq plus the 8 GB and skin fixes from VI-BR-PORT, soldsawn and VItoriaBr | Not run yet |
-
-**Watching (not in i95 yet):** early projects from [PortWatch](https://portwatch-vi.xyz/) that don't reach the game's world on Windows; summaries are PortWatch's, unverified.
-
-| # | Project | What it is | Here |
-|---|---|---|---|
-| – | [xbox-emulator](https://github.com/omonkeyz/xbox-emulator) | Rust runtime that runs dumped Xbox Series builds as normal Windows processes, continuing the TomBox project | Watch only |
-| – | [xcl](https://github.com/xcl-dev/xcl) | Wine-style layer running game code natively | Watch only |
-| – | [ScarlettX](https://github.com/Freminet/ScarlettX) | Clean-room high-level emulator of the Scarlett OS and GDK runtime | Watch only |
-| – | [TuxBox](https://github.com/brcly/TuxBox) | Native-first layer for unpacked Xbox Series games, tested mostly on Linux through Proton | Watch only |
-| – | [OpenScarlett](https://github.com/californiaAlmonds/OpenScarlett) | MIT-licensed C++20 translation layer targeting D3D12 and Vulkan | Watch only |
-| – | [scarlett-layer](https://github.com/jadeowaowa/scarlett-layer) | Loader plus injected hook DLL that redirects console-only calls to Windows shims, with its own d3d12_xs wrapper and shader lifter | Watch only |
-| – | [Xbox2Windows](https://github.com/R0Y00/Xbox2Windows) | Static recompilation research turning Xbox Series code and shaders into Windows C++ and DXIL, with over 50 contributors | Watch only |
-| – | [keylime](https://github.com/ethan00013/keylime) | A C++20 runtime written from scratch, with Vulkan graphics and its own RDNA2-to-SPIR-V translator | Watch only |
-| – | [xvalkyrie](https://github.com/sammwyy/xvalkyrie) | Wine-style C++ layer for Xbox One and Series titles with native code and RDNA2-to-HLSL shaders | Watch only |
-| – | [GTAVI-Recomp](https://github.com/JamesCicada/GTAVI-Recomp) | Targets the PS5 build through AnyPS5 and will not work from leaked files, so game research is blocked | Watch only |
-| – | [anyxboxseries](https://github.com/edupode/anyxboxseries) | GTA VI-only translation layer with a PE mapper borrowed from Xbox2Windows, an early scalar shader lifter and a sample game that tests presentation and input | Watch only |
-| – | [SCARAB](https://github.com/p-portela/SCARAB) | Found that the console d3d12_xs uses the same 28 interface IDs as PC D3D12, so standard calls can be forwarded and only the console extensions need building | Watch only |
-| – | [AnyBox](https://github.com/Dark3581/AnyBox) | Relinks GDK executables against reimplemented system libraries, AnyPS5-style | Watch only |
-| – | [GrandTheftXbox](https://github.com/zohaiblazuli/GrandTheftXbox) | Wine-style layer planned for Series and One titles | Watch only |
-| – | [NativeX-Runtime](https://github.com/ProhorovIlja/NativeX-Runtime) | Clean-room test programs for how Game Core software meets Windows, covering loading, memory, presentation and input, plus a radar that watches other projects | Watch only |
-| – | [DedSec](https://github.com/Hylanderry/DedSec) | Portuguese-language GTA VI port targeting DirectX 12 with an RDNA2-to-HLSL translator | Watch only |
-| – | [Xbgtasix](https://github.com/ljm-233/Xbgtasix) | Chinese-language layer that places stand-in xgameruntime, xmem and d3d12_xs DLLs next to an executable, plus sourced research notes on the archive, shader and texture formats | Watch only |
-| – | [SeriesX-Emulator](https://github.com/anrq0/SeriesX-Emulator) | C++ emulator that interprets x86-64 code instead of running it natively, with a launcher and seven XGameRuntime functions | Watch only |
-| – | [ScarlettCompat](https://github.com/SSTGxf/ScarlettCompat) | C++ layer with its own PE loader and Xbox function registry | Watch only |
-| – | [xlaunch-vi](https://github.com/JPTuba9/xlaunch-vi) | Multi-contributor C++ layer with a PE loader, a D3D12 backend and an RDNA2 shader translator that matches AMD-compiled test shaders bit for bit | Watch only |
-| – | [OpenScarlett](https://github.com/OpenCommunityEdition/OpenScarlett) | AGPL C++ layer, separate from the other OpenScarlett, that swaps console DLLs for PC Direct3D 12 ones and translates console GPU code | Watch only |
-| – | [port-of-the-americas](https://github.com/Steinkoloss/port-of-the-americas) | Linux layer that runs GTA VI's own exe under Proton with replacement console DLLs on a patched vkd3d-proton | Watch only |
-| – | [G6Recomp](https://github.com/Kajcsi/G6Recomp) | Carefully tested C++ loader and console-runtime rewrite for GTA VI, with its own code throughout | Watch only |
-| – | [palmetto](https://github.com/luizwidmer/palmetto) | Open continuation of Leonida after its repo went private | Watch only |
+| – | [xbox-emulator](https://github.com/omonkeyz/xbox-emulator) | – | Rust runtime that runs dumped Xbox Series builds as normal Windows processes, continuing the TomBox project (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [xcl](https://github.com/xcl-dev/xcl) | – | Wine-style layer running game code natively (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [ScarlettX](https://github.com/Freminet/ScarlettX) | – | Clean-room high-level emulator of the Scarlett OS and GDK runtime (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [TuxBox](https://github.com/brcly/TuxBox) | – | Native-first layer for unpacked Xbox Series games, tested mostly on Linux through Proton (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [OpenScarlett](https://github.com/californiaAlmonds/OpenScarlett) | – | MIT-licensed C++20 translation layer targeting D3D12 and Vulkan (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [scarlett-layer](https://github.com/jadeowaowa/scarlett-layer) | – | Loader plus injected hook DLL that redirects console-only calls to Windows shims, with its own d3d12_xs wrapper and shader lifter (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [Xbox2Windows](https://github.com/R0Y00/Xbox2Windows) | – | Static recompilation research turning Xbox Series code and shaders into Windows C++ and DXIL, with over 50 contributors (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [keylime](https://github.com/ethan00013/keylime) | – | A C++20 runtime written from scratch, with Vulkan graphics and its own RDNA2-to-SPIR-V translator (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [xvalkyrie](https://github.com/sammwyy/xvalkyrie) | – | Wine-style C++ layer for Xbox One and Series titles with native code and RDNA2-to-HLSL shaders (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [GTAVI-Recomp](https://github.com/JamesCicada/GTAVI-Recomp) | – | Targets the PS5 build through AnyPS5 and will not work from leaked files, so game research is blocked (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [anyxboxseries](https://github.com/edupode/anyxboxseries) | – | GTA VI-only translation layer with a PE mapper borrowed from Xbox2Windows, an early scalar shader lifter and a sample game that tests presentation and input (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [SCARAB](https://github.com/p-portela/SCARAB) | – | Found that the console d3d12_xs uses the same 28 interface IDs as PC D3D12, so standard calls can be forwarded and only the console extensions need building (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [AnyBox](https://github.com/Dark3581/AnyBox) | – | Relinks GDK executables against reimplemented system libraries, AnyPS5-style (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [GrandTheftXbox](https://github.com/zohaiblazuli/GrandTheftXbox) | – | Wine-style layer planned for Series and One titles (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [NativeX-Runtime](https://github.com/ProhorovIlja/NativeX-Runtime) | – | Clean-room test programs for how Game Core software meets Windows, covering loading, memory, presentation and input, plus a radar that watches other projects (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [DedSec](https://github.com/Hylanderry/DedSec) | – | Portuguese-language GTA VI port targeting DirectX 12 with an RDNA2-to-HLSL translator (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [Xbgtasix](https://github.com/ljm-233/Xbgtasix) | – | Chinese-language layer that places stand-in xgameruntime, xmem and d3d12_xs DLLs next to an executable, plus sourced research notes on the archive, shader and texture formats (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [SeriesX-Emulator](https://github.com/anrq0/SeriesX-Emulator) | – | C++ emulator that interprets x86-64 code instead of running it natively, with a launcher and seven XGameRuntime functions (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [ScarlettCompat](https://github.com/SSTGxf/ScarlettCompat) | – | C++ layer with its own PE loader and Xbox function registry (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [xlaunch-vi](https://github.com/JPTuba9/xlaunch-vi) | – | Multi-contributor C++ layer with a PE loader, a D3D12 backend and an RDNA2 shader translator that matches AMD-compiled test shaders bit for bit (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [OpenScarlett](https://github.com/OpenCommunityEdition/OpenScarlett) | – | AGPL C++ layer, separate from the other OpenScarlett, that swaps console DLLs for PC Direct3D 12 ones and translates console GPU code (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [port-of-the-americas](https://github.com/Steinkoloss/port-of-the-americas) | – | Linux layer that runs GTA VI's own exe under Proton with replacement console DLLs on a patched vkd3d-proton (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [G6Recomp](https://github.com/Kajcsi/G6Recomp) | – | Carefully tested C++ loader and console-runtime rewrite for GTA VI, with its own code throughout (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
+| – | [palmetto](https://github.com/luizwidmer/palmetto) | – | Open continuation of Leonida after its repo went private (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
 
 **Not in i95:** ztrx (#6), victory-perf (#8) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub. omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. From #33 down the projects are early-stage layers (Linux/Proton, macOS, recompilations or boot-only builds) that don't reach the game's world on Windows yet.
 
