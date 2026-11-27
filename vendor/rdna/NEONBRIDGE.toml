@@ -3,9 +3,9 @@
 name = "rdna"
 fork = "VIctory"
 rank = 31   # #31 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-RDNA e3bfddf (GPL-3.0): 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds; not yet run here"
+about = "VIctory-RDNA 68402ce (GPL-3.0): 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds; not yet run here"
 upstream = "https://github.com/XaviFortes/VIctory-RDNA"
-updated = "2026-11-27 05:52"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 09:08"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 14   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:88
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -17,7 +17,7 @@ game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
-preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_PORT_CONSTANTS=", "VICTORY_PORT_DESCRIPTORS=", "VICTORY_PORT_CBV=", "VICTORY_PORT_GUARD=", "VICTORY_PORT_JOURNAL=", "VICTORY_PORT_BUFFERS=", "VICTORY_INPLACE=", "VICTORY_ASK_SPREAD=", "VICTORY_RESIDENCY=", "VICTORY_SYNC_FINE=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_PORT_CONSTANTS_ORDER="]   # play-rdna.ps1 -Safe
+preset_safe = ["VICTORY_THIN=", "VICTORY_THIN_THREADS=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_PORT_CONSTANTS=", "VICTORY_PORT_DESCRIPTORS=", "VICTORY_PORT_CBV=", "VICTORY_PORT_GUARD=", "VICTORY_PORT_JOURNAL=", "VICTORY_PORT_BUFFERS=", "VICTORY_INPLACE=", "VICTORY_ASK_SPREAD=", "VICTORY_RESIDENCY=", "VICTORY_SYNC_FINE=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_PORT_CONSTANTS_ORDER="]   # play-rdna.ps1 -Safe
 preset_series_s = ["--console=series-s"]   # play-rdna.ps1 -Console series-s
 preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play-rdna.ps1 -RayTracing
 preset_60fps = ["VICTORY_FRAME_INTERVAL_MS=16.667"]   # play-rdna.ps1 -Fps 60
@@ -47,6 +47,7 @@ VICTORY_AMBIENT = "0.8"
 VICTORY_D3D12_DRED = "light"
 VICTORY_CARD_BUFFERS_MIN_MB = "1"
 VICTORY_THIN = "1"
+VICTORY_THIN_THREADS = "14"
 VICTORY_JOIN_PARTS = "8"
 VICTORY_UPLOAD_AHEAD = "1"
 VICTORY_PORT_CONSTANTS = "1"
