@@ -311,7 +311,8 @@ about = "GTA6-BootTest 32683d8 (no licence): boots, streams archives, runs the f
 upstream = "https://github.com/OnlyMoisties/GTA6-BootTest"
 updated = "2026-11-23 20:09"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 45   # GitHub stars when last checked
-build = ["cmd", "/c", "src\\build.bat"]   # README.md:33
+build = ["powershell", "-NoProfile", "-Command", "(Get-Content src/build.bat) -notmatch 'vcvars64' | Set-Content src/i95-build.bat; cmd /c src\\i95-build.bat; exit $LASTEXITCODE"]   # README.md:33: src\build.bat without its line that calls VS Community's vcvars64 (i95 gives it the Build Tools environment)
+vcvars = true
 watch = ["src"]
 exe = "bin/harness.exe"   # run.bat:9
 run = ["{game_exe}", "{root}/bin/stubs", "{root}/logs", "60", "run", "-skip"]   # run.bat:9
@@ -544,10 +545,8 @@ about = "DexNom RayTime 8114ff7 (GPL-3.0): 1 fps with ray tracing on, 3.5 to 4 w
 upstream = "https://github.com/DexNom/VIctory"
 updated = "2026-11-26 18:11"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 1345   # GitHub stars when last checked
-# README.md:36: the BCPack format tables first.
-setup = [
-  "format-tables: powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1 [asks first: download]",
-]
+# README.md:36: the BCPack format tables first (the sources include_bytes! them; hash-checked, kept once fetched).
+prebuild = ["powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1"]
 build = ["cargo", "build", "--locked", "--release", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:36
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -917,6 +916,7 @@ upstream = "https://github.com/stellarr-studio/kelvaroq"
 updated = "2026-11-27 04:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 429   # GitHub stars when last checked
 build = ["python", "scripts/build_native.py"]   # README.md "Build from source" (fetches victory-fork f85101b)
+build_env = ["CARGO_FEATURE_PURE=1"]   # i95: blake3 in pure Rust; its MASM and C objects fail on the long target path under the 6ixpack source folder (A1009, C1083)
 watch = ["native", "scripts/build_native.py"]
 exe = "target/release/native/kelvaroq-engine.exe"   # build_native.py:20,24 (renamed in f35b0a4)
 diag_build = []

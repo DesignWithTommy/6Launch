@@ -920,6 +920,16 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
     }
     let cmd = Some(line.as_slice()).filter(|c| !c.is_empty()).ok_or_else(|| format!("runtime {name}: {} is stale and NEONBRIDGE.toml names no build", exe.display()))?;
     prerequisite(root, spec).map_err(|e| format!("runtime {name} {e}"))?;
+    // `prebuild`: the author's steps the build itself needs (DexNom's
+    // Initialize-FormatTables.ps1 fetches a file its sources include_bytes!),
+    // run in the tree before each build; setup only ran after the build.
+    for step in spec.list("prebuild").unwrap_or_default() {
+        println!("[launch] {name}: before the build: {step}");
+        let status = crate::runtimes::command("cmd").arg("/C").arg(step).current_dir(root).status()?;
+        if !status.success() {
+            return Err(format!("runtime {name}: its pre-build step failed ({status}): {step}").into());
+        }
+    }
     println!("[launch] {name}: building ({})", cmd.join(" "));
     let applied = patch(name, root)?;
     let kept = crate::shaderkey::apply(root);
@@ -927,12 +937,18 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
     let python_build = matches!(cmd.first().map(String::as_str), Some("python" | "python3" | "py"));
     let cmd = interpreter(cmd)?;
     let mut c = crate::runtimes::command(&cmd[0]);
-    if python_build {
+    // `vcvars = true`: a script build that needs the x64 C++ tools on PATH.
+    if python_build || spec.flag("vcvars") {
         build_env(name, &mut c)?;
     }
     c.args(&cmd[1..]).current_dir(root).env_remove("CARGO_TARGET_DIR").env("CARGO_TERM_PROGRESS_WHEN", "always").env("CARGO_TERM_PROGRESS_WIDTH", "100").stdout(Stdio::piped()).stderr(Stdio::piped());
     if let Some(t) = &target {
         c.env("CARGO_TARGET_DIR", t);
+    }
+    // `build_env = ["KEY=VALUE"]`: variables the build alone needs (Kelvaroq:
+    // blake3's assembly can't take i95's long source paths, MASM A1009).
+    for (k, v) in spec.list("build_env").unwrap_or_default().iter().filter_map(|e| e.split_once('=')) {
+        c.env(k.trim(), v.trim());
     }
     let status = hidden(&mut c).spawn().and_then(|mut child| {
         // cargo's "Building [..] N/M" (or a Python build's N/M) moves the
