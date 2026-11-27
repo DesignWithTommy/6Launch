@@ -63,6 +63,8 @@ const WM_TITLE: u32 = WM_APP + 1;
 const WORLD_DRAWS: u64 = 300;
 /// Title mode gives up after this long, in timer ticks (33 ms): 90 s (runtimes that print no draw counts).
 const TITLE_TICKS: u32 = 90 * 30;
+/// The runtime prints draw counts: title mode waits for 3D however long the start screen stays up.
+static SAW_DRAWS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 fn state() -> std::sync::MutexGuard<'static, State> {
     STATE.lock().unwrap_or_else(|e| e.into_inner())
@@ -157,6 +159,9 @@ pub fn line(line: &str) {
         return;
     }
     let draws = line.find(" draws/frame").and_then(|at| line[..at].rsplit([' ', ',', ')']).next()?.parse::<u64>().ok());
+    if draws.is_some() {
+        SAW_DRAWS.store(true, Ordering::Release);
+    }
     if draws.is_some_and(|d| d >= WORLD_DRAWS) {
         close();
     }
@@ -364,7 +369,7 @@ unsafe extern "system" fn proc_(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> L
             WM_TIMER => {
                 if TITLE.load(Ordering::Acquire) {
                     cover_game(hwnd);
-                    if state().tick > TITLE_TICKS {
+                    if !SAW_DRAWS.load(Ordering::Acquire) && state().tick > TITLE_TICKS {
                         close();
                     }
                 }
@@ -459,6 +464,13 @@ unsafe fn paint(hwnd: HWND) {
             fill(screen, client, BACKGROUND);
             let side = client.right.min(client.bottom);
             blit_art(screen, art, (client.right - side) / 2, (client.bottom - side) / 2, side, side, 0, 0, ART_SIDE, ART_SIDE);
+            // The start screen under the art waits for its A press: Enter.
+            let hint = font(22, 600);
+            SetBkMode(screen, TRANSPARENT as i32);
+            let band = RECT { left: 0, top: client.bottom - 56, right: client.right, bottom: client.bottom };
+            fill(screen, band, rgb(14, 6, 26));
+            text(screen, "Press Enter (A) to start", band, rgb(255, 255, 255), hint, DT_CENTER | DT_VCENTER);
+            DeleteObject(hint);
             EndPaint(hwnd, &ps);
             return;
         }
