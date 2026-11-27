@@ -1,3 +1,3 @@
-# Vendored: ScarlettPort
+# ScarlettPort
 
-Copied unchanged from _ref/emu/ScarlettPort at 424fc91c0dfa3a5905cd2acbceb31ccc87812e07 (UPSTREAM), minus test-data .bin fixtures. Its LICENSE applies; all credit to its authors.
+Not copied here: i95 fetches ScarlettPort at the commit in UPSTREAM from https://github.com/ZigZagBoi1/ScarlettPort and builds it on your PC. Its LICENSE.md applies; all credit to its authors.
