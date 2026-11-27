@@ -3,6 +3,7 @@ and `stars = <n>` (the repo's GitHub stars) into each vendor/<name>/NEONBRIDGE.t
 its `upstream =` line, so the catalog carries them to the launcher's details pane.
 Run after bump-upstreams.sh, before i95 --catalog: python -I scripts/runtime-info.py (needs gh)."""
 import json, os, re, subprocess
+from datetime import datetime
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 cache_file = os.path.join(root, "target", "runtime-info.json")
@@ -29,11 +30,12 @@ for name in sorted(os.listdir(os.path.join(root, "vendor"))):
     if not m:
         continue
     repo = m.group(1)
-    key = f"{repo}@{sha}"
+    key = f"{repo}@{sha}@time"
     if key not in cache:
         date = gh(f"repos/{repo}/commits/{sha}", ".commit.committer.date")
         if date:
-            cache[key] = date[:10]
+            # Local time of the commit, to the minute.
+            cache[key] = datetime.fromisoformat(date.replace("Z", "+00:00")).astimezone().strftime("%Y-%m-%d %H:%M")
     date = cache.get(key)
     stars = gh(f"repos/{repo}", ".stargazers_count")
     new = toml
