@@ -81,26 +81,35 @@ fn escape(s: &str) -> String {
 
 fn run(cmd: &mut Command, timeout: Duration) -> Result<(), (Option<i32>, String)> {
     let mut child = cmd.stdout(Stdio::null()).stderr(Stdio::piped()).spawn().map_err(|e| (None, e.to_string()))?;
+    // Drained while the child runs: a full stderr pipe would block it until the timeout.
+    let reader = child.stderr.take().map(|mut s| thread::spawn(move || {
+        let mut err = String::new();
+        let _ = std::io::Read::read_to_string(&mut s, &mut err);
+        err
+    }));
     let start = Instant::now();
-    loop {
+    let status = loop {
         match child.try_wait() {
-            Ok(Some(status)) if status.success() => return Ok(()),
-            Ok(Some(status)) => {
-                let mut err = String::new();
-                if let Some(mut s) = child.stderr.take() {
-                    let _ = std::io::Read::read_to_string(&mut s, &mut err);
-                }
-                let tail: String = err.trim().chars().rev().take(400).collect::<Vec<_>>().into_iter().rev().collect();
-                return Err((status.code(), tail));
-            }
+            Ok(Some(status)) => break status,
             Ok(None) if start.elapsed() > timeout => {
                 let _ = child.kill();
+                let _ = child.wait();
                 return Err((None, "timed out".into()));
             }
             Ok(None) => thread::sleep(Duration::from_millis(5)),
-            Err(e) => return Err((None, e.to_string())),
+            Err(e) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err((None, e.to_string()));
+            }
         }
+    };
+    let err = reader.and_then(|r| r.join().ok()).unwrap_or_default();
+    if status.success() {
+        return Ok(());
     }
+    let tail: String = err.trim().chars().rev().take(400).collect::<Vec<_>>().into_iter().rev().collect();
+    Err((status.code(), tail))
 }
 
 fn find_dxbc(cache_root: &Path, key: &str) -> Option<PathBuf> {

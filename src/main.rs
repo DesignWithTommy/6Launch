@@ -299,7 +299,7 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
     // --runtime / NEONBRIDGE_RUNTIME (default scarlettport): vendor/<name> runs
     // the game per its NEONBRIDGE.toml (runtimes.rs); tuxbox goes on to the
     // TuxBox providers below.
-    let mut runtime = runtimes::name(runtime_arg.as_deref());
+    let runtime = runtimes::name(runtime_arg.as_deref());
     if want_report {
         // Bug report: machine, runtime, its last run, as a prefilled GitHub issue.
         report::open(&runtime, game.as_deref());
@@ -666,7 +666,7 @@ fn dxc_preflight(game: &Path) {
     };
     let mut problems = Vec::new();
     for name in ["dxcompiler.dll", "dxil.dll"] {
-        match fs::read(game.join(name)) {
+        match read_head(&game.join(name)) {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => problems.push(format!("{name} missing")),
             Err(e) => problems.push(format!("{name} is unreadable ({e})")),
             Ok(data) if !x64_dll(&data) => problems.push(format!("{name} is not an x64 Windows DLL")),
@@ -1051,21 +1051,35 @@ fn build_xshader(tuxbox: &Path, out: &Path) -> Result<(PathBuf, Option<String>),
     Err(format!("cargo build of xshader failed ({status}) at {commit}, and no earlier good build is kept").into())
 }
 
-/// Block while any process runs this exe image (Start.exe /wait can return early).
-fn wait_for_image(exe: &Path) {
-    let Some(name) = exe.file_name().map(|n| n.to_string_lossy().into_owned()) else { return };
-    let running = || crate::runtimes::command("tasklist").args(["/FI", &format!("IMAGENAME eq {name}"), "/NH"]).output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).to_ascii_lowercase().contains(&name.to_ascii_lowercase()))
-        .unwrap_or(false);
+/// Block while any process of the game's job still runs (Start.exe /wait or a
+/// launcher stub can return before the title does). Only our own job: never
+/// another process that merely shares the exe's name.
+fn wait_for_job(job: Option<isize>, exe: &Path) {
+    use windows_sys::Win32::System::JobObjects::{JOBOBJECT_BASIC_ACCOUNTING_INFORMATION, JobObjectBasicAccountingInformation, QueryInformationJobObject};
+    let Some(job) = job else { return };
+    let active = || unsafe {
+        let mut info: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = std::mem::zeroed();
+        let ok = QueryInformationJobObject(job as _, JobObjectBasicAccountingInformation, (&mut info as *mut JOBOBJECT_BASIC_ACCOUNTING_INFORMATION).cast(),
+            size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32, std::ptr::null_mut()) != 0;
+        ok && info.ActiveProcesses > 0
+    };
     let t = Instant::now();
     let mut waited = false;
-    while running() {
+    while active() {
         waited = true;
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
     if waited {
-        println!("[launch] {name} ended {:.1}s later", t.elapsed().as_secs_f64());
+        println!("[launch] {} ended {:.1}s later", exe.file_name().unwrap_or_default().to_string_lossy(), t.elapsed().as_secs_f64());
     }
+}
+
+/// The first 4 KiB of a file (PE headers), without reading the whole image.
+fn read_head(p: &Path) -> std::io::Result<Vec<u8>> {
+    use std::io::Read;
+    let mut b = Vec::with_capacity(4096);
+    fs::File::open(p)?.take(4096).read_to_end(&mut b)?;
+    Ok(b)
 }
 
 /// The vendored TuxBox source this exe was built from (absent on other PCs).
@@ -1248,7 +1262,7 @@ fn find_exe(game: &Path, name: Option<&str>) -> Result<PathBuf, Box<dyn Error>> 
 }
 
 fn is_x64_exe(p: &Path) -> bool {
-    let Ok(b) = fs::read(p).map(|b| b[..b.len().min(4096)].to_vec()) else { return false };
+    let Ok(b) = read_head(p) else { return false };
     if b.len() < 0x40 || &b[..2] != b"MZ" {
         return false;
     }
@@ -1384,30 +1398,47 @@ fn build_providers(tuxbox: &Path, out: &Path) -> Result<Vec<PathBuf>, Box<dyn Er
 }
 
 /// Copy providers beside the exe; a replaced game file is moved to `_6ixpack_orig/` once.
+/// The staged list is merged with what earlier runs staged and rewritten around
+/// every copy, so a failure midway never leaves an unrecorded DLL behind.
 fn stage(game: &Path, dlls: &[PathBuf]) -> Result<(), Box<dyn Error>> {
     let backup = game.join(BACKUP);
-    let mut staged = Vec::new();
+    let mut staged: Vec<(String, Option<u64>)> = fs::read_to_string(game.join(STAGED)).unwrap_or_default().lines().filter(|l| !l.is_empty())
+        .map(|l| match l.split_once('\t') { Some((n, sz)) => (n.to_owned(), sz.trim().parse().ok()), None => (l.to_owned(), None) }).collect();
+    let write = |staged: &[(String, Option<u64>)]| -> std::io::Result<()> {
+        let text: String = staged.iter().map(|(n, sz)| match sz { Some(sz) => format!("{n}\t{sz}\n"), None => format!("{n}\n") }).collect();
+        fs::write(game.join(STAGED), text)
+    };
     for d in dlls {
-        let name = d.file_name().unwrap();
-        let dst = game.join(name);
+        let name = d.file_name().unwrap().to_string_lossy().into_owned();
+        let dst = game.join(&name);
         // A file we staged has the recorded size; anything else (an original put
         // back by hand) is kept, never overwritten.
-        let ours = staged_size(game, &name.to_string_lossy()).is_some_and(|n| fs::metadata(&dst).is_ok_and(|m| m.len() == n));
+        let ours = staged_size(game, &name).is_some_and(|n| fs::metadata(&dst).is_ok_and(|m| m.len() == n));
         if dst.is_file() && !ours {
             fs::create_dir_all(&backup)?;
-            let mut saved = backup.join(name);
+            let mut saved = backup.join(&name);
             let mut i = 1;
             while saved.exists() {
-                saved = backup.join(format!("{}.{i}", name.to_string_lossy()));
+                saved = backup.join(format!("{name}.{i}"));
                 i += 1;
             }
             fs::rename(&dst, &saved)?;
-            eprintln!("[launch] kept original {} as {}", name.to_string_lossy(), saved.display());
+            eprintln!("[launch] kept original {name} as {}", saved.display());
         }
+        // Recorded before the copy (size unknown), so a copy that fails halfway is still removed by --restore.
+        let at = match staged.iter().position(|(n, _)| n.eq_ignore_ascii_case(&name)) {
+            Some(i) => i,
+            None => {
+                staged.push((name.clone(), None));
+                staged.len() - 1
+            }
+        };
+        staged[at].1 = None;
+        write(&staged)?;
         fs::copy(d, &dst)?;
-        staged.push(format!("{}\t{}", name.to_string_lossy(), fs::metadata(&dst)?.len()));
+        staged[at].1 = Some(fs::metadata(&dst)?.len());
+        write(&staged)?;
     }
-    fs::write(game.join(STAGED), staged.join("\n") + "\n")?;
     Ok(())
 }
 
@@ -1441,7 +1472,9 @@ fn restore(game: &Path) -> Result<(), Box<dyn Error>> {
         if fs::remove_file(game.join(name)).is_ok() {
             removed += 1;
         }
-        if fs::rename(backup.join(name), game.join(name)).is_ok() {
+        // The newest backup: the highest `<name>.N`, else `<name>`.
+        let newest = (1..).map(|i| backup.join(format!("{name}.{i}"))).take_while(|p| p.exists()).last().unwrap_or_else(|| backup.join(name));
+        if fs::rename(&newest, game.join(name)).is_ok() {
             put_back += 1;
         }
     }
@@ -1457,18 +1490,18 @@ fn restore(game: &Path) -> Result<(), Box<dyn Error>> {
 /// console window or a crash no longer leaves the title running). TUXBOX_COMMIT_CAP_GB
 /// caps its committed memory (unset: no cap). NEONBRIDGE_JOB=0 turns this off.
 /// The job handle is never closed: it lives as long as the launcher.
-fn kill_on_close(child: &std::process::Child) {
+fn kill_on_close(child: &std::process::Child) -> Option<isize> {
     use std::os::windows::io::AsRawHandle;
     use windows_sys::Win32::System::JobObjects::*;
     if std::env::var("NEONBRIDGE_JOB").as_deref() == Ok("0") {
-        return;
+        return None;
     }
     let cap = std::env::var("TUXBOX_COMMIT_CAP_GB").ok().and_then(|v| v.trim().parse::<u64>().ok()).filter(|&g| g > 0);
     unsafe {
         let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
         if job.is_null() {
             println!("[launch] job: CreateJobObject failed; the game is not tied to the launcher");
-            return;
+            return None;
         }
         let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
         info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
@@ -1480,8 +1513,10 @@ fn kill_on_close(child: &std::process::Child) {
             && AssignProcessToJobObject(job, child.as_raw_handle() as _) != 0;
         if ok {
             println!("[launch] job: the game ends with the launcher{} (NEONBRIDGE_JOB=0 turns this off)", cap.map(|g| format!("; commit capped at {g} GiB")).unwrap_or_default());
+            Some(job as isize)
         } else {
             println!("[launch] job: could not assign the game to a job ({}); it is not tied to the launcher", std::io::Error::last_os_error());
+            None
         }
     }
 }
@@ -1590,7 +1625,7 @@ q
         .spawn()?;
     shaders::GAME_PID.store(child.id(), std::sync::atomic::Ordering::Relaxed);
     neonbridge_feed::watch_pid(child.id());
-    kill_on_close(&child);
+    let job = kill_on_close(&child);
     controls::show(runtimes::TUXBOX, exe, controls::tuxbox_rows());
     let tee = |r: Box<dyn std::io::Read + Send>, mut f: fs::File| {
         std::thread::spawn(move || {
@@ -1628,16 +1663,25 @@ q
         if timeout.is_some_and(|limit| t.elapsed().as_secs_f64() >= limit) {
             println!("[launch] --timeout: stopping the run after {:.0}s", t.elapsed().as_secs_f64());
             timeline::note(None, "--timeout: the launcher stops the run");
+            // Only our own child's tree, by its PID (never by image name).
+            let _ = crate::runtimes::command("taskkill").args(["/F", "/T", "/PID"]).arg(child.id().to_string()).stdout(Stdio::null()).stderr(Stdio::null()).status();
             let _ = child.kill();
-            if let Some(name) = exe.file_name() {
-                let _ = crate::runtimes::command("taskkill").args(["/F", "/T", "/IM"]).arg(name).stdout(Stdio::null()).stderr(Stdio::null()).status();
-            }
             break child.wait()?;
         }
         std::thread::sleep(std::time::Duration::from_millis(200));
     };
-    let _ = (a.join(), b.join());
-    wait_for_image(exe);
+    // A grandchild that inherited the pipes keeps them open after the game
+    // ends: the pumps get 10 s to drain, then the summary goes on without them.
+    let deadline = Instant::now() + std::time::Duration::from_secs(10);
+    while !(a.is_finished() && b.is_finished()) && Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    if a.is_finished() && b.is_finished() {
+        let _ = (a.join(), b.join());
+    } else {
+        println!("[launch] output pipes still open 10 s after the exit (a child of the game holds them); not waiting for them");
+    }
+    wait_for_job(job, exe);
     splash::close();
     timeline::exit(&format!("{status}{}", status.code().map(|c| format!(" (0x{:08x}{})", c as u32, ntstatus(c as u32))).unwrap_or_default()));
     println!("[launch] exited with {status}{} after {:.1}s", status.code().map(|c| format!(" (0x{:08x}{})", c as u32, ntstatus(c as u32))).unwrap_or_default(), t.elapsed().as_secs_f64());
@@ -1940,7 +1984,7 @@ fn import_problems(game: &Path, exe: &Path) -> Vec<String> {
 }
 
 fn is_x64_dll(p: &Path) -> bool {
-    let Ok(b) = fs::read(p).map(|b| b[..b.len().min(4096)].to_vec()) else { return false };
+    let Ok(b) = read_head(p) else { return false };
     if b.len() < 0x40 || &b[..2] != b"MZ" {
         return false;
     }

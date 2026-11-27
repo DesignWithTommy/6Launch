@@ -4,6 +4,7 @@ use crate::auth;
 use crate::encoder::{Encoder, Kind};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::sync::atomic::{AtomicU16, AtomicUsize, Ordering};
 
 struct Request {
     method: String,
@@ -19,21 +20,58 @@ impl Request {
     }
     /// Straight from this PC: tsproxy marks its requests (Tailscale-User-Login,
     /// X-Forwarded-For) and cloudflared stamps Cf-* headers.
+    /// The Host header must name this server on loopback too, so a DNS
+    /// rebinding page in this PC's browser does not count as local.
     fn local(&self) -> bool {
         self.loopback
+            && self.header("Host").is_some_and(own_host)
             && ["Tailscale-User-Login", "X-Forwarded-For", "Cf-Connecting-Ip", "Cf-Ray", "Forwarded"].iter().all(|h| self.header(h).is_none())
+    }
+    /// Who failed logins are counted against: the proxy's client address, else this PC.
+    fn client(&self) -> String {
+        ["Cf-Connecting-Ip", "X-Forwarded-For", "Tailscale-User-Login"].iter()
+            .find_map(|h| self.header(h))
+            .map(|v| v.split(',').next().unwrap_or("").trim().to_owned())
+            .unwrap_or_else(|| "local".into())
+    }
+    /// A browser's cross-site POST carries a foreign Origin: refuse it.
+    fn foreign_origin(&self) -> bool {
+        let Some(origin) = self.header("Origin") else { return false };
+        let host = self.header("Host").unwrap_or("");
+        let bare = origin.strip_prefix("https://").or_else(|| origin.strip_prefix("http://")).unwrap_or(origin);
+        host.is_empty() || !bare.eq_ignore_ascii_case(host)
     }
     fn secure(&self) -> bool {
         self.header("X-Forwarded-Proto") == Some("https")
     }
 }
 
+static PORT: AtomicU16 = AtomicU16::new(0);
+/// Open connections; more than MAX_CONNECTIONS are closed at once.
+static OPEN: AtomicUsize = AtomicUsize::new(0);
+const MAX_CONNECTIONS: usize = 64;
+
+/// `127.0.0.1:<port>` or `localhost:<port>` (this server's own names).
+fn own_host(host: &str) -> bool {
+    let port = PORT.load(Ordering::Relaxed);
+    ["127.0.0.1", "localhost"].iter().any(|h| host.eq_ignore_ascii_case(&format!("{h}:{port}")))
+}
+
 pub(crate) fn serve(port: u16) -> std::io::Result<()> {
     let listener = TcpListener::bind(("127.0.0.1", port))?;
+    PORT.store(port, Ordering::Relaxed);
     std::thread::Builder::new().name("feed http".into()).spawn(move || {
         for stream in listener.incoming().flatten() {
+            if OPEN.fetch_add(1, Ordering::AcqRel) >= MAX_CONNECTIONS {
+                OPEN.fetch_sub(1, Ordering::AcqRel);
+                continue;
+            }
             std::thread::spawn(move || {
+                // A viewer that stops reading (a sleeping phone) must not pin
+                // the encoder: writes give up after 10 s.
+                let _ = stream.set_write_timeout(Some(std::time::Duration::from_secs(10)));
                 let _ = handle(stream);
+                OPEN.fetch_sub(1, Ordering::AcqRel);
             });
         }
     })?;
@@ -119,9 +157,13 @@ fn form_value(body: &[u8], key: &str) -> Option<String> {
 fn handle(mut stream: TcpStream) -> std::io::Result<()> {
     let Some(request) = read_request(&stream) else { return Ok(()) };
     let route = request.path.split('?').next().unwrap_or("/").to_owned();
+    if request.method == "POST" && request.foreign_origin() {
+        return error(&mut stream, 403, "cross-site request refused");
+    }
     if request.method == "POST" && route == "/auth" {
         let password = form_value(&request.body, "password").unwrap_or_default();
-        return match auth::login(&password, request.local()) {
+        let code = form_value(&request.body, "code").unwrap_or_default();
+        return match auth::login(&password, &code, request.local(), &request.client()) {
             auth::Login::Ok(token) => reply(&mut stream, 200, "application/json", b"{\"ok\":true}",
                 &[format!("Set-Cookie: {}", auth::cookie(&token, request.secure()))]),
             auth::Login::Refused(code, message) => error(&mut stream, code, message),

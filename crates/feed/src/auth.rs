@@ -2,8 +2,8 @@
 //! itself (a stranger who found the link before a password existed cannot
 //! claim the site); a login gets a 30-day session cookie. Only a PBKDF2 hash
 //! of the password and SHA-256 hashes of session tokens are stored, in
-//! %LOCALAPPDATA%\6ixpack\feed\auth.txt. 10 wrong passwords in 15 minutes lock
-//! logins for the rest of that window.
+//! %LOCALAPPDATA%\6ixpack\feed\auth.txt. 10 wrong passwords in 15 minutes from one
+//! client lock that client out for the rest of that window.
 use sha2::{Digest, Sha256};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -21,7 +21,8 @@ struct Store {
 }
 
 static LOCK: Mutex<()> = Mutex::new(());
-static FAILS: Mutex<Vec<Instant>> = Mutex::new(Vec::new());
+/// (client, when): wrong tries per client, so one client cannot lock out the rest.
+static FAILS: Mutex<Vec<(String, Instant)>> = Mutex::new(Vec::new());
 
 fn path() -> std::path::PathBuf {
     crate::state_dir().join("auth.txt")
@@ -54,6 +55,21 @@ fn save(s: &Store) -> std::io::Result<()> {
     let tmp = p.with_extension("tmp");
     std::fs::write(&tmp, text)?;
     std::fs::rename(tmp, p)
+}
+
+/// The one-time code that must come with the first password: printed to the
+/// console and feed.log on this PC only, so a web page that reaches 127.0.0.1
+/// from this PC's browser cannot claim the site. A new one each launcher start.
+fn setup_code() -> &'static str {
+    static CODE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    CODE.get_or_init(|| crate::hex(&crate::random(5)))
+}
+
+/// Prints the setup code when no password exists yet.
+pub(crate) fn announce_setup_code() {
+    if !password_set() {
+        crate::say(format!("no feed password yet: the setup code for the first password is {}", setup_code()));
+    }
 }
 
 pub(crate) fn password_set() -> bool {
@@ -110,12 +126,15 @@ pub(crate) enum Login {
 
 /// Check (or, the first time and only from this PC, set) the password; a new
 /// session token on success.
-pub(crate) fn login(password: &str, local: bool) -> Login {
+pub(crate) fn login(password: &str, code: &str, local: bool, client: &str) -> Login {
     let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     {
         let mut fails = FAILS.lock().unwrap_or_else(|e| e.into_inner());
-        fails.retain(|t| t.elapsed() < Duration::from_secs(900));
-        if fails.len() >= 10 {
+        fails.retain(|(_, t)| t.elapsed() < Duration::from_secs(900));
+        if fails.len() > 10_000 {
+            fails.clear();
+        }
+        if fails.iter().filter(|(c, _)| c == client).count() >= 10 {
             return Login::Refused(429, "Too many tries. Wait 15 minutes.");
         }
     }
@@ -123,6 +142,10 @@ pub(crate) fn login(password: &str, local: bool) -> Login {
         None => {
             if !local {
                 return Login::Refused(403, "Set the password on the PC itself first (http://127.0.0.1 on the feed's port).");
+            }
+            if !same(code.trim().as_bytes(), setup_code().as_bytes()) {
+                FAILS.lock().unwrap_or_else(|e| e.into_inner()).push((client.to_owned(), Instant::now()));
+                return Login::Refused(403, "Wrong setup code: use the one the launcher printed (feed.log).");
             }
             if password.chars().count() < MIN_LEN {
                 return Login::Refused(400, "Use at least 10 characters.");
@@ -134,7 +157,7 @@ pub(crate) fn login(password: &str, local: bool) -> Login {
             let Some(salt) = unhex(&store.salt) else { return Login::Refused(500, "The password file is damaged.") };
             let want = unhex(&store.hash).unwrap_or_default();
             if !same(&pbkdf2(password.as_bytes(), &salt), &want) {
-                FAILS.lock().unwrap_or_else(|e| e.into_inner()).push(Instant::now());
+                FAILS.lock().unwrap_or_else(|e| e.into_inner()).push((client.to_owned(), Instant::now()));
                 return Login::Refused(401, "Wrong password.");
             }
             store

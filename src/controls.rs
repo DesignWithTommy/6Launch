@@ -287,6 +287,8 @@ unsafe extern "system" fn proc_(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> L
         let face = wide("Segoe UI");
         let font = |size: i32, weight: i32| CreateFontW(size, 0, 0, 0, weight, 0, 0, 0, 0, 0, 0, CLEARTYPE_QUALITY as _, 0, face.as_ptr());
         let (big, small) = (font(20, 700), font(16, 400));
+        // Restored before the fonts are deleted: a font still selected is not freed.
+        let old_font = SelectObject(dc, small as _);
         let text = |s: &str, x: i32, y: i32, color: COLORREF, f: HFONT| {
             SelectObject(dc, f as _);
             SetTextColor(dc, color);
@@ -319,6 +321,7 @@ unsafe extern "system" fn proc_(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> L
             DeleteObject(caps as _);
             text("F1 show / hide   F2 hide   F3 fps", 14, 44 + p.rows.len() as i32 * ROW + 6, DIM, small);
         }
+        SelectObject(dc, old_font);
         DeleteObject(big as _);
         DeleteObject(small as _);
         EndPaint(hwnd, &ps);

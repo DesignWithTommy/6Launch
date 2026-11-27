@@ -110,6 +110,8 @@ pub fn explain(lines: &[String]) -> Option<String> {
 pub fn after_run(name: &str, cache: &std::path::Path, lines: &[String]) -> Option<String> {
     let file = cache.join("last-crash.txt");
     if std::env::var("NEONBRIDGE_CRASH_EXPLAIN").is_ok_and(|v| v.trim() == "0") {
+        // Off: still no stale answer from an earlier run left behind.
+        let _ = std::fs::remove_file(&file);
         return None;
     }
     // The runtime stands in front of the game's own crash handler

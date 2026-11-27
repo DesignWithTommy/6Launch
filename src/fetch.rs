@@ -230,6 +230,17 @@ pub fn sync_catalog(vendor: &Path) {
         if fs::read_to_string(dir.join("NEONBRIDGE.toml")).is_ok_and(|t| t.replace("\r\n", "\n") == toml) && pin(&dir).as_deref() == Some(commit.as_str()) {
             continue;
         }
+        // A changed build, prebuild, setup, diag_build or launcher line runs
+        // commands on this PC: asked first, never taken silently.
+        if let Ok(old) = fs::read_to_string(dir.join("NEONBRIDGE.toml"))
+            && super::runtimes::commands_of(&old) != super::runtimes::commands_of(&toml)
+            && !ask(&format!("The online runtime list changes the commands {name} builds, sets up or starts with.
+
+Take the new commands? (No keeps the ones this PC has.)"))
+        {
+            println!("[catalog] {name}: changed commands declined; kept as it was");
+            continue;
+        }
         if fs::create_dir_all(&dir).is_ok() && fs::write(dir.join("NEONBRIDGE.toml"), &toml).is_ok() && fs::write(dir.join("UPSTREAM"), format!("{commit}\n")).is_ok() {
             changed += 1;
         }

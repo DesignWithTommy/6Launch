@@ -103,9 +103,10 @@ pub fn enabled() -> bool {
 /// `low` runs the compile thread at the lowest priority (the -O1 upgrades of dxil_upgrade.rs).
 pub fn compile(dxc_exe: &Path, src: Vec<u8>, args: Vec<String>, timeout: Duration, give_up: &dyn Fn() -> bool, low: bool) -> Result<Vec<u8>, Error> {
     let create = create_fn(dxc_exe).map_err(Error::Other)?;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::atomic::{AtomicU8, Ordering};
+    // 0 running, 1 abandoned by the caller, 2 finished: one compare-exchange decides who counts.
     let (tx, rx) = std::sync::mpsc::channel();
-    let gone = std::sync::Arc::new(AtomicBool::new(false));
+    let gone = std::sync::Arc::new(AtomicU8::new(0));
     let gone_thread = gone.clone();
     std::thread::Builder::new().name("neonbridge-dxc".into()).stack_size(DXC_STACK).spawn(move || {
         if low {
@@ -114,9 +115,9 @@ pub fn compile(dxc_exe: &Path, src: Vec<u8>, args: Vec<String>, timeout: Duratio
         }
         let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| compile_here(create, &src, &args)))
             .unwrap_or_else(|_| Err(Error::Other("panic in the compile thread".into())));
-        // An abandoned compile is counted until here (swap: once).
+        // An abandoned compile is counted until here.
         let _ = tx.send(r);
-        if gone_thread.swap(false, Ordering::AcqRel) {
+        if gone_thread.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire).is_err() {
             ABANDONED.fetch_sub(1, Ordering::AcqRel);
         }
     }).map_err(|e| Error::Other(format!("compile thread: {e}")))?;
@@ -128,7 +129,11 @@ pub fn compile(dxc_exe: &Path, src: Vec<u8>, args: Vec<String>, timeout: Duratio
             Err(_) if start.elapsed() > timeout || give_up() => {
                 // Counted before it is marked, so the thread's decrement never comes first.
                 ABANDONED.fetch_add(1, Ordering::AcqRel);
-                gone.store(true, Ordering::Release);
+                if gone.compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire).is_err() {
+                    // The thread finished meanwhile: not abandoned; its result is in the channel.
+                    ABANDONED.fetch_sub(1, Ordering::AcqRel);
+                    return rx.recv().unwrap_or_else(|_| Err(Error::Other("the compile thread exited".into())));
+                }
                 drop(rx);
                 return Err(Error::Other("timed out".into()));
             }

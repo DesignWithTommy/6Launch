@@ -102,7 +102,8 @@ pub fn parse_manifest(text: &str) -> (Vec<Entry>, Option<u64>) {
             continue;
         }
         let parts: Vec<&str> = t.split('|').map(str::trim).collect();
-        if parts.len() == 4 {
+        // An empty path would resolve to the dump folder itself.
+        if parts.len() == 4 && !parts[3].is_empty() {
             if let Ok(size) = parts[1].parse() {
                 out.push(Entry { size, path: parts[3].replace('/', "\\") });
             }
@@ -175,6 +176,10 @@ pub fn run(dir: &Path) -> Report {
     for n in TOP {
         let p = dir.join(n);
         let link = is_link(&p);
+        if std::fs::metadata(&p).is_ok_and(|m| m.is_dir()) {
+            top_bad.push((n, "is a folder, not a file".to_string()));
+            continue;
+        }
         match resolved_len(&p) {
             Ok(0) => top_bad.push((n, "is empty (0 bytes)".to_string())),
             Ok(_) => {}

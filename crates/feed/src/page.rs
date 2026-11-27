@@ -17,17 +17,18 @@ button:disabled{opacity:.6}.err{color:#ff7a90;font-size:14px;min-height:1em}
 <h1 id="t">Neonbridge feed</h1><p id="d">Enter the password to watch.</p>
 <input id="p1" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password" required>
 <input id="p2" type="password" autocomplete="new-password" placeholder="Confirm password" aria-label="Confirm password" hidden>
+<input id="p3" type="text" autocomplete="one-time-code" placeholder="Setup code (printed by the launcher)" aria-label="Setup code" hidden>
 <div class="err" id="e" role="alert"></div><button id="b">Continue</button></form>
 <script>
 const SETUP=__SETUP__,LOCAL=__LOCAL__,$=id=>document.getElementById(id);
 if(SETUP){$('t').textContent='Create a password';
  $('d').textContent=LOCAL?'It protects the feed everywhere it is shared. At least 10 characters.':'No password is set yet. Set it on the gaming PC first (open the feed there).';
- $('p1').autocomplete='new-password';$('p2').hidden=!LOCAL;$('p2').required=LOCAL;$('b').textContent='Save and continue';if(!LOCAL)$('b').disabled=true}
+ $('p1').autocomplete='new-password';$('p2').hidden=!LOCAL;$('p2').required=LOCAL;$('p3').hidden=!LOCAL;$('p3').required=LOCAL;$('b').textContent='Save and continue';if(!LOCAL)$('b').disabled=true}
 $('p1').focus();
 $('f').onsubmit=async e=>{e.preventDefault();$('e').textContent='';
  if(SETUP&&$('p1').value!==$('p2').value){$('e').textContent="The passwords don't match";return}
  $('b').disabled=true;
- try{const r=await fetch('auth',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'password='+encodeURIComponent($('p1').value)});
+ try{const r=await fetch('auth',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'password='+encodeURIComponent($('p1').value)+'&code='+encodeURIComponent($('p3').value)});
   const j=await r.json().catch(()=>({}));if(r.ok){location.reload();return}$('e').textContent=j.error||'That did not work'}
  catch(_){$('e').textContent='Not reachable'}finally{$('b').disabled=false}};
 </script></body></html>"##;

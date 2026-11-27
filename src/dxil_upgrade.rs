@@ -34,7 +34,21 @@ pub fn enqueue(dxil: &Path, id: &str, target: &str, hlsl: &[u8], paths: &[&Path]
     }
     let dir = queue(dxil);
     let job = dir.join(format!("{id}.job"));
-    if job.exists() || fs::create_dir_all(&dir).is_err() {
+    if fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    // Queued already (another key with the same HLSL): its paths join the job.
+    if job.exists() {
+        if let Ok(have) = fs::read_to_string(&job) {
+            let more: String = paths.iter().map(|p| p.to_string_lossy().into_owned())
+                .filter(|p| !have.lines().skip(1).any(|l| l == p)).map(|p| p + "\n").collect();
+            if !more.is_empty() {
+                use std::io::Write;
+                if let Ok(mut f) = fs::OpenOptions::new().append(true).open(&job) {
+                    let _ = f.write_all(more.as_bytes());
+                }
+            }
+        }
         return;
     }
     let mut text = format!("{target}\n");
@@ -80,15 +94,17 @@ pub fn start(dxc: PathBuf, defines: Vec<String>, dxil: PathBuf, log: impl Fn(Str
                 if game_running() {
                     break;
                 }
-                match upgrade(&dxc, &defines, &job, secs) {
-                    Ok(()) => done += 1,
+                let before = fs::read_to_string(&job).unwrap_or_default();
+                let keep = match upgrade(&dxc, &defines, &job, secs) {
+                    Ok(()) => { done += 1; false }
                     Err(e) => {
-                        failed += 1;
-                        log(format!("dxil upgrade {}: {e}; the -O0 DXIL stays", job.file_stem().unwrap_or_default().to_string_lossy()));
+                        let keep = retry_later(&job, &e);
+                        if !keep { failed += 1; }
+                        log(format!("dxil upgrade {}: {e}; the -O0 DXIL stays{}", job.file_stem().unwrap_or_default().to_string_lossy(), if keep { " (retried later)" } else { "" }));
+                        keep
                     }
-                }
-                let _ = fs::remove_file(&job);
-                let _ = fs::remove_file(job.with_extension("hlsl"));
+                };
+                finish_job(&job, &before, keep);
                 let n = done + failed;
                 if n.is_power_of_two() || n % 100 == 0 {
                     log(format!("dxil upgrade: {done} -O0 programs recompiled at -O1, {failed} failed (NEONBRIDGE_DXC_UPGRADE=0 off)"));
@@ -166,14 +182,48 @@ fn upgrade(dxc: &Path, defines: &[String], job: &Path, secs: u64) -> Result<(), 
         if path.exists() && !marker(path).exists() {
             continue;
         }
+        // Data renamed first, then its stamp: a failed rename leaves the old pair intact.
         let tmp = path.with_extension(format!("{}.up", std::process::id()));
-        if fs::write(&tmp, &bytes).and_then(|_| fs::write(path.with_extension("sha256"), &sum)).and_then(|_| fs::rename(&tmp, path)).is_ok() {
+        let tmp_sum = path.with_extension(format!("{}.upsum", std::process::id()));
+        if fs::write(&tmp, &bytes).and_then(|_| fs::write(&tmp_sum, &sum)).and_then(|_| fs::rename(&tmp, path))
+            .and_then(|_| fs::rename(&tmp_sum, path.with_extension("sha256"))).is_ok() {
             let _ = fs::remove_file(marker(path));
         } else {
             let _ = fs::remove_file(&tmp);
+            let _ = fs::remove_file(&tmp_sum);
         }
     }
     Ok(())
+}
+
+const MAX_TRIES: u32 = 3;
+
+/// A failure that says nothing about the HLSL (a timeout, a spawn or I/O
+/// error) keeps the job for up to MAX_TRIES attempts (`<id>.tries`); a dxc
+/// verdict or the last try drops it.
+fn retry_later(job: &Path, e: &str) -> bool {
+    let transient = e.contains("past") || e.starts_with("dxc: ") || e.contains("timed out") || e.contains("wrote no output");
+    if !transient {
+        return false;
+    }
+    let tries_path = job.with_extension("tries");
+    let tries = fs::read_to_string(&tries_path).ok().and_then(|t| t.trim().parse::<u32>().ok()).unwrap_or(0) + 1;
+    if tries >= MAX_TRIES {
+        return false;
+    }
+    fs::write(&tries_path, tries.to_string()).is_ok()
+}
+
+/// Removes a finished job, unless it is kept for a retry or paths were added
+/// to it (enqueue) while it ran: then it runs again for those.
+fn finish_job(job: &Path, before: &str, keep: bool) {
+    let grown = fs::read_to_string(job).is_ok_and(|now| now != before);
+    if keep || grown {
+        return;
+    }
+    let _ = fs::remove_file(job);
+    let _ = fs::remove_file(job.with_extension("hlsl"));
+    let _ = fs::remove_file(job.with_extension("tries"));
 }
 
 /// Whether a job writes the build-cache entry of a program in `seen` (its
@@ -378,7 +428,21 @@ pub fn drain(dxil: &Path) -> Result<(), String> {
         return Ok(());
     }
     let pid_file = dir.join("drain.pid");
-    let _ = fs::write(&pid_file, std::process::id().to_string());
+    // Created exclusively: two drainers started together cannot both pass. A
+    // stale file (its drainer gone) is replaced once.
+    let claim = || fs::OpenOptions::new().write(true).create_new(true).open(&pid_file).and_then(|mut f| {
+        use std::io::Write;
+        f.write_all(std::process::id().to_string().as_bytes())
+    });
+    if claim().is_err() {
+        if drainer_running(&dir) {
+            return Ok(());
+        }
+        let _ = fs::remove_file(&pid_file);
+        if claim().is_err() {
+            return Ok(());
+        }
+    }
     DRAINER.store(true, Ordering::Relaxed);
     let mut stepped_aside = false;
     let secs = std::env::var("NEONBRIDGE_DXC_UPGRADE_SECS").ok().and_then(|v| v.trim().parse().ok()).filter(|&s| s > 0).unwrap_or(900);
@@ -410,17 +474,19 @@ pub fn drain(dxil: &Path) -> Result<(), String> {
             if yield_now() {
                 break;
             }
-            match upgrade(&dxc, &defines, &job, secs) {
+            let before = fs::read_to_string(&job).unwrap_or_default();
+            let keep = match upgrade(&dxc, &defines, &job, secs) {
                 // The job stays queued for whoever runs next.
                 Err(e) if e == YIELDED => break,
-                Ok(()) => done += 1,
+                Ok(()) => { done += 1; false }
                 Err(e) => {
-                    failed += 1;
-                    log(format!("{}: {e}; the -O0 DXIL stays", job.file_stem().unwrap_or_default().to_string_lossy()));
+                    let keep = retry_later(&job, &e);
+                    if !keep { failed += 1; }
+                    log(format!("{}: {e}; the -O0 DXIL stays{}", job.file_stem().unwrap_or_default().to_string_lossy(), if keep { " (retried later)" } else { "" }));
+                    keep
                 }
-            }
-            let _ = fs::remove_file(&job);
-            let _ = fs::remove_file(job.with_extension("hlsl"));
+            };
+            finish_job(&job, &before, keep);
         }
     }
     log(format!("drained: {done} -O0 programs recompiled at -O1, {failed} failed"));

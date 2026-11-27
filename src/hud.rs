@@ -341,7 +341,8 @@ fn frametime_color(ms: f32) -> [u8; 3] {
 }
 
 fn trunc(s: &str, max: usize) -> String {
-    if s.len() <= max { s.to_owned() } else { s[..max].to_owned() }
+    // By characters: a byte cut inside a multi-byte name panicked the overlay thread.
+    s.chars().take(max).collect()
 }
 
 /// Paints the full colour HUD canvas.
@@ -552,7 +553,8 @@ impl GpuWatch {
                 if size == 0 {
                     return 0.0;
                 }
-                let mut buf = vec![0u8; size as usize];
+                // u64 storage: the items need 8-byte alignment, a byte buffer does not promise it.
+                let mut buf = vec![0u64; (size as usize).div_ceil(8)];
                 let items = buf.as_mut_ptr() as *mut PDH_FMT_COUNTERVALUE_ITEM_W;
                 if PdhGetFormattedCounterArrayW(c as _, PDH_FMT_DOUBLE, &mut size, &mut count, items) != 0 {
                     return 0.0;

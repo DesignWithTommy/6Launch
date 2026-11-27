@@ -7,7 +7,7 @@ changed=()
 for d in vendor/*/; do
   n=$(basename "$d"); t="$d/NEONBRIDGE.toml"
   [ -f "$t" ] && [ -f "$d/UPSTREAM" ] || continue
-  repo=$(sed -n 's#^upstream *= *"https://github.com/\([^/"]*/[^/"]*\)".*#\1#p' "$t" | head -1)
+  repo=$(sed -n 's#^upstream *= *"https://github.com/\([^/"]*/[^/"]*\)/*".*#\1#p' "$t" | head -1); repo=${repo%.git}   # trailing / or .git dropped, as fetch.rs repo() does
   [ -n "$repo" ] || continue
   new=$(gh api "repos/$repo/commits/HEAD" -q .sha 2>/dev/null) || { echo "$n: $repo unreachable"; continue; }
   old=$(head -1 "$d/UPSTREAM" | tr -d '[:space:]')
@@ -27,15 +27,17 @@ for d in vendor/*/; do
   changed+=("$n ${new:0:7}")
 done
 # catalog.txt rebuilt from the tomls and pins (same layout as i95 --catalog).
-python - <<'P'
+# A failed rebuild fails the script: the UPSTREAM files above would be out of step with catalog.txt.
+python - <<'P' || { echo "catalog.txt rebuild failed; UPSTREAM files changed but catalog.txt was not rewritten" >&2; exit 1; }
 import pathlib
 out = ["# i95 runtime catalog: `=== <name> <upstream commit>` then that runtime's NEONBRIDGE.toml. Made by i95 --catalog."]
 for d in sorted(pathlib.Path("vendor").iterdir()):
     t, u = d / "NEONBRIDGE.toml", d / "UPSTREAM"
     if not (t.is_file() and u.is_file()):
         continue
-    c = u.read_text().splitlines()[0].strip()
-    if len(c) != 40:
+    lines = u.read_text().splitlines()
+    c = lines[0].strip() if lines else ""
+    if len(c) != 40 or any(ch not in "0123456789abcdefABCDEF" for ch in c):
         continue
     out += [f"=== {d.name} {c}", t.read_text(encoding="utf-8").replace("\r\n", "\n").rstrip()]
 pathlib.Path("catalog.txt").write_text("\n".join(out) + "\n", encoding="utf-8", newline="\n")

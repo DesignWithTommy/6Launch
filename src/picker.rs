@@ -27,7 +27,7 @@ use windows_sys::Win32::{
     },
     UI::{
         Controls::{DRAWITEMSTRUCT, MEASUREITEMSTRUCT, ODS_COMBOBOXEDIT, ODS_DISABLED, ODS_SELECTED, ODT_BUTTON, ODT_COMBOBOX},
-        Input::KeyboardAndMouse::{GetFocus, IsWindowEnabled, SetFocus, TRACKMOUSEEVENT, TME_LEAVE, TrackMouseEvent, VK_DOWN, SetCapture, ReleaseCapture, GetCapture, VK_RETURN, VK_UP},
+        Input::KeyboardAndMouse::{GetFocus, SetFocus, TRACKMOUSEEVENT, TME_LEAVE, TrackMouseEvent, VK_DOWN, SetCapture, ReleaseCapture, GetCapture, VK_RETURN, VK_UP},
         Shell::SHCreateItemFromParsingName,
         WindowsAndMessaging::*,
     },
@@ -161,10 +161,11 @@ fn game_label(folder: &Path) -> String {
 /// to its last three parts.
 fn shortened(path: &Path) -> String {
     let mut p = path.display().to_string();
-    if let Some(home) = std::env::var_os("USERPROFILE").map(|h| h.to_string_lossy().into_owned()).filter(|h| !h.is_empty()) {
-        if p.to_lowercase().starts_with(&home.to_lowercase()) {
-            p = format!("~{}", &p[home.len()..]);
-        }
+    // By path components (case-insensitive on Windows), never by byte offset.
+    if let Some(home) = std::env::var_os("USERPROFILE").map(PathBuf::from).filter(|h| !h.as_os_str().is_empty())
+        && let Ok(rest) = path.strip_prefix(&home)
+    {
+        p = if rest.as_os_str().is_empty() { "~".to_owned() } else { format!("~\\{}", rest.display()) };
     }
     if p.chars().count() > 40 {
         let parts: Vec<&str> = p.split(['\\', '/']).filter(|s| !s.is_empty()).collect();
@@ -307,7 +308,6 @@ thread_local! {
     static BRUSHES: RefCell<Option<(HBRUSH, HBRUSH)>> = const { RefCell::new(None) };
     static ADVANCED: Cell<HWND> = const { Cell::new(null_mut()) };
     static UI: RefCell<Option<Ui>> = const { RefCell::new(None) };
-    static COMBO_PROC: Cell<isize> = const { Cell::new(0) };
     /// The Diagnostics box (on by default; NEONBRIDGE_DIAG=0 for the run when off).
     static DIAG: Cell<bool> = const { Cell::new(false) };
 }
@@ -806,12 +806,17 @@ fn install_gdk(hwnd: HWND) {
     std::thread::spawn(move || {
         let r = crate::runtimes::fetch_gdk();
         let hwnd = h as HWND;
+        // Play may have closed the picker meanwhile: no owner, no post to a dead window.
+        let alive = unsafe { IsWindow(hwnd) } != 0;
+        let hwnd = if alive { hwnd } else { null_mut() };
         match r {
             Ok(()) => message(hwnd, "The PC GDK is installed.", MB_ICONINFORMATION),
             Err(e) => message(hwnd, &format!("The PC GDK was not installed: {e}"), MB_ICONWARNING),
         }
         // Back on the window's thread: rows are rebuilt by the next refresh.
-        unsafe { PostMessageW(hwnd, WM_APP + 7, 0, 0) };
+        if alive {
+            unsafe { PostMessageW(hwnd, WM_APP + 7, 0, 0) };
+        }
     });
 }
 
@@ -954,8 +959,11 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
         m if m == WM_APP + 7 => {
             let fresh = rows();
             with_state(|s| {
-                for (row, new) in s.rows.iter_mut().zip(fresh) {
-                    row.missing = new.missing;
+                // By name: the fresh list may sort differently (ranks change).
+                for row in s.rows.iter_mut() {
+                    if let Some(new) = fresh.iter().find(|n| n.name == row.name) {
+                        row.missing = new.missing.clone();
+                    }
                 }
             });
             unsafe { InvalidateRect(hwnd, null(), 0) };
@@ -1073,7 +1081,6 @@ const ID_OPTIONS: usize = 116;
 const ID_DONE: usize = 117;
 const ID_DIAG: usize = 118;
 const ID_STATUS: usize = 901;
-const CBN_SELCHANGE: usize = 1;
 const ADV_WIDTH: i32 = 760;
 /// The node editor: source nodes (one per tree) on the left, crate nodes on
 /// the right, wires from each crate's picked tree.
@@ -1124,14 +1131,6 @@ fn edit(parent: HWND, style: u32, rect: (i32, i32, i32, i32), id: usize) -> HWND
     child(parent, "EDIT", "", WS_TABSTOP | style, (rect.0 + 8, rect.1 + 6, rect.2 - 16, rect.3 - 12), id)
 }
 
-fn combo(parent: HWND, rect: (i32, i32, i32, i32), id: usize) -> HWND {
-    let h = child(parent, "COMBOBOX", "", WS_TABSTOP | WS_VSCROLL | (CBS_DROPDOWNLIST | CBS_OWNERDRAWFIXED | CBS_HASSTRINGS) as u32, (rect.0, rect.1, rect.2, 320), id);
-    // Its closed face is painted by combo_proc; the list is owner-drawn.
-    let old = unsafe { SetWindowLongPtrW(h, GWLP_WNDPROC, combo_proc as *const () as isize) };
-    COMBO_PROC.set(old);
-    h
-}
-
 fn combo_text(h: HWND, i: isize) -> String {
     if i < 0 {
         return String::new();
@@ -1140,51 +1139,6 @@ fn combo_text(h: HWND, i: isize) -> String {
     let mut buf = vec![0u16; len + 1];
     unsafe { SendMessageW(h, CB_GETLBTEXT, i as usize, buf.as_mut_ptr() as LPARAM) };
     String::from_utf16_lossy(&buf[..len])
-}
-
-/// A combo's closed face: a flat panel box with a 1 px border (cyan when
-/// focused), the picked item and a chevron.
-unsafe extern "system" fn combo_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    let old: WNDPROC = unsafe { std::mem::transmute(COMBO_PROC.get()) };
-    match msg {
-        WM_PAINT => unsafe {
-            let mut ps: PAINTSTRUCT = std::mem::zeroed();
-            let dc = BeginPaint(hwnd, &mut ps);
-            let mut r: RECT = std::mem::zeroed();
-            GetClientRect(hwnd, &mut r);
-            let on = IsWindowEnabled(hwnd) != 0;
-            rounded(dc, r, PANEL, if GetFocus() == hwnd { CYAN } else { BORDER }, 6, BACKGROUND);
-            let s = combo_text(hwnd, SendMessageW(hwnd, CB_GETCURSEL, 0, 0));
-            let color = if !on || s.starts_with('\u{2717}') { FAINT } else { TEXT };
-            fonts(|f| {
-                text(dc, &s, rect(r.left + 10, r.top, r.right - 28, r.bottom), color, f.body, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
-                text(dc, "\u{2304}", rect(r.right - 26, r.top - 4, r.right - 8, r.bottom), if on { SUB } else { FAINT }, f.body, DT_CENTER | DT_VCENTER);
-            });
-            EndPaint(hwnd, &ps);
-            0
-        },
-        WM_ERASEBKGND => 1,
-        WM_SETFOCUS | WM_KILLFOCUS | WM_ENABLE => unsafe {
-            let r = CallWindowProcW(old, hwnd, msg, wparam, lparam);
-            InvalidateRect(hwnd, null(), 0);
-            r
-        },
-        _ => unsafe { CallWindowProcW(old, hwnd, msg, wparam, lparam) },
-    }
-}
-
-fn fill(list: HWND, items: &[String], select: usize) {
-    unsafe { SendMessageW(list, CB_RESETCONTENT, 0, 0) };
-    for i in items {
-        let w = wide(i);
-        unsafe { SendMessageW(list, CB_ADDSTRING, 0, w.as_ptr() as LPARAM) };
-    }
-    unsafe { SendMessageW(list, CB_SETCURSEL, select, 0) };
-}
-
-fn selected(list: HWND) -> usize {
-    let i = unsafe { SendMessageW(list, CB_GETCURSEL, 0, 0) };
-    if i < 0 { 0 } else { i as usize }
 }
 
 fn edit_text(edit: HWND) -> String {
@@ -1273,7 +1227,11 @@ fn show_advanced() {
     }
 }
 
-fn advanced_command(hwnd: HWND, id: usize, _code: usize) {
+fn advanced_command(hwnd: HWND, id: usize, code: usize) {
+    // BN_CLICKED only: owner-drawn buttons also send BN_DOUBLECLICKED (5).
+    if code != 0 {
+        return;
+    }
     match id {
         ID_DIAG => unsafe {
             DIAG.set(!DIAG.get());
@@ -1457,6 +1415,10 @@ pub fn pick() -> Option<Pick> {
     // Diagnostics on unless NEONBRIDGE_DIAG=0 or the box was last left off.
     DIAG.set(crate::runtimes::diag() && get("diag").as_deref() != Some("0"));
     let rows = rows();
+    if rows.is_empty() {
+        message(null_mut(), &format!("No runtimes found in {}. Unpack the full i95 release (its vendor folder holds them).", crate::runtimes::vendor().display()), MB_ICONWARNING);
+        return None;
+    }
     // The last pick, else NEONBRIDGE_RUNTIME, else the top-ranked runtime.
     let want = get("runtime").map(|r| crate::runtimes::alias(&r)).or_else(|| std::env::var("NEONBRIDGE_RUNTIME").ok().filter(|v| !v.trim().is_empty()).map(|v| crate::runtimes::name(Some(&v)))).unwrap_or_else(|| rows[0].name.clone());
     let sel = rows.iter().position(|r| r.name == want).unwrap_or(0);

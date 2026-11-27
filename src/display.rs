@@ -78,26 +78,28 @@ pub fn monitors() -> Vec<Monitor> {
     use windows_sys::Win32::Graphics::Gdi::{EnumDisplayMonitors, EnumDisplaySettingsW, GetMonitorInfoW, DEVMODEW, HDC, HMONITOR, MONITORINFOEXW};
 
     unsafe extern "system" fn each(mon: HMONITOR, _dc: HDC, _rc: *mut RECT, data: LPARAM) -> i32 {
-        let out = &mut *(data as *mut Vec<Monitor>);
-        let mut mi: MONITORINFOEXW = std::mem::zeroed();
-        mi.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
-        if GetMonitorInfoW(mon, &mut mi as *mut MONITORINFOEXW as *mut _) == 0 {
-            return 1;
-        }
-        let r = mi.monitorInfo.rcMonitor;
-        let mut raw = Vec::new();
-        let mut i = 0;
-        loop {
-            let mut dm: DEVMODEW = std::mem::zeroed();
-            dm.dmSize = std::mem::size_of::<DEVMODEW>() as u16;
-            if EnumDisplaySettingsW(mi.szDevice.as_ptr(), i, &mut dm) == 0 {
-                break;
+        unsafe {
+            let out = &mut *(data as *mut Vec<Monitor>);
+            let mut mi: MONITORINFOEXW = std::mem::zeroed();
+            mi.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
+            if GetMonitorInfoW(mon, &mut mi as *mut MONITORINFOEXW as *mut _) == 0 {
+                return 1;
             }
-            raw.push((dm.dmPelsWidth, dm.dmPelsHeight));
-            i += 1;
+            let r = mi.monitorInfo.rcMonitor;
+            let mut raw = Vec::new();
+            let mut i = 0;
+            loop {
+                let mut dm: DEVMODEW = std::mem::zeroed();
+                dm.dmSize = std::mem::size_of::<DEVMODEW>() as u16;
+                if EnumDisplaySettingsW(mi.szDevice.as_ptr(), i, &mut dm) == 0 {
+                    break;
+                }
+                raw.push((dm.dmPelsWidth, dm.dmPelsHeight));
+                i += 1;
+            }
+            out.push(Monitor { primary: mi.monitorInfo.dwFlags & 1 != 0, size: ((r.right - r.left) as u32, (r.bottom - r.top) as u32), modes: unique_modes(raw) });
+            1
         }
-        out.push(Monitor { primary: mi.monitorInfo.dwFlags & 1 != 0, size: ((r.right - r.left) as u32, (r.bottom - r.top) as u32), modes: unique_modes(raw) });
-        1
     }
     let mut v: Vec<Monitor> = Vec::new();
     unsafe {

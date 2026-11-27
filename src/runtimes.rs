@@ -315,19 +315,29 @@ pub fn fetch_gdk() -> Result<(), String> {
     let dir = gdk_dir();
     fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     let setup = dir.join("PGDK.exe");
-    if !setup.is_file() {
+    // The marker is written only after a whole unpack: a PGDK.exe left by an
+    // interrupted Expand-Archive (cabs missing) is never trusted.
+    let done = dir.join(".nbunpacked");
+    if !(setup.is_file() && done.is_file()) {
         let zip = dir.join(format!("GDK_{GDK_VERSION}.zip"));
         let ok = |c: &mut Command| c.stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s| s.success());
         if !ok(crate::runtimes::command("curl").args(["-L", "--fail", "-o"]).arg(&zip).arg(GDK_URL)) {
             return Err(format!("downloading {GDK_URL} failed"));
         }
-        if !ok(crate::runtimes::command("powershell").args(["-NoProfile", "-Command", "Expand-Archive -LiteralPath $env:NB_ZIP -DestinationPath $env:NB_DIR -Force"]).env("NB_ZIP", &zip).env("NB_DIR", &dir)) {
+        let part = dir.with_file_name(format!(".{GDK_VERSION}-part"));
+        let _ = fs::remove_dir_all(&part);
+        if !ok(crate::runtimes::command("powershell").args(["-NoProfile", "-Command", "Expand-Archive -LiteralPath $env:NB_ZIP -DestinationPath $env:NB_DIR -Force"]).env("NB_ZIP", &zip).env("NB_DIR", &part)) {
+            let _ = fs::remove_dir_all(&part);
             return Err(format!("unzipping {} failed", zip.display()));
         }
         let _ = fs::remove_file(&zip);
-        if !setup.is_file() {
-            return Err(format!("the GDK zip held no PGDK.exe ({})", dir.display()));
+        if !part.join("PGDK.exe").is_file() {
+            let _ = fs::remove_dir_all(&part);
+            return Err(format!("the GDK zip held no PGDK.exe ({})", part.display()));
         }
+        let _ = fs::remove_dir_all(&dir);
+        fs::rename(&part, &dir).map_err(|e| format!("{} -> {}: {e}", part.display(), dir.display()))?;
+        fs::write(&done, GDK_VERSION).map_err(|e| format!("{}: {e}", done.display()))?;
     }
     // Start-Process goes through ShellExecute, so the installer's UAC prompt appears.
     let started = crate::runtimes::command("powershell")
@@ -436,6 +446,13 @@ fn value(s: &str) -> Option<Value> {
     }
 }
 
+/// The commands a spec runs (build, prebuild, setup, diag_build, launcher):
+/// a catalog toml that changes them is asked about before it is taken.
+pub fn commands_of(text: &str) -> Vec<Option<Vec<String>>> {
+    let spec = parse(text).unwrap_or_default();
+    ["build", "prebuild", "setup", "diag_build", "launcher"].iter().map(|k| spec.list(k).map(<[String]>::to_vec)).collect()
+}
+
 /// The text parses as a runtime spec (the catalog's check).
 pub fn check_spec(text: &str) -> Result<(), String> {
     parse(text).map(|_| ())
@@ -484,6 +501,16 @@ fn parse(text: &str) -> Result<Spec, String> {
     if !pending.is_empty() {
         let key = pending.split_once('=').map_or(pending.as_str(), |(k, _)| k).trim();
         return Err(format!("{key}: its list never closes (no ])"));
+    }
+    // exe, diag_exe and cwd stay inside the runtime's tree (a catalog toml
+    // could otherwise point a run at any program on the PC).
+    for k in ["exe", "diag_exe", "cwd"] {
+        if let Some(v) = spec.str(k) {
+            let p = Path::new(v);
+            if p.has_root() || p.is_absolute() || p.components().any(|c| !matches!(c, std::path::Component::Normal(_) | std::path::Component::CurDir)) {
+                return Err(format!("{k} = \"{v}\": must be a path inside the runtime's tree (no .., no drive or root)"));
+            }
+        }
     }
     Ok(spec)
 }
@@ -654,7 +681,8 @@ fn run_steps(name: &str, root: &Path, spec: &Spec, game: Option<&Path>, ask: &dy
         let rest = rest.replace("{game}", &game.as_ref().map(|g| g.display().to_string()).unwrap_or_default());
         let rest = rest.replace("{exe}", &exe.as_ref().map(|e| e.display().to_string()).unwrap_or_default());
         let rest = rest.as_str();
-        let (command, mark) = rest.split_once(" [").map_or((rest.trim(), ""), |(c, m)| (c.trim(), m.trim_end_matches(']')));
+        // The mark is the last " [...]" closing the line; a " [" inside the command stays in it.
+        let (command, mark) = rest.trim_end().strip_suffix(']').and_then(|r| r.rsplit_once(" [")).filter(|(_, m)| m.contains("asks first") || m.contains("diagnostics")).map_or((rest.trim(), ""), |(c, m)| (c.trim(), m));
         println!("[setup] {name}: {title}: {command}");
         // A diagnostics step follows the Diagnostics switch, never a prompt.
         if title.contains("diag") || mark.contains("diagnostics") {
@@ -671,7 +699,7 @@ fn run_steps(name: &str, root: &Path, spec: &Spec, game: Option<&Path>, ask: &dy
             Some(rest) => format!("{} {rest}", python()?.join(" ")),
             None => command.to_owned(),
         };
-        let status = crate::runtimes::command("cmd").arg("/C").arg(&command).current_dir(&root).status()?;
+        let status = shell(&command).current_dir(&root).status()?;
         if !status.success() {
             return Err(format!("setup {name}: {title} failed ({status})").into());
         }
@@ -925,7 +953,7 @@ fn build(name: &str, root: &Path, spec: &Spec) -> Result<PathBuf, Box<dyn Error>
     // run in the tree before each build; setup only ran after the build.
     for step in spec.list("prebuild").unwrap_or_default() {
         println!("[launch] {name}: before the build: {step}");
-        let status = crate::runtimes::command("cmd").arg("/C").arg(step).current_dir(root).status()?;
+        let status = shell(step).current_dir(root).status()?;
         if !status.success() {
             return Err(format!("runtime {name}: its pre-build step failed ({status}): {step}").into());
         }
@@ -1227,6 +1255,7 @@ pub fn title(name: &str) -> String {
 }
 
 /// (root, build line) of a runtime.
+#[allow(dead_code)] // kept for callers being added in parallel
 pub fn spec_of(name: &str) -> Result<(PathBuf, Option<Vec<String>>), Box<dyn Error>> {
     let (root, spec) = load(name)?;
     Ok((root, spec.list("build").map(<[String]>::to_vec)))
@@ -1254,6 +1283,7 @@ pub fn options_of(name: &str) -> Vec<String> {
 /// Runs a cargo line in `cwd` with `target` as its target folder, hidden,
 /// echoed, with its Compiling lines on the loader bar. Err: the compile
 /// errors (the `error` blocks).
+#[allow(dead_code)]
 pub fn cargo(cmd: &[String], cwd: &Path, target: &Path, label: &str) -> Result<(), String> {
     crate::splash::status(0.1, label);
     let mut c = crate::runtimes::command(&cmd[0]);
@@ -1291,6 +1321,16 @@ fn patch_root(name: &str, root: &Path) -> Option<PathBuf> {
         "anyxboxx" => Some(root.join("third_party").join("victory")),
         _ => None,
     }
+}
+
+/// `cmd /S /C "<line>"` with the line verbatim: `arg()` would quote it and
+/// turn its inner `"` into `\"`, which cmd keeps, so a
+/// `powershell -Command "..."` step only echoed its script as a string.
+fn shell(line: &str) -> Command {
+    use std::os::windows::process::CommandExt;
+    let mut c = crate::runtimes::command("cmd");
+    c.raw_arg(format!("/S /C \"{line}\""));
+    c
 }
 
 /// Applies the runtime's own vendor/patches/rt-<name>.patch to its victory
@@ -1661,6 +1701,11 @@ pub fn logging() -> bool {
     std::env::var("NEONBRIDGE_LOG").map_or(true, |v| v.trim() != "0")
 }
 
+/// The run reached its --timeout (and was killed).
+fn killed(started: &std::time::Instant, timeout: Option<f64>) -> bool {
+    timeout.is_some_and(|t| t > 0.0 && started.elapsed().as_secs_f64() >= t)
+}
+
 fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<f64>, echo: bool, game: bool) -> Result<(), Box<dyn Error>> {
     let sink: Arc<Mutex<Box<dyn Write + Send>>> = Arc::new(Mutex::new(match log {
         Some(p) => {
@@ -1720,14 +1765,18 @@ fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<
         if let Some(s) = child.try_wait()? {
             break s;
         }
-        if timeout.is_some_and(|t| t > 0.0 && started.elapsed().as_secs_f64() >= t) {
+        if killed(&started, timeout) {
             println!("[launch] {name}: --timeout reached; stopping it");
             let _ = child.kill();
             break child.wait()?;
         }
         std::thread::sleep(std::time::Duration::from_millis(200));
     };
-    let _ = (a.join(), b.join());
+    // After a kill a grandchild (a `launcher` script's game) can still hold
+    // the pipes open, so the pumps are joined only on a normal exit.
+    if !killed(&started, timeout) {
+        let _ = (a.join(), b.join());
+    }
     crate::splash::close();
     println!("[launch] {name} exited ({status})");
     if !status.success() {
@@ -2260,7 +2309,7 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         if graphics && let Some(g) = spec.list("prewarm_graphics") {
             let all_file = cache.join("graphics-total.txt");
             let all: Option<u64> = fs::read_to_string(&all_file).ok().and_then(|t| t.trim().parse().ok()).filter(|&t| t > 0);
-            let mut skip = 0u64;
+            let (mut skip, mut idle) = (0u64, 0u32);
             loop {
                 let a: Vec<String> = g.iter().map(|a| fill(a, &places).replace("{skip}", &skip.to_string())).collect();
                 println!("[launch] {name} graphics > {} {}", program.display(), a.join(" "));
@@ -2277,15 +2326,23 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
                         let _ = fs::write(&all_file, (skip + n).to_string());
                         break;
                     }
-                    Ok(Chunk::Done(_)) => {}
-                    Ok(Chunk::Idle) => println!("[launch] {name}: records {}-{} printed nothing for {} s: left to compile in game", skip + 1, skip + GRAPHICS_CHUNK, graphics_idle().as_secs()),
+                    Ok(Chunk::Done(_)) => idle = 0,
+                    Ok(Chunk::Idle) => idle += 1,
                     Err(e) => {
                         crate::splash::close();
                         fail_box(&e);
                         return Err(e.into());
                     }
                 }
+                if idle > 0 {
+                    println!("[launch] {name}: records {}-{} printed nothing for {} s: left to compile in game", skip + 1, skip + GRAPHICS_CHUNK, graphics_idle().as_secs());
+                }
                 skip += GRAPHICS_CHUNK;
+                // Stalling chunk after chunk, or past the last full pass's total: stop.
+                if idle >= 2 || all.is_some_and(|t| skip >= t) {
+                    println!("[launch] {name}: graphics precompile stopped at record {skip}; the rest compile in game");
+                    break;
+                }
             }
         }
     }

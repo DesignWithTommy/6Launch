@@ -81,7 +81,8 @@ pub fn start(spec: &str, exe_name: String, log: impl Fn(String) + Send + 'static
     }
     std::thread::Builder::new().name("hang-watch".into()).spawn(move || {
         use windows_sys::Win32::System::Diagnostics::Debug::ReadProcessMemory;
-        use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ};
+        use windows_sys::Win32::Foundation::{CloseHandle, WAIT_TIMEOUT};
+        use windows_sys::Win32::System::Threading::{OpenProcess, WaitForSingleObject, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, PROCESS_VM_READ};
         const STALL_LADDER: [f64; 3] = [5.0, 15.0, 25.0];
         let started = Instant::now();
         let (process, base) = loop {
@@ -89,7 +90,7 @@ pub fn start(spec: &str, exe_name: String, log: impl Fn(String) + Send + 'static
                 return;
             }
             if let Some((pid, base)) = find(&exe_name) {
-                let h = unsafe { OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+                let h = unsafe { OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE, 0, pid) };
                 if !h.is_null() {
                     break (h, base);
                 }
@@ -100,22 +101,27 @@ pub fn start(spec: &str, exe_name: String, log: impl Fn(String) + Send + 'static
         let mut last: Vec<Option<u64>> = vec![None; watches.len()];
         let mut since = vec![Instant::now(); watches.len()];
         let mut rung = vec![0usize; watches.len()];
+        // Reads that all failed in a row: a wrong RVA never reads, so give up.
+        let mut failed_rounds = 0u32;
         loop {
             std::thread::sleep(Duration::from_millis(100));
             let t = started.elapsed().as_secs_f64();
+            // The process handle says when the game is gone, read or no read.
+            if unsafe { WaitForSingleObject(process, 0) } != WAIT_TIMEOUT {
+                log(format!("[hang] {t:.1} s: the game exited"));
+                unsafe { CloseHandle(process) };
+                return;
+            }
+            let mut any_read = false;
             let mut changed = Vec::new();
             for (i, w) in watches.iter().enumerate() {
                 let mut buf = [0u8; 8];
                 let mut read = 0usize;
                 let ok = unsafe { ReadProcessMemory(process, (base + w.rva) as _, buf.as_mut_ptr().cast(), w.size, &mut read) } != 0;
                 if !ok || read != w.size {
-                    // The process is gone (or the page is): the watch ends with it.
-                    if last[i].is_some() && find(&exe_name).is_none() {
-                        log(format!("[hang] {t:.1} s: the game exited"));
-                        return;
-                    }
                     continue;
                 }
+                any_read = true;
                 let v = u64::from_le_bytes(buf);
                 if last[i] != Some(v) {
                     let stood = since[i].elapsed().as_secs_f64();
@@ -135,6 +141,12 @@ pub fn start(spec: &str, exe_name: String, log: impl Fn(String) + Send + 'static
             }
             if !changed.is_empty() {
                 log(format!("[hang] {t:.1} s: {}", changed.join(", ")));
+            }
+            failed_rounds = if any_read { 0 } else { failed_rounds + 1 };
+            if failed_rounds == 600 {
+                log(format!("[hang] {t:.1} s: no watched address readable for 60 s (wrong RVA?); watch ended"));
+                unsafe { CloseHandle(process) };
+                return;
             }
         }
     }).map_err(|e| e.to_string())?;

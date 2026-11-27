@@ -105,6 +105,7 @@ pub fn start(settings: Settings) {
         match http::serve(settings.port) {
             Ok(()) => {
                 say(format!("serving http://127.0.0.1:{} (set the password there first, on this PC)", settings.port));
+                auth::announce_setup_code();
                 tunnel::start(&settings);
             }
             Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => say(format!(

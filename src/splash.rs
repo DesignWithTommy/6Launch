@@ -11,6 +11,8 @@
 //! exists (xmem keeps it cloaked until the first frame, so no curtain is
 //! drawn over it).
 
+#![allow(dead_code)] // watch() and its helpers wait for a caller again
+
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use windows_sys::core::BOOL;
@@ -193,10 +195,11 @@ pub fn watch(exe: &std::path::Path) {
         // monitor again later, so it is pulled back onto one each time.
         loop {
             let closed = WINDOW.load(Ordering::Acquire) == -2;
-            if closed && !focused {
+            if closed && !focused && !game.is_null() {
                 focused = true;
                 // The title only reads input while it has focus (the auto A press
                 // for its player-selection prompt included), so hand it the foreground.
+                unsafe { SetForegroundWindow(game) };
             }
             for hwnd in top_level_windows() {
                 let mut pid = 0;
@@ -336,6 +339,8 @@ fn run() {
             std::ptr::null(),
         );
         if hwnd.is_null() {
+            // No window: count as closed, or the overlays waiting on closed() never show.
+            WINDOW.store(0, Ordering::Release);
             return;
         }
         // close() may have run before the window existed.

@@ -459,10 +459,18 @@ fn portable_pixel(data: &[u8]) -> bool {
     if !has_dxil_container(data) {
         return false;
     }
-    let u32_at = |o: usize| u32::from_le_bytes(data[o..o + 4].try_into().unwrap()) as usize;
-    let stages: Vec<u16> = (0..u32_at(28)).map(|i| u32_at(32 + i * 4))
-        .filter(|&o| &data[o..o + 4] == b"DXIL")
-        .map(|o| u16::from_le_bytes(data[o + 10..o + 12].try_into().unwrap())).collect();
+    let u32_at = |o: usize| data.get(o..o + 4).map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize);
+    let Some(count) = u32_at(28) else { return false };
+    let mut stages: Vec<u16> = Vec::new();
+    for i in 0..count {
+        let Some(o) = u32_at(32 + i * 4) else { return false };
+        if data.get(o..o + 4) != Some(b"DXIL".as_slice()) {
+            continue;
+        }
+        // A DXIL part shorter than its program header is malformed.
+        let Some(v) = data.get(o + 10..o + 12) else { return false };
+        stages.push(u16::from_le_bytes(v.try_into().unwrap()));
+    }
     stages == [0] // D3D12_SHVER_PIXEL_SHADER
 }
 
@@ -939,7 +947,9 @@ fn compile(source: &Path, key: &str, ext: &str, tools: &Tools, cache: &Path, ses
 /// `cancel`: the prewarm's tail ran out (prewarm_tail): a dxc still running
 /// is ended and the program left to the title's request, with no failure kept.
 fn compile_once(source: &Path, key: &str, ext: &str, tools: &Tools, cache: &Path, session: &Path, o0_first: bool, cancel: Option<&AtomicBool>) -> Outcome {
-    let work = cache.join(format!("tmp-{}-{}", std::process::id(), sha256(key.as_bytes()).get(..12).unwrap_or("x")));
+    // Unique per call: the background prewarm and a live request may compile the same key at once.
+    static WORK_N: AtomicUsize = AtomicUsize::new(0);
+    let work = cache.join(format!("tmp-{}-{}-{}", std::process::id(), sha256(key.as_bytes()).get(..12).unwrap_or("x"), WORK_N.fetch_add(1, Ordering::Relaxed)));
     let _ = fs::remove_dir_all(&work);
     if let Err(e) = fs::create_dir_all(&work) {
         return Outcome::Failed(e.to_string());
@@ -1009,7 +1019,7 @@ fn compile_once(source: &Path, key: &str, ext: &str, tools: &Tools, cache: &Path
         };
         if let (Ok(bytes), Ok(sum)) = (fs::read(&dest), fs::read(&checksum))
             && !upgrading_o0(&dest)
-            && bytes.len() as u64 <= MAX_SHADER_BYTES && sum == sha256(&bytes).as_bytes() {
+            && bytes.len() as u64 <= MAX_SHADER_BYTES && sum == sha256(&bytes).as_bytes() && has_dxil_container(&bytes) {
             // An earlier ztrx entry made without its heap reflection gets it now.
             if ext == "dxbc" && cache.join(format!("{key}.ztrx")).is_file() && !cache.join(format!("{key}.heap")).is_file() {
                 ztrx_heap(tools, &cooked, cache, key);
@@ -1365,11 +1375,14 @@ fn compile_once(source: &Path, key: &str, ext: &str, tools: &Tools, cache: &Path
                 }
                 let _ = fs::write(&up, b"");
             }
-            // Written stamp-first under a temporary name: a reader sees both or neither.
+            // Both staged under temporary names, data renamed first, then its stamp:
+            // a failed data rename leaves the old pair intact.
             let tmp = path.with_extension(format!("{}.tmp", std::process::id()));
-            if fs::write(&tmp, &bytes).and_then(|_| fs::write(path.with_extension("sha256"), sha256(&bytes)))
-                .and_then(|_| fs::rename(&tmp, path)).is_err() {
+            let tmp_sum = path.with_extension(format!("{}.sumtmp", std::process::id()));
+            if fs::write(&tmp, &bytes).and_then(|_| fs::write(&tmp_sum, sha256(&bytes)))
+                .and_then(|_| fs::rename(&tmp, path)).and_then(|_| fs::rename(&tmp_sum, path.with_extension("sha256"))).is_err() {
                 let _ = fs::remove_file(&tmp);
+                let _ = fs::remove_file(&tmp_sum);
             } else if !dxil_o0 {
                 // -O1 over an -O0 entry: no longer one.
                 let _ = fs::remove_file(&up);
@@ -1542,8 +1555,19 @@ fn ztrx_heap(tools: &Tools, cooked: &Path, cache: &Path, key: &str) {
 /// the published one used (VIctory-zhai 37e90b3, after fxceless 43f465b,
 /// credit). NEONBRIDGE_CACHE_REUSE_PUBLISHED=0 fails as before.
 fn publish_file(tmp: &Path, dest: &Path) -> std::io::Result<()> {
-    match fs::rename(tmp, dest) {
-        Err(e) if dest.is_file() && std::env::var("NEONBRIDGE_CACHE_REUSE_PUBLISHED").as_deref() != Ok("0") => {
+    let mut result = fs::rename(tmp, dest);
+    // A reader holding `dest` open: retry briefly before judging.
+    for _ in 0..5 {
+        if result.is_ok() || !dest.is_file() {
+            break;
+        }
+        thread::sleep(Duration::from_millis(20));
+        result = fs::rename(tmp, dest);
+    }
+    match result {
+        // Only when the published copy holds the same bytes: keys like `<key>.cso` are not content-addressed (-O0 vs -O1).
+        Err(e) if dest.is_file() && std::env::var("NEONBRIDGE_CACHE_REUSE_PUBLISHED").as_deref() != Ok("0")
+            && fs::read(tmp).ok().is_some_and(|t| fs::read(dest).ok().is_some_and(|d| d == t)) => {
             let _ = fs::remove_file(tmp);
             static N: AtomicUsize = AtomicUsize::new(0);
             let n = N.fetch_add(1, Ordering::Relaxed) + 1;
@@ -2202,7 +2226,9 @@ impl Worker {
                         let (tools, cache, session, st, log, busy, active) =
                             (tools.clone(), cache.clone(), session_dir.clone(), st.clone(), log.clone(), busy.clone(), active.clone());
                         thread::spawn(move || {
-                            let outcome = compile(&path, &key, &ext, &tools, &cache, &session, !blocking, None);
+                            // A panic must not leak this slot (active/busy) or leave the title waiting.
+                            let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| compile(&path, &key, &ext, &tools, &cache, &session, !blocking, None)))
+                                .unwrap_or_else(|_| Outcome::Failed("the launcher panicked compiling it".into()));
                             match &outcome {
                                 Outcome::Compiled(xs, dxc) => {
                                     // Measures whether dxc dominates (a direct DXIL writer would only save the dxc part).

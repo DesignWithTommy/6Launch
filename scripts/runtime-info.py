@@ -39,13 +39,19 @@ for name in sorted(os.listdir(os.path.join(root, "vendor"))):
     date = cache.get(key)
     stars = gh(f"repos/{repo}", ".stargazers_count")
     new = toml
+    # A value gh could not give (offline, rate limit) keeps its old line.
+    keep = {k: line for line, k in re.findall(r'^((updated|stars) = [^\n]*\n)', new, re.M)}
     new = re.sub(r'^(updated|stars) = [^\n]*\n', "", new, flags=re.M)
     m = re.search(r'^upstream = [^\n]*\n', new, re.M)
     add = ""
-    if date:
+    if not date and "updated" in keep:
+        add += keep["updated"]
+    elif date:
         add += f'updated = "{date}"   # the pinned upstream commit\'s date (scripts/runtime-info.py)\n'
     if stars and stars.isdigit():
         add += f"stars = {stars}   # GitHub stars when last checked\n"
+    elif "stars" in keep:
+        add += keep["stars"]
     new = new[: m.end()] + add + new[m.end():]
     if new != toml:
         open(os.path.join(d, "NEONBRIDGE.toml"), "w", encoding="utf-8", newline="\n").write(new)
