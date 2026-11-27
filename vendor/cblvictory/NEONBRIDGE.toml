@@ -1,9 +1,9 @@
 name = "cblvictory"
 fork = "VIctory"
 rank = 19   # #19 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "cblvictoryvi 288f732 (GPL-3.0): now on Vice-Tay's renderer: about 12-15 fps at Series X 1440p, RTX 5080"
+about = "cblvictoryvi 4bb264b (GPL-3.0): now on Vice-Tay's renderer: about 12-15 fps at Series X 1440p, RTX 5080"
 upstream = "https://github.com/cocainebunnylaboratories/cblvictoryvi"
-updated = "2026-11-27 13:20"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 14:25"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 9   # GitHub stars when last checked
 # Now on Vice-Tay's renderer (branch vice-tay-5080-tuning); settings are scripts/play.ps1's defaults on an NVIDIA card
 # (its -Machine auto picks the 4090 profile for NVIDIA), not -Safe, no ray tracing, Series X, full screen, panel on.
