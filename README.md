@@ -24,7 +24,7 @@ i95 is a Windows launcher for the projects trying to run the Xbox Series version
 
 ## Standings
 
-Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 37 runtimes, and the launcher lists them in one list in that order.
+Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 38 runtimes, and the launcher lists them in one list in that order.
 
 "Its author reports" is what each project says about itself, in its own words where we could. "Here" is our own PC: i5-14400F, RTX 4060 8 GB, 16 GB RAM, Windows 11. Most authors test on faster cards, so expect less on yours if it's like ours.
 
@@ -63,6 +63,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | – | [ApexVI](https://github.com/KevinPratap/ApexVI) | VIctory | Tuned for 6-8 GB laptop cards: a controllable character at 6.35 to 7.5 fps, 14-15 min runs without a crash, RTX 4050 6 GB; on the tracker's watch list | Not run yet |
 | – | [Victory Grimkaaah](https://github.com/Grimkaaah/Victory-Grimkaaah) | VIctory | AMD only: 24.3 fps average in busy world scenes (ray tracing off), 13.9 with it on, 3-9 min sessions, RX 7900 XTX; on the tracker's watch list | Not run yet |
 | – | [PiloteBox](https://github.com/PiloteCode/PiloteBox) | VIctory | For NVIDIA: 10.5 to 12.5 fps in the prologue (Series X), eleven 4-5 min runs without a crash, RTX 5090; on the tracker's watch list | Not run yet |
+| 33 | [mavis-9070xt](https://github.com/mavis140/mavis-9070xt) | VIctory-7900XTX | 18.9 fps median over a 27-minute session, Series X at 1440p, ray tracing off, RX 9070 XT 16 GB | Not run yet |
 | – | [PercyScarlett](https://github.com/rpatty-dev/PercyScarlett) | VIctory | Lit opening prison scene on Series S, 2-3 fps on an RTX 2060 SUPER; early, from PortWatch's watch list | Not run yet |
 | – | [Five Star Recomp](https://github.com/ThatRecompDev/five-star-recomp) | own (C#) | Intro and opening cutscene at 30 fps, world surfaces still black; needs the .NET SDK; early | Not run yet |
 | – | [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) | own (C) | Boot harness: frame loop and first UI screen; needs Visual Studio 2022 C tools; early | Not run yet |
@@ -92,7 +93,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | – | [G6Recomp](https://github.com/Kajcsi/G6Recomp) | – | Carefully tested C++ loader and console-runtime rewrite for GTA VI, with its own code throughout (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
 | – | [palmetto](https://github.com/luizwidmer/palmetto) | – | Open continuation of Leonida after its repo went private (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
 
-**Not in i95:** ztrx (#6), victory-perf (#8) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub. omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. From #33 down the projects are early-stage layers (Linux/Proton, macOS, recompilations or boot-only builds) that don't reach the game's world on Windows yet.
+**Not in i95:** ztrx (#6), victory-perf (#8) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub. omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. VIctory-macOS-halfwave50 is macOS only (2.9-4.5 fps on a MacBook Pro). Below #33 the projects are early-stage layers (Linux/Proton, macOS, recompilations or boot-only builds) that don't reach the game's world on Windows yet.
 
 ## Screenshots
 

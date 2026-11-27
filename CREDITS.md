@@ -42,6 +42,7 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/vilocity` | [vilocity](https://github.com/voidopcode/vilocity) | voidopcode | GPL-3.0 |
 | `vendor/vinividivici` | [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) | KomanderDG88 | GPL-3.0 |
 | `vendor/vitoriabr` | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | uiliannn, fxceless, Marvis (Marvisak), Duff and the VIctory contributors | GPL-3.0 |
+| `vendor/mavis9070xt` | [mavis-9070xt](https://github.com/mavis140/mavis-9070xt) | mavis140 | GPL-3.0 |
 | `vendor/xtx` | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | avatarmanz | GPL-3.0 |
 | `vendor/ztrx-victory` (archived, in git history) | [ztrx](https://github.com/Zettrox/ztrx) | Zettrox, Marvis (Marvisak), Duff, fxceless, 9hvn9yt2vk-netizen and the VIctory contributors | GPL-3.0 |
 All of the VIctory forks build on [VIctory](https://github.com/Marvisak/VIctory) by Marvisak and its contributors.
