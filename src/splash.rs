@@ -495,9 +495,9 @@ unsafe fn paint(hwnd: HWND) {
         let (night, dusk, glow) = ((18.0, 8.0, 38.0), (92.0, 18.0, 96.0), (255.0, 122.0, 60.0));
         let mut y = if art != 0 { HEIGHT } else { 0 };
         if art != 0 {
-            // The start-screen art across the card's top, centre band.
-            let band = ART_SIDE * 138 / WIDTH;
-            blit_art(dc, art, 0, 0, WIDTH, 138, 0, (ART_SIDE - band) / 2, ART_SIDE, band);
+            // The art fills the whole card (its centre band); the text and the road sit on top.
+            let band = ART_SIDE * HEIGHT / WIDTH;
+            blit_art(dc, art, 0, 0, WIDTH, HEIGHT, 0, (ART_SIDE - band) / 2, ART_SIDE, band);
         }
         while y < HEIGHT {
             let t = (y as f32 / 138.0).min(1.0);
@@ -529,14 +529,21 @@ unsafe fn paint(hwnd: HWND) {
             fill(dc, RECT { left: cx - r, top, right: cx + r, bottom: top + gap }, mix(dusk, glow, ((t - 0.55) / 0.45).clamp(0.0, 1.0)));
         }
         // Dark ground under the card's text.
-        fill(dc, RECT { left: 0, top: 138, right: WIDTH, bottom: HEIGHT }, rgb(14, 6, 26));
-        fill(dc, RECT { left: 0, top: 138, right: WIDTH, bottom: 140 }, PINK);
+        if art == 0 {
+            fill(dc, RECT { left: 0, top: 138, right: WIDTH, bottom: HEIGHT }, rgb(14, 6, 26));
+            fill(dc, RECT { left: 0, top: 138, right: WIDTH, bottom: 140 }, PINK);
+        } else {
+            // A dark strip so the status line reads over the picture.
+            fill(dc, RECT { left: 24, top: 144, right: WIDTH - 24, bottom: 172 }, rgb(14, 6, 26));
+        }
 
         // The wordmark: heavy italic, white over a hot-pink drop shadow.
         let title = font_italic(64, 900);
         let small = font(17, 600);
-        text(dc, "i95", RECT { left: 36, top: 26, right: WIDTH, bottom: 104 }, rgb(255, 46, 151), title, DT_LEFT | DT_VCENTER);
-        text(dc, "i95", RECT { left: 32, top: 22, right: WIDTH, bottom: 100 }, rgb(255, 255, 255), title, DT_LEFT | DT_VCENTER);
+        if art == 0 {
+            text(dc, "i95", RECT { left: 36, top: 26, right: WIDTH, bottom: 104 }, rgb(255, 46, 151), title, DT_LEFT | DT_VCENTER);
+            text(dc, "i95", RECT { left: 32, top: 22, right: WIDTH, bottom: 100 }, rgb(255, 255, 255), title, DT_LEFT | DT_VCENTER);
+        }
         // Counted lines carry their own numbers; dots only for waits.
         // No count: dots and the step's elapsed time ("Warming the shaders... 1m 20s").
         let dots = match since.map(|t| t.elapsed()).filter(|_| pulse) {
