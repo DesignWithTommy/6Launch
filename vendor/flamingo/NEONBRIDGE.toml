@@ -51,6 +51,9 @@ VICTORY_INDIRECT_WINDOW = "0"   # README.md settings, off since 39bb53a
 VICTORY_SHADER_OPT = "0"
 VICTORY_WIDE_MERGE = "1"
 FLAMINGO_DISCORD = "0"   # Neonbridge: no presence sent out unless the user turns it on
+VICTORY_HEAP_WORKER = "1"   # flamingo-log.cmd:54, README.md:140
+VICTORY_AMBIENT = "0.6"   # flamingo-log.cmd:56
+VICTORY_SKIP_PIPELINES = "7115e46a79c78f98,59b1ba494f18c894,b8ca32a6899b87fb,659fe9cae59dbd88"   # flamingo-log.cmd:60, README.md:142
 
 # Keyboard as the gamepad, shown by the controls overlay (F1). From
 # crates/victory-hle/src/modules/gameinput.rs FALLBACK_BUTTONS and fallback();

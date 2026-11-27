@@ -17,8 +17,10 @@ game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
-preset_series_x = ["--console=series-x", "VICTORY_OWN_UPSCALER=", "VICTORY_RENDER_SCALE="]   # play-nvidia.ps1 -SeriesX
+preset_series_x = ["--console=series-x"]   # play-nvidia.ps1:56 -SeriesX: only the console changes
 preset_8gb = ["VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours: its 1536 MB card buffers trimmed for 8 GB cards
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1:26 -RayTracing
+preset_safe = ["--console=series-x", "VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1:21-25 -Safe
 
 [env]   # play-nvidia.ps1:18-35
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"

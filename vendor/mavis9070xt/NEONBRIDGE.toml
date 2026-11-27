@@ -17,7 +17,7 @@ game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
-preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe
+preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD="]   # play.ps1 -Safe
 preset_no_ports = ["VICTORY_PORT_DESCRIPTORS=", "VICTORY_PORT_CBV=", "VICTORY_PORT_GUARD=", "VICTORY_PORT_JOURNAL="]   # play-9070xt.ps1 -NoPorts
 preset_1080p = ["VICTORY_OUTPUT=1920x1080"]   # play-9070xt.ps1 -Output 1920x1080
 preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing

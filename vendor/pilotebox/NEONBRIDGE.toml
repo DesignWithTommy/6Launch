@@ -5,7 +5,7 @@ fork = "VIctory"
 about = "PiloteBox b2f3ab0 (GPL-3.0): 14.7 fps (68 ms a frame) in the prologue's first playable scene on 0.13.0, Series X, RTX 5090; Series S at 60.6 ms a frame; one 4-minute run each; not yet run here"
 upstream = "https://github.com/PiloteCode/PiloteBox"
 updated = "2026-11-27 05:24"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1   # GitHub stars when last checked
+stars = 2   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory"]   # README.md:75
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/pilotebox.exe"   # README.md:75
@@ -19,4 +19,4 @@ preset_ray_tracing = ["--rt"]   # README: the ray-tracing structure builder (dar
 preset_safe = ["--safe"]   # README: the newest speed-ups left out
 
 [env]
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family

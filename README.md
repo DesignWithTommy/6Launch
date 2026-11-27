@@ -24,7 +24,7 @@ i95 is a Windows launcher for the projects trying to run the Xbox Series version
 
 ## Standings
 
-Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 38 runtimes, and the launcher lists them in one list in that order.
+Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 39 runtimes, and the launcher lists them in one list in that order.
 
 "Its author reports" is what each project says about itself, in its own words where we could. "Here" is our own PC: i5-14400F, RTX 4060 8 GB, 16 GB RAM, Windows 11. Most authors test on faster cards, so expect less on yours if it's like ours.
 
@@ -36,6 +36,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 4 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | VIctory, victory-fork | 14.0 fps average over 37 minutes of play, player in control through the prologue (77 min on an earlier build), RX 9070 XT | Testing again. Its intro crash was i95 leaving TuxBox DLLs in the game folder (fixed). The intro video flickers |
 | 5 | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | VIctory | 5 to 8 fps over a 15-minute drive, less while driving, RX 7900 XTX | ❌ |
 | 7 | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | VIctory, victory-fork | 4 to 6 fps on its current settings | ✅ 3D prison scene at 2 to 3 fps |
+| 8 | [victory-perf](https://github.com/vitutu1/victory-perf) | victory-fork | 14 fps in the prison corridor, 9 to 11 in interiors, 4.5 to 6.5 in heavy scenes, Series S at half render scale, RTX 4070 SUPER; lighting stand-ins for dark interiors | Not run yet |
 | 9 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | victory-fork | About 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060 | ✅ 3D at 2 to 3 fps |
 | 12 | CGBJ ([cool_fox](https://github.com/DoubleGhosty/cool_fox), a continuation) | VIctory | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub | Not run yet |
 | 13 | [victory-amd](https://github.com/myokex/victory-amd) | victory-fork | 2 to 3 fps in the world over 8-minute runs, RTX 4070 | Not run yet |
@@ -56,7 +57,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 29 | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | VIctory-7900XTX | CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted (DLSS needs NVIDIA files i95 doesn't fetch; without them it runs Series X at native 1440p, uncapped) | Not run yet |
 | 30 | [Victory-United](https://github.com/Fayberr/Victory-United) | VIctory | VIctory"s best open pull requests on Vice-Tay"s code: 8.5 fps median over 34.7 minutes played by hand on its earlier tree, RTX 3080 Ti | Not run yet |
 | 31 | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | VIctory | 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds | Not run yet |
-| 32 | [Scarlett fork](https://github.com/op-lite/victory-scarlett) | CGBJ | cool_fox plus a local fork's work: 16 to 21 fps in hand-played heavy scenes (prison yard, open world), Series X at 1440p, ray tracing off, RTX 4080 SUPER. The repo is no longer on GitHub | Not run yet |
+| 32 | [Scarlett fork](https://github.com/op-lite/victory-scarlett) | CGBJ | cool_fox plus a local fork's work: 16 to 21 fps in hand-played heavy scenes (prison yard, open world), Series X at 1440p, ray tracing off, RTX 4080 SUPER | Not run yet |
 | – | [Kitty6](https://github.com/kitty-core/Kitty6) | VIctory-7900XTX | 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker | Not run yet |
 | – | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | VIctory-NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker | Not run yet |
 | – | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | CGBJ | cool_fox with VIctory-NVIDIA's 8 GB patches; 7.7 fps at half render scale, 2–3 fps native; not on the tracker | Not run yet |
@@ -93,7 +94,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | – | [G6Recomp](https://github.com/Kajcsi/G6Recomp) | – | Carefully tested C++ loader and console-runtime rewrite for GTA VI, with its own code throughout (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
 | – | [palmetto](https://github.com/luizwidmer/palmetto) | – | Open continuation of Leonida after its repo went private (PortWatch's summary, unverified) | Not in i95: doesn't reach the world yet |
 
-**Not in i95:** ztrx (#6), victory-perf (#8) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub. omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. VIctory-macOS-halfwave50 is macOS only (2.9-4.5 fps on a MacBook Pro). Below #33 the projects are early-stage layers (Linux/Proton, macOS, recompilations or boot-only builds) that don't reach the game's world on Windows yet.
+**Not in i95:** ztrx (#6) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub. omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. VIctory-macOS-halfwave50 is macOS only (2.9-4.5 fps on a MacBook Pro). Below #33 the projects are early-stage layers (Linux/Proton, macOS, recompilations or boot-only builds) that don't reach the game's world on Windows yet.
 
 ## Screenshots
 

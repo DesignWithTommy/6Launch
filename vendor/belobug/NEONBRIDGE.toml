@@ -8,7 +8,7 @@ rank = 5   # #5 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VIctory-Belobug-AMD 4eb6cfd (GPL-3.0): 5 to 8 fps over a 15-minute drive, less while driving, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/Belobug/VIctory-Belobug-AMD"
 updated = "2026-11-26 17:27"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 3783   # GitHub stars when last checked
+stars = 3794   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:49
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/diag/victory.exe"   # play.ps1:29 (-Build diag default)
@@ -19,7 +19,7 @@ game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
 options = ["VICTORY_BVH_BUILDER=1: ray-traced indirect light, a third slower (play.ps1 -RayTracing)"]
-preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=0", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD="]
+preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD="]
 
 preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log (diagnostics build: host.rs reads it only there)
@@ -32,6 +32,9 @@ preset_16gb_ram = ["--console=series-s", "VICTORY_THIN_THREADS=6", "VICTORY_UNDE
 preset_4060 = ["--console=series-s", "VICTORY_THIN_THREADS=6", "VICTORY_UNDER_THREADS=4", "VICTORY_LAND_THREADS=3", "VICTORY_MAP_THREADS=1", "VICTORY_PIPELINE_WORKERS=2", "VICTORY_SNAPSHOT_POOL=256", "VICTORY_KEEP_SNAPSHOTS_MB=64", "VICTORY_DSTORAGE_STAGING_MB=128", "VICTORY_TEXTURE_STAGE_MB=128", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_CARD_WINDOWS_MB=512", "VICTORY_TEXTURE_BUDGET_MB=4096", "VICTORY_OUTPUT=1920x1080"]   # ours: 8 GB card + 16 GB RAM, Vice-Tay's 4060 profile (~16 fps here) cut to the switches this tree reads; untested on this runtime
 preset_low_vram = ["--console=series-s", "VICTORY_LEVELS_ON_DEMAND=1", "VICTORY_TEXTURE_BUDGET_MB=4096"]   # ours: mip levels loaded on demand (PercyScarlett: ~3 GB less video memory) on Series S; untested
 preset_warm_all = ["VICTORY_EARLY_ALL=1", "VICTORY_PIPELINE_BOOK=1"]   # ours: every pipeline built when the title creates it and recorded for later runs; first run slower, later runs stutter less; untested
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1:30 -RayTracing
+preset_fsr4k_balanced = ["VICTORY_FSR_4K=balanced"]   # play.ps1:14,31
+preset_fsr4k_performance = ["VICTORY_FSR_4K=performance"]   # play.ps1:14,31
 
 [env]   # scripts/play.ps1:15-25 (this tree is VIctory-7900XTX's, README.md:46)
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family

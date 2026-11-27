@@ -1,0 +1,51 @@
+# i95 launcher spec for vitutu1/victory-perf: build and run from its README ("Recommended Launch Profile").
+name = "victoryperf"
+fork = "victory-fork"
+rank = 8   # #8 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+about = "victory-perf 3bc7937 (GPL-3.0): 14 fps in the prison corridor, 9 to 11 in interiors, 4.5 to 6.5 in heavy scenes, Series S at half render scale, RTX 4070 SUPER; lighting stand-ins for dark interiors; not yet run here"
+upstream = "https://github.com/vitutu1/victory-perf"
+updated = "2026-11-25 16:56"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 1   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:64 (+--locked)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+run = ["run", "--console", "series-s", "--execute", "{game_exe}"]   # README.md:84
+prewarm = ["precompile", "{game}"]   # apps/victory/src/main.rs:89 (resumable)
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_series_x = ["--console=series-x"]
+preset_full_scale = ["VICTORY_RENDER_SCALE=1.0"]   # README.md:46 (0.2 to 1.0)
+
+[env]   # README.md:72-83, its recommended profile
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
+VICTORY_CARD_BUFFERS_MIN_MB = "1"
+VICTORY_CARD_BUFFERS_MB = "2048"
+VICTORY_RELAY = "2"
+VICTORY_LATE_WAIT = "3"
+VICTORY_WIDE_BACK = "1"
+VICTORY_LIBRARY_TRIM = "0"
+VICTORY_REBAR = "0"
+VICTORY_COPY_BACK_ONLY_READBACK = "0"
+VICTORY_AMBIENT_STUB = "1"
+VICTORY_SHADOWMASK_STUB = "1"
+VICTORY_OWN_UPSCALER = "1"
+VICTORY_RENDER_SCALE = "0.5"
+
+[controls]
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+lb = "Q"
+rb = "E"
+lt = "Z"
+rt = "C"
+ls = "F"
+rs = "H"
+dpad = "Arrows"
+view = "Tab"
+menu = "Esc"

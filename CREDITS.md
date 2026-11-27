@@ -35,6 +35,7 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/unified` | [victory-unified](https://github.com/Itsbatt/victory-unified) | Itsbatt, with fxceless, Belobug, DexNom, Zettrox and the VIctory contributors | GPL-3.0-or-later |
 | `vendor/united` | [Victory-United](https://github.com/Fayberr/Victory-United) | Fayberr | GPL-3.0 |
 | `vendor/vertex` | [Vertex](https://github.com/proneonn/Vertex) | proneonn | GPL-3.0 |
+| `vendor/victoryperf` | [victory-perf](https://github.com/vitutu1/victory-perf) | vitutu1; built on victory-fork (fxceless), VIctory (Marvisak) and ScarlettPort (ZigZagBoi1) | GPL-3.0 |
 | `vendor/vibrport` | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | edsuuu; built on VIctory (Marvisak) and victory-fork (fxceless) | GPL-3.0 |
 | `src/hud.rs` (the fps panel over every runtime) | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) `crates/victory-gpu/src/host/panel.rs` | TaynanGT | GPL-3.0 |
 | `vendor/vicetay` | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | TaynanGT | GPL-3.0 |

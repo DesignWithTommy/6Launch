@@ -7,7 +7,7 @@ rank = 9   # #9 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "ScarlettPort d0c0e58 (GPL-3.0): about 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060; not yet run here"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 updated = "2026-11-27 03:24"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 893   # GitHub stars when last checked
+stars = 898   # GitHub stars when last checked
 # scripts/setup-scarlett.ps1:18,21 (run in engine; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "engine/Cargo.toml", "--release", "-p", "scarlett", "--bin", "scarlett", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]
 watch = ["engine/apps", "engine/crates", "engine/Cargo.toml", "engine/Cargo.lock"]
@@ -288,10 +288,10 @@ setup = [
 ]
 # play-scarlett.ps1's settings, as its author runs it, when a run names no --preset or --set.
 default_preset = "play"
-preset_play = ["SCARLETT_OWN_UPSCALER=1", "SCARLETT_NO_WATCHDOG=1", "SCARLETT_RELAY=2", "SCARLETT_SYNC_PRECISE=1", "SCARLETT_READ_SETTLE_PRECISE=1", "SCARLETT_PIPELINE_WAIT_MS=0", "SCARLETT_RAYTRACING=0", "SCARLETT_PRECOMPILED_GRAPHICS=1", "SCARLETT_READFIX=1", "SCARLETT_COPY_BACK_ONLY_READBACK=1", "SCARLETT_NARROW_ROOT=1", "SCARLETT_NARROW_VIEWS=1", "SCARLETT_NARROW_BVH=1", "SCARLETT_PREP_BARRIERS=1", "SCARLETT_PREP_TABLES=1", "SCARLETT_PREP_REUSE=1", "--console=series-s"]
+preset_play = ["SCARLETT_OWN_UPSCALER=1", "SCARLETT_NO_WATCHDOG=1", "SCARLETT_RELAY=2", "SCARLETT_PIPELINE_WAIT_MS=0", "SCARLETT_COPY_BACK_ONLY_READBACK=1", "--console=series-s"]
 # vitoriabr README.md:108-115 fastest measured preset, plus ScarlettPort's own opt-in copy switches
 # (readback.rs:37 COPY_BACK_ASYNC, readback.rs:68 COPY_BACK_ONLY_READBACK, regions.rs:388 COPY_PREFETCH)
-preset_fast = ["SCARLETT_OWN_UPSCALER=1", "SCARLETT_NO_WATCHDOG=1", "SCARLETT_RELAY=2", "SCARLETT_SYNC_PRECISE=1", "SCARLETT_READ_SETTLE_PRECISE=1", "SCARLETT_PIPELINE_WAIT_MS=0", "SCARLETT_RAYTRACING=0", "SCARLETT_TEXTURE_NO_WAIT=1", "SCARLETT_CARD_BUFFERS_MB=6144", "SCARLETT_WIDE_REFRESH=1", "SCARLETT_WIDE_MERGE=1", "SCARLETT_JOIN_COPIES=1", "SCARLETT_DISPLAY_MODE=1920x1080", "SCARLETT_COPY_BACK_ASYNC=1", "SCARLETT_COPY_PREFETCH=1", "SCARLETT_PRECOMPILED_GRAPHICS=1", "SCARLETT_READFIX=1", "SCARLETT_COPY_BACK_ONLY_READBACK=1", "SCARLETT_NARROW_ROOT=1", "SCARLETT_NARROW_VIEWS=1", "SCARLETT_NARROW_BVH=1", "SCARLETT_PREP_BARRIERS=1", "SCARLETT_PREP_TABLES=1", "SCARLETT_PREP_REUSE=1", "--console=series-s"]
+preset_fast = ["SCARLETT_OWN_UPSCALER=1", "SCARLETT_NO_WATCHDOG=1", "SCARLETT_RELAY=2", "SCARLETT_PIPELINE_WAIT_MS=0", "SCARLETT_TEXTURE_NO_WAIT=1", "SCARLETT_CARD_BUFFERS_MB=6144", "SCARLETT_WIDE_REFRESH=1", "SCARLETT_WIDE_MERGE=1", "SCARLETT_JOIN_COPIES=1", "SCARLETT_DISPLAY_MODE=1920x1080", "SCARLETT_COPY_BACK_ASYNC=1", "SCARLETT_COPY_PREFETCH=1", "SCARLETT_COPY_BACK_ONLY_READBACK=1", "--console=series-s"]
 preset_autoinput = ["SCARLETT_AUTO_INPUT=1"]
 preset_fastboot = ["SCARLETT_FAST_BOOT=1"]
 preset_series_x = ["--console=series-x"]
@@ -299,6 +299,11 @@ preset_16gb_ram = ["--console=series-s", "SCARLETT_THIN_THREADS=6", "SCARLETT_UN
 preset_4060 = ["--console=series-s", "SCARLETT_THIN_THREADS=6", "SCARLETT_UNDER_THREADS=4", "SCARLETT_LAND_THREADS=3", "SCARLETT_MAP_THREADS=1", "SCARLETT_PIPELINE_WORKERS=2", "SCARLETT_SNAPSHOT_POOL=256", "SCARLETT_KEEP_SNAPSHOTS_MB=64", "SCARLETT_DSTORAGE_STAGING_MB=128", "SCARLETT_TEXTURE_STAGE_MB=128", "SCARLETT_CARD_BUFFERS_MIN_KB=64", "SCARLETT_CARD_BUFFERS_MB=1024", "SCARLETT_CARD_WINDOWS_MB=512", "SCARLETT_TEXTURE_BUDGET_MB=4096", "SCARLETT_OUTPUT=1920x1080"]   # ours: 8 GB card + 16 GB RAM, Vice-Tay's 4060 profile (~16 fps here) cut to the switches this tree reads; untested on this runtime
 preset_low_vram = ["--console=series-s", "SCARLETT_LEVELS_ON_DEMAND=1", "SCARLETT_TEXTURE_BUDGET_MB=4096"]   # ours: mip levels loaded on demand (PercyScarlett: ~3 GB less video memory) on Series S; untested
 preset_warm_all = ["SCARLETT_EARLY_ALL=1", "SCARLETT_PIPELINE_BOOK=1"]   # ours: every pipeline built when the title creates it and recorded for later runs; first run slower, later runs stutter less; untested
+preset_ray_tracing = ["SCARLETT_BVH_BUILDER=1"]   # play-scarlett.ps1:125
+preset_look = ["SCARLETT_LOOK=1", "SCARLETT_SHADER_FIXES=1"]   # play-scarlett.ps1:86, presets.rs:15
+preset_no_own_upscaler = ["SCARLETT_OWN_UPSCALER="]   # play-scarlett.ps1:54
+preset_keep_watchdog = ["SCARLETT_NO_WATCHDOG="]   # play-scarlett.ps1:55
+preset_experimental = ["SCARLETT_INDIRECT_KEEP=1", "SCARLETT_TABLED_SKIP_FRAMES=2", "SCARLETT_LOAD_UNPACED=1", "SCARLETT_PREFETCH=1", "SCARLETT_PIPELINE_BOOK=1"]   # presets.rs:72-82
 [env]   # scripts/play-scarlett.ps1 (4866673): its Stable preset (CAND4)
 SCARLETT_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
 SCARLETT_OWN_UPSCALER = "1"

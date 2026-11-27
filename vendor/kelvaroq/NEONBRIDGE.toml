@@ -6,7 +6,7 @@ rank = 21   # #21 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Kelvaroq 92606ea (GPL-3.0): ~10 fps in typical views (7 to 8 in the heaviest) at 4K on an RTX 5080; a tester's 36 min session without a crash; its unreleased direct memory path needs 22 ms of GPU work an open-world frame and holds 30 fps on loading screens; not yet run here"
 upstream = "https://github.com/stellarr-studio/kelvaroq"
 updated = "2026-11-27 04:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 403   # GitHub stars when last checked
+stars = 406   # GitHub stars when last checked
 build = ["python", "scripts/build_native.py"]   # README.md "Build from source" (fetches victory-fork f85101b)
 watch = ["native", "scripts/build_native.py"]
 exe = "target/release/native/kelvaroq-engine.exe"   # build_native.py:20,24 (renamed in f35b0a4)
@@ -20,6 +20,9 @@ preset_experimental_render = ["VICTORY_GPU_UPLOAD_READONLY_MB=256", "VICTORY_CAR
 
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305) minus AMBIENT, which victory-fork f85101b does not read
 preset_8gb_low = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=2560", "VICTORY_PAGE_WRITES=slots", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080", "VICTORY_HEAP_RECHECK=1"]   # the same with unified's 2560 MB texture budget, plus HEAP_RECHECK (read by f85101b)
+preset_small = ["VICTORY_TEXTURE_STAGE_MB=64", "VICTORY_CARD_BUFFERS_MB=256", "VICTORY_QUEUE2_LANDING_MB=32"]   # README.md:194-196: its launcher on small cards
+preset_10gb = ["VICTORY_TEXTURE_STAGE_MB=128", "VICTORY_CARD_BUFFERS_MB=512", "VICTORY_QUEUE2_LANDING_MB=64"]   # README.md:194-196
+preset_16gb = ["VICTORY_TEXTURE_STAGE_MB=192", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_QUEUE2_LANDING_MB=96"]   # README.md:194-196
 
 [env]
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family

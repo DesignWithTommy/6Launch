@@ -5,7 +5,7 @@ rank = 18   # #18 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Vilocity 13cea33 (GPL-3.0): 26 to 27 fps at 5,000 draws, 17 to 19 at 10,000 to 11,000, Series S, RTX 5080; driver timeout about 7 minutes in, 'not playable yet'; not yet run here"
 upstream = "https://github.com/voidopcode/vilocity"
 updated = "2026-11-27 06:13"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 16   # GitHub stars when last checked
+stars = 17   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"
 run = ["play", "{game}"]   # README.md:158, scripts/play-gta6.ps1
@@ -16,7 +16,7 @@ cache_env = "VILOCITY_CACHE_DIR"
 agility = false
 
 preset_series_x = ["VILOCITY_CONSOLE=series-x"]   # play-gta6.ps1 -SeriesX
-preset_defaults = ["VILOCITY_AMBIENT=", "VILOCITY_AMBIENT_AIR=", "VILOCITY_TEXTURE_NO_WAIT=", "VILOCITY_RELAY=", "VILOCITY_RELAY_COPY=", "VILOCITY_WIDE_BACK=", "VILOCITY_CARD_REHASH_RUNS=", "VILOCITY_CARD_STEPS=", "VILOCITY_CARD_AWAKE=", "VILOCITY_CARD_BUFFERS_MIN_KB=", "VILOCITY_JOIN_COPIES=", "VILOCITY_JOIN_PARTS=", "VILOCITY_INDIRECT_WINDOW=", "VILOCITY_INDIRECT_BATCH=", "VILOCITY_MAP_THREADS=", "VILOCITY_THIN=", "VILOCITY_UPLOAD_AHEAD=", "VILOCITY_SHOW_AFTER=", "VILOCITY_FRAME_INTERVAL_MS="]   # play-gta6.ps1 -Defaults
+preset_defaults = ["VILOCITY_AMBIENT=", "VILOCITY_AMBIENT_AIR=", "VILOCITY_TEXTURE_NO_WAIT=", "VILOCITY_RELAY=", "VILOCITY_RELAY_COPY=", "VILOCITY_WIDE_BACK=", "VILOCITY_CARD_REHASH_RUNS=", "VILOCITY_CARD_STEPS=", "VILOCITY_CARD_AWAKE=", "VILOCITY_CARD_BUFFERS_MIN_KB=", "VILOCITY_JOIN_COPIES=", "VILOCITY_JOIN_PARTS=", "VILOCITY_INDIRECT_WINDOW=", "VILOCITY_INDIRECT_BATCH=", "VILOCITY_MAP_THREADS=", "VILOCITY_THIN=", "VILOCITY_UPLOAD_AHEAD=", "VILOCITY_SHOW_AFTER=", "VILOCITY_FRAME_INTERVAL_MS=", "VILOCITY_SUBMIT_FRAMES=", "VILOCITY_PIPELINE_BOOK=", "VILOCITY_AMBIENT_FLOOR="]   # play-gta6.ps1 -Defaults
 preset_1440p = ["VILOCITY_CONSOLE=series-x", "VILOCITY_DISPLAY_MODE=2560x1440"]   # play-gta6.ps1 -Picture 1440p
 preset_8gb = ["VILOCITY_LEVELS_ON_DEMAND=1", "VILOCITY_CARD_BUFFERS_MB=1536", "VILOCITY_CARD_WINDOWS_MB=1024"]   # play-gta6.ps1: what it picks for a card under 10 GB
 preset_8_threads = ["VILOCITY_THIN_THREADS=4", "VILOCITY_UNDER_THREADS=3", "VILOCITY_LAND_THREADS=2", "VILOCITY_PIPELINE_WORKERS=2"]   # play-gta6.ps1: 8 or fewer logical processors
@@ -24,6 +24,9 @@ preset_16_threads = ["VILOCITY_THIN_THREADS=8", "VILOCITY_UNDER_THREADS=6", "VIL
 preset_amd =["VILOCITY_CARD_AWAKE=1"]   # play-gta6.ps1: the keep-busy loop on AMD cards
 preset_16_cores = ["VILOCITY_THIN_THREADS=12", "VILOCITY_UNDER_THREADS=8", "VILOCITY_LAND_THREADS=6"]   # play-gta6.ps1:51-53 (32+ logical processors)
 preset_ray_tracing = ["VILOCITY_BVH_BUILDER=1"]   # play-gta6.ps1 -RayTracing: for AMD cards; 3-5 fps on NVIDIA
+preset_windowed = ["VILOCITY_FULLSCREEN="]   # launcher.ps1:454
+preset_under_14gb = ["VILOCITY_LEVELS_ON_DEMAND=1"]   # play-gta6.ps1:124: 10 to 14 GB cards
+preset_no_night = ["VILOCITY_AMBIENT_FLOOR="]   # launcher.ps1:228,453 (Night off)
 
 [env]   # scripts/play-gta6.ps1 (9ef6bc6): the native engine is now cool_fox (30e54b4), its own launcher's set
 VILOCITY_CONSOLE = "series-s"   # play-gta6.ps1:24 (default without -SeriesX)
@@ -46,6 +49,8 @@ VILOCITY_UPLOAD_AHEAD = "1"
 VILOCITY_SHOW_AFTER = "1"
 VILOCITY_FRAME_INTERVAL_MS = "0"
 VILOCITY_SUBMIT_FRAMES = "0"   # play-gta6.ps1 (13cea33): JOIN_COPIES/JOIN_PARTS no longer set; torn frames 10 to 90 times fewer
+VILOCITY_PIPELINE_BOOK = "1"   # play-gta6.ps1:76
+VILOCITY_FULLSCREEN = "1"   # launcher.ps1:89,454 (full on by default)
 
 [controls]
 left_stick = "W A S D"

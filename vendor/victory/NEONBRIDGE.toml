@@ -39,6 +39,7 @@ preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB
 preset_16gb_ram = ["--console=series-s", "VICTORY_KEEP_SNAPSHOTS_MB=64", "VICTORY_TEXTURE_STAGE_MB=128"]   # ours: Series S with fewer worker threads and smaller snapshot/staging pools, for 16 GB PCs (only the switches this tree reads); untested
 preset_4060 = ["--console=series-s", "VICTORY_KEEP_SNAPSHOTS_MB=64", "VICTORY_TEXTURE_STAGE_MB=128", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_CARD_WINDOWS_MB=512", "VICTORY_TEXTURE_BUDGET_MB=4096", "VICTORY_DISPLAY_MODE=1920x1080"]   # ours: 8 GB card + 16 GB RAM, Vice-Tay's 4060 profile (~16 fps here) cut to the switches this tree reads; untested on this runtime
 preset_low_vram = ["--console=series-s", "VICTORY_LEVELS_ON_DEMAND=1", "VICTORY_TEXTURE_BUDGET_MB=4096"]   # ours: mip levels loaded on demand (PercyScarlett: ~3 GB less video memory) on Series S; untested
+preset_no_ray_tracing = ["VICTORY_BVH_BUILDER=0"]   # README.md:40-42: the builder is on by default; 0 for the quoted speeds
 
 [env]
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)

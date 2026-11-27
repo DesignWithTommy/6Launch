@@ -10,7 +10,7 @@ build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/diag/victory.exe"   # start.ps1:135
 diag_build = []
-run = ["run", "{game_exe}", "--execute", "--work", "balanced"]   # start.ps1:172
+run = ["run", "{game_exe}", "--execute", "--work", "balanced"]   # start.ps1:189
 prewarm = ["translate", "--cache", "--pipelines", "{game_exe}", "{game}/shaders.rpf", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]   # start.ps1:164 (-PrebuildAll)
 game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
@@ -21,6 +21,8 @@ preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log (diagnostics build: host.rs reads it only there)
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (slow; diagnostics build only, host.rs cfg!(feature = "diagnostics"))
 preset_tuned = ["VICTORY_LATE_WAIT=3", "VICTORY_WIDE_BACK=1"]   # start.ps1 -Tuned
+preset_work_cpu = ["--work=cpu"]   # start.ps1:69,189
+preset_work_gpu = ["--work=gpu"]   # start.ps1:69,189
 
 [env]
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family

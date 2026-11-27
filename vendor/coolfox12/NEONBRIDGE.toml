@@ -17,6 +17,7 @@ cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
 preset_half_scale = ["VICTORY_RENDER_SCALE=0.5", "VICTORY_OWN_UPSCALER=1"]   # README: its 7.7 fps row
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # scripts/play.ps1:26 -RayTracing
 
 [env]   # Play-VIctory.cmd
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"

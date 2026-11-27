@@ -5,7 +5,7 @@ rank = 17   # #17 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "DexNom RayTime 8114ff7 (GPL-3.0): 1 fps with ray tracing on, 3.5 to 4 without, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/DexNom/VIctory"
 updated = "2026-11-26 18:11"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1339   # GitHub stars when last checked
+stars = 1340   # GitHub stars when last checked
 # README.md:36: the BCPack format tables first.
 setup = [
   "format-tables: powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1 [asks first: download]",
@@ -20,7 +20,7 @@ cache_env = "VICTORY_CACHE_DIR"
 agility = false
 # Its shortcuts (Setup-DexNomRuntime.ps1:87-89): plain, --rt, and the FSR Quality 4K profile.
 preset_rt = ["VICTORY_RAY_TRACING=1"]
-preset_fsr_quality_4k = ["--rt=1", "--local-gpu-memory=1", "--fsr-quality=1", "--sparse-textures=1", "--no-upload-ahead=1", "--capture-readbacks=1", "--rt-write-stats=1", "VICTORY_RAY_TRACING=1"]   # Setup-DexNomRuntime.ps1:89 "FSR Quality 4K" shortcut
+preset_fsr_quality_4k = ["VICTORY_RAY_TRACING=1", "VICTORY_LOCAL_GPU_INPUTS=1", "VICTORY_FSR_4K=quality", "VICTORY_LEVELS_ON_DEMAND=1", "VICTORY_UPLOAD_AHEAD=0", "VICTORY_CAPTURE_READBACKS=1", "VICTORY_RT_WRITE_STATS=1"]   # play_launcher.rs:183-233, what its FSR Quality 4K shortcut sets (Setup-DexNomRuntime.ps1:89)
 
 preset_series_s = ["--console=series-s"]   # Series S profile (less GPU memory)
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log (diagnostics build: host.rs reads it only there)
@@ -29,7 +29,6 @@ preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (sl
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305), the switches this tree reads
 
 [env]
-VICTORY_RAY_TRACING = "0"   # its default shortcut: no --rt
 
 [controls]
 left_stick = "W A S D"
