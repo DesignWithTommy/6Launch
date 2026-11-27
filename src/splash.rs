@@ -391,8 +391,14 @@ unsafe fn paint(hwnd: HWND) {
         let mut client: RECT = std::mem::zeroed();
         GetClientRect(hwnd, &mut client);
         let (ox, oy) = ((client.right - WIDTH).max(0) / 2, (client.bottom - HEIGHT).max(0) / 2);
+        let art = splash_art();
         if ox > 0 || oy > 0 {
             fill(screen, client, BACKGROUND);
+            if art != 0 {
+                // The start-screen art fills the curtain, square, centred.
+                let side = client.right.min(client.bottom);
+                blit_art(screen, art, (client.right - side) / 2, (client.bottom - side) / 2, side, side, 0, 0, ART_SIDE, ART_SIDE);
+            }
         }
         // Double-buffered to avoid flicker at 30 Hz.
         let dc = CreateCompatibleDC(screen);
@@ -404,7 +410,12 @@ unsafe fn paint(hwnd: HWND) {
         // orange at the horizon, in 2 px bands.
         let mix = |a: (f32, f32, f32), b: (f32, f32, f32), t: f32| rgb((a.0 + (b.0 - a.0) * t) as u8, (a.1 + (b.1 - a.1) * t) as u8, (a.2 + (b.2 - a.2) * t) as u8);
         let (night, dusk, glow) = ((18.0, 8.0, 38.0), (92.0, 18.0, 96.0), (255.0, 122.0, 60.0));
-        let mut y = 0;
+        let mut y = if art != 0 { HEIGHT } else { 0 };
+        if art != 0 {
+            // The start-screen art across the card's top, centre band.
+            let band = ART_SIDE * 138 / WIDTH;
+            blit_art(dc, art, 0, 0, WIDTH, 138, 0, (ART_SIDE - band) / 2, ART_SIDE, band);
+        }
         while y < HEIGHT {
             let t = (y as f32 / 138.0).min(1.0);
             let c = if t < 0.55 { mix(night, dusk, t / 0.55) } else { mix(dusk, glow, (t - 0.55) / 0.45) };
@@ -414,17 +425,18 @@ unsafe fn paint(hwnd: HWND) {
         // A striped setting sun behind the wordmark.
         // It sets as the load goes: high at the start, on the horizon at the end.
         let (cx, r) = (WIDTH - 120, 62);
+        let r = if art != 0 { 0 } else { r };
         let cy = 78 + (52.0 * shown.clamp(0.0, 1.0)) as i32;
         let sun = CreateSolidBrush(rgb(255, 196, 70));
         let no_pen = GetStockObject(NULL_PEN);
         let (ob, op) = (SelectObject(dc, sun), SelectObject(dc, no_pen));
-        Ellipse(dc, cx - r, cy - r, cx + r, cy + r);
+        if r > 0 { Ellipse(dc, cx - r, cy - r, cx + r, cy + r); }
         SelectObject(dc, ob);
         SelectObject(dc, op);
         DeleteObject(sun);
         // The stripes slide down through the sun, thickening as they go.
         let slide = (tick as i32 / 2) % 10;
-        for i in 0..6 {
+        for i in 0..if art != 0 { 0 } else { 6 } {
             let top = cy - 10 + i * 10 + slide;
             let gap = 1 + (top - (cy - 10)) / 12;
             if top + gap > cy + r {
@@ -513,5 +525,34 @@ unsafe fn paint(hwnd: HWND) {
         DeleteObject(title);
         DeleteObject(small);
         EndPaint(hwnd, &ps);
+    }
+}
+
+/// The start-screen art: %LOCALAPPDATA%\6ixpack\splash.bmp (a square 24-bit BMP), when present.
+const ART_SIDE: i32 = 1024;
+static ART: AtomicIsize = AtomicIsize::new(-1);
+
+fn splash_art() -> isize {
+    let cached = ART.load(Ordering::Relaxed);
+    if cached != -1 {
+        return cached;
+    }
+    let h = std::env::var("LOCALAPPDATA").ok().map_or(0, |base| {
+        let path: Vec<u16> = format!("{base}\\6ixpack\\splash.bmp").encode_utf16().chain([0]).collect();
+        unsafe { LoadImageW(std::ptr::null_mut(), path.as_ptr(), IMAGE_BITMAP, ART_SIDE, ART_SIDE, LR_LOADFROMFILE) as isize }
+    });
+    ART.store(h, Ordering::Relaxed);
+    h
+}
+
+#[allow(clippy::too_many_arguments)]
+unsafe fn blit_art(dst: HDC, art: isize, x: i32, y: i32, w: i32, h: i32, sx: i32, sy: i32, sw: i32, sh: i32) {
+    unsafe {
+        let src = CreateCompatibleDC(dst);
+        let old = SelectObject(src, art as HGDIOBJ);
+        SetStretchBltMode(dst, HALFTONE);
+        StretchBlt(dst, x, y, w, h, src, sx, sy, sw, sh, SRCCOPY);
+        SelectObject(src, old);
+        DeleteDC(src);
     }
 }
