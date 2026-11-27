@@ -2090,6 +2090,13 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     }
     env.extend(spec.env.iter().map(|(k, v)| (k.clone(), fill(v, &places))));
     // One fps panel for every runtime: i95's (Vice-Tay's HUD, src/hud.rs).
+    // The picture behind the title's start screens (runtimes patched with i95_backdrop read it):
+    // %LOCALAPPDATA%\6ixpack\backdrop.bmp; NEONBRIDGE_TITLE_ART=0 leaves it out.
+    if std::env::var("NEONBRIDGE_TITLE_ART").map_or(true, |v| v.trim() != "0")
+        && let Some(bmp) = std::env::var_os("LOCALAPPDATA").map(|b| PathBuf::from(b).join("6ixpack").join("backdrop.bmp")).filter(|p| p.is_file())
+    {
+        env.push(("I95_BACKDROP".to_owned(), bmp.to_string_lossy().into_owned()));
+    }
     // The runtimes' own overlays are switched off; NEONBRIDGE_RUNTIME_OVERLAY=1 keeps them.
     if std::env::var("NEONBRIDGE_RUNTIME_OVERLAY").map_or(true, |v| v.trim() != "1") {
         env.retain(|(k, _)| !matches!(k.as_str(), "VICTORY_PANEL" | "FLAMINGO_OSD" | "VICTORY_DEBUG_HUD"));
