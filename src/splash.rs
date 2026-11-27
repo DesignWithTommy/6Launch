@@ -22,6 +22,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
 const WIDTH: i32 = 560;
 const HEIGHT: i32 = 214;
+/// The card's close button, top-right.
+const CLOSE_BOX: RECT = RECT { left: WIDTH - 30, top: 2, right: WIDTH - 2, bottom: 30 };
 const BACKGROUND: COLORREF = rgb(11, 11, 20);
 const TRACK: COLORREF = rgb(32, 30, 48);
 /// The pulse: a faint sheen moving through the unfilled track.
@@ -322,6 +324,19 @@ unsafe extern "system" fn proc_(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> L
                 0
             }
             WM_ERASEBKGND => 1,
+            // The close button, or Esc: quits i95 (the card has no caption, so no X of its own).
+            WM_LBUTTONDOWN => {
+                let (x, y) = ((l & 0xFFFF) as i16 as i32, ((l >> 16) & 0xFFFF) as i16 as i32);
+                let mut client: RECT = std::mem::zeroed();
+                GetClientRect(hwnd, &mut client);
+                let (ox, oy) = ((client.right - WIDTH).max(0) / 2, (client.bottom - HEIGHT).max(0) / 2);
+                let (x, y) = (x - ox, y - oy);
+                if x >= CLOSE_BOX.left && x < CLOSE_BOX.right && y >= CLOSE_BOX.top && y < CLOSE_BOX.bottom {
+                    std::process::exit(0);
+                }
+                0
+            }
+            WM_KEYDOWN if w == 0x1B => std::process::exit(0),
             WM_CLOSE => {
                 DestroyWindow(hwnd);
                 0
@@ -487,6 +502,9 @@ unsafe fn paint(hwnd: HWND) {
         poly(&quad(-13.0, -6.0, -11.0, -3.0), rgb(255, 60, 60));
         poly(&quad(-13.0, 3.0, -11.0, 6.0), rgb(255, 60, 60));
         text(dc, &format!("{}%", (shown * 100.0).floor() as u32), RECT { left: 32, top: 146, right: WIDTH - 32, bottom: 170 }, TEXT, small, DT_RIGHT | DT_VCENTER);
+
+        // The close button (the card is a captionless popup): top-right, quits i95.
+        text(dc, "\u{2715}", CLOSE_BOX, TEXT, small, DT_CENTER | DT_VCENTER);
 
         BitBlt(screen, ox, oy, WIDTH, HEIGHT, dc, 0, 0, SRCCOPY);
         SelectObject(dc, old_bitmap);
