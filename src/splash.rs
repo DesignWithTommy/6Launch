@@ -632,6 +632,7 @@ fn splash_art() -> isize {
         unsafe { LoadImageW(std::ptr::null_mut(), path.as_ptr(), IMAGE_BITMAP, ART_SIDE, ART_SIDE, LR_LOADFROMFILE) as isize }
     });
     ART.store(h, Ordering::Relaxed);
+    println!("[splash] start-screen art {}", if h != 0 { "loaded" } else { "not loaded" });
     h
 }
 
