@@ -1,9 +1,9 @@
 name = "slaktarn"
 fork = "VIctory"
-about = "SlaktarnVI (Valhalla) 03f0f10 (GPL-3.0): Linux/Proton build tuned for an AMD RX 9070 XT, about 19-25 fps in gameplay (S70 preset, frame gen not counted); Windows path is its scripts/play.ps1; not yet run here"
+about = "SlaktarnVI (Valhalla) 42b2226 (GPL-3.0): Linux/Proton build tuned for an AMD RX 9070 XT, about 19-25 fps in gameplay (S70 preset, frame gen not counted); Windows path is its scripts/play.ps1; not yet run here"
 upstream = "https://github.com/Slaktarn700/SlaktarnVI"
-updated = "2026-11-27 09:29"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 22   # GitHub stars when last checked
+updated = "2026-11-27 09:44"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 33   # GitHub stars when last checked
 # Its README builds with cargo xwin for Proton (README.md:69-76); natively on Windows the same profile/feature set is used.
 # scripts/play.ps1 defaults to -Build diag (play.ps1:12), the build all its measurements are of.
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:75 (minus xwin/--target)
@@ -17,8 +17,9 @@ game_env = "VICTORY_GAME_DIR"   # play.ps1:33
 cache_env = "VICTORY_CACHE_DIR"   # Neonbridge: this runtime's own cache dir
 prewarm = []   # no warm/shaders step in its README or scripts
 agility = false   # not checked in the tree
-preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe (:21-25)
+preset_safe = ["VICTORY_THIN=", "VICTORY_CARD_STEPS_LEARN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe (:21-25)
 preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing (:26): about a third slower
+preset_s70 = ["--console=series-x", "VICTORY_PORT_DESCRIPTORS=1", "VICTORY_PORT_CONSTANTS=1", "VICTORY_PORT_PRIVATE=1", "VICTORY_PORT_CBV=1", "VICTORY_FRAME_INTERVAL_MS=16.667", "VICTORY_PIPELINE_WAIT_MS=30", "VICTORY_OUTPUT=2560x1440", "VICTORY_UPSCALER=7", "VICTORY_FFX_SCALE=0.6667", "VICTORY_AMBIENT_REFLECT=1", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_PANEL=1"]   # play.ps1 -S70 (FSR frame gen needs -FidelityFX <dir>: set VICTORY_FIDELITYFX_DIR and VICTORY_FIDELITYFX_FRAMEGEN=1)
 # The Linux launcher's presets (Low, Medium, High, S70, Ultra; linux/launcher/valhalla.py apply_preset, via linux/s70.sh)
 # need Proton, FSR 4 and Microsoft's dxil beside it; not ported.
 
@@ -42,3 +43,4 @@ VICTORY_D3D12_DRED = "light"
 VICTORY_THIN = "1"
 VICTORY_JOIN_PARTS = "8"
 VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_CARD_STEPS_LEARN = "1"   # play.ps1: on unless -Safe
