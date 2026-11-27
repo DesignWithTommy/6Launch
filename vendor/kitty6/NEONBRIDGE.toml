@@ -2,9 +2,9 @@
 # Build, run and env are its README "Build" and scripts/play.ps1 (default: no switches, Series X, diag build, its mods on).
 name = "kitty6"
 fork = "VIctory-7900XTX"
-about = "Kitty6 666342d (GPL-3.0): 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker; not yet run here"
+about = "Kitty6 c8defbb (GPL-3.0): 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker; not yet run here"
 upstream = "https://github.com/kitty-core/Kitty6"
-updated = "2026-11-26 19:01"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-26 23:42"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 3   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:86
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -47,7 +47,7 @@ VICTORY_XMA_REFILL = "1"
 VICTORY_THIN = "1"
 VICTORY_JOIN_PARTS = "8"
 VICTORY_UPLOAD_AHEAD = "1"
-VICTORY_HALF_VIEWS = "0"   # play.ps1 (666342d): 16-bit views made shadows and faces blocky on NVIDIA
+VICTORY_HALF_VIEWS = "0"   # play.ps1 (c8defbb): 16-bit views made shadows and faces blocky on NVIDIA
 K6_HALF_LOADS = "0"
 VICTORY_MODS = "{root}\\mods\\kitty6.k6mod"   # play.ps1:99-103: the mods it ships
 
