@@ -602,7 +602,7 @@ agility = false
 
 preset_warm = ["--warm"]   # docs/running.md:95: builds journaled pipelines before the boot
 preset_debug = ["--debug"]   # docs/running.md:26
-=== flamingo 89e131c5bca563c165319ebc21504657e9b770f7
+=== flamingo 0d0128ff65d564c86969f567583e2b8f3c2446ab
 # Neonbridge launcher spec for vendor/flamingo: realblastex's Flamingo, a victory
 # fork vendored clean. Build, run and env are its README.md "Building and running"
 # (README.md:98-114). Its claim (README.md status table): about 14 fps facing the
@@ -610,7 +610,7 @@ preset_debug = ["--debug"]   # docs/running.md:26
 name = "flamingo"
 fork = "victory-fork"
 rank = 15   # #15 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Flamingo 89e131c (GPL-3.0): 8.6 fps average over a 24-minute session, RTX 4070, unconfirmed; not yet run here"
+about = "Flamingo 0d0128f (GPL-3.0): 8.6 fps average over a 24-minute session, RTX 4070, unconfirmed; not yet run here"
 upstream = "https://github.com/realblastex/flamingo"
 updated = "2026-11-26 14:35"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 55   # GitHub stars when last checked
@@ -2192,13 +2192,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vicetay 63e2c98780687609263f1414d383020be5a94137
+=== vicetay 309f9ddbfbfb2ef38e7b0a084be35290ccd9fe3f
 # Neonbridge launcher spec for vendor/vicetay: TaynanGT's Vice-Tay. Build and run are its README "How to run it"
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
 fork = "VIctory"
 rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vice-Tay 63e2c98 (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
+about = "Vice-Tay 309f9dd (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 updated = "2026-11-27 06:13"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 249   # GitHub stars when last checked
@@ -2391,12 +2391,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vilocity 13cea33c6289185da87ed5d120babd9a917ee132
+=== vilocity 8158a11b3dfe4d37caa1cee35afee7e66fdcebd2
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
 rank = 18   # #18 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vilocity 13cea33 (GPL-3.0): 26 to 27 fps at 5,000 draws, 17 to 19 at 10,000 to 11,000, Series S, RTX 5080; driver timeout about 7 minutes in, 'not playable yet'; not yet run here"
+about = "Vilocity 8158a11 (GPL-3.0): 26 to 27 fps at 5,000 draws, 17 to 19 at 10,000 to 11,000, Series S, RTX 5080; driver timeout about 7 minutes in, 'not playable yet'; not yet run here"
 upstream = "https://github.com/voidopcode/vilocity"
 updated = "2026-11-27 06:13"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 17   # GitHub stars when last checked
@@ -2432,7 +2432,7 @@ VILOCITY_RELAY_COPY = "1"
 VILOCITY_WIDE_BACK = "1"
 VILOCITY_CARD_REHASH_RUNS = "1"
 VILOCITY_CARD_STEPS = "2"
-VILOCITY_AMBIENT_FLOOR = "0.05"   # launcher.ps1 (13cea33) Night, on by default: a little light where no lamp reaches
+VILOCITY_AMBIENT_FLOOR = "0.05"   # launcher.ps1 (8158a11) Night, on by default: a little light where no lamp reaches
 VILOCITY_CARD_AWAKE = "0"   # play-gta6.ps1 (8f6b185): 0 on NVIDIA cards (its keep-busy loop is for AMD); preset amd turns it back on
 VILOCITY_CARD_BUFFERS_MIN_KB = "64"
 VILOCITY_INDIRECT_WINDOW = "1"
@@ -2442,7 +2442,7 @@ VILOCITY_THIN = "1"
 VILOCITY_UPLOAD_AHEAD = "1"
 VILOCITY_SHOW_AFTER = "1"
 VILOCITY_FRAME_INTERVAL_MS = "0"
-VILOCITY_SUBMIT_FRAMES = "0"   # play-gta6.ps1 (13cea33): JOIN_COPIES/JOIN_PARTS no longer set; torn frames 10 to 90 times fewer
+VILOCITY_SUBMIT_FRAMES = "0"   # play-gta6.ps1 (8158a11): JOIN_COPIES/JOIN_PARTS no longer set; torn frames 10 to 90 times fewer
 VILOCITY_PIPELINE_BOOK = "1"   # play-gta6.ps1:76
 VILOCITY_FULLSCREEN = "1"   # launcher.ps1:89,454 (full on by default)
 

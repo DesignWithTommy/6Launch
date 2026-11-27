@@ -5,7 +5,7 @@
 name = "flamingo"
 fork = "victory-fork"
 rank = 15   # #15 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Flamingo 89e131c (GPL-3.0): 8.6 fps average over a 24-minute session, RTX 4070, unconfirmed; not yet run here"
+about = "Flamingo 0d0128f (GPL-3.0): 8.6 fps average over a 24-minute session, RTX 4070, unconfirmed; not yet run here"
 upstream = "https://github.com/realblastex/flamingo"
 updated = "2026-11-26 14:35"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 55   # GitHub stars when last checked
