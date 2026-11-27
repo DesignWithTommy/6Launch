@@ -1,6 +1,6 @@
-# i95: GTA 6 PC Launcher for every GTA VI Xbox Series runtime (VIctory, Kelvaroq, VItoriaBr and more)
+# i95Loader: GTA 6 PC Launcher for every GTA VI Xbox Series runtime (VIctory, Kelvaroq, VItoriaBr and more)
 
-![i95: GTA 6 Xbox Series launcher for Windows PC](assets/banner.svg)
+![i95Loader: GTA 6 Xbox Series launcher for Windows PC](assets/banner.png)
 
 Try them all from one window.
 
