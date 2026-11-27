@@ -4,7 +4,7 @@
 # here, not wrapped: the wrapper builds victory itself and can't take i95's warm placeholders.
 name = "anyxboxx"
 fork = "Neptune"
-rank = 3   # #3 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 15   # i95 rank: score 62.9 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "AnyXboxX bebcfb1 (GPL-3.0): 'About 24 fps median in the world in Full HD', 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
 updated = "2026-11-27 14:50"   # the pinned upstream commit's date (scripts/runtime-info.py)

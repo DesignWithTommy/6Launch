@@ -1,7 +1,7 @@
 # i95 launcher spec for ka1qux/BRVIctory-ka1qux: build from its README "How to run it", run as scripts/play.ps1 does.
 name = "ka1qux"
 fork = "VIctory"
-rank = 16   # #16 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 18   # i95 rank: score 62.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "BRVIctory-ka1qux 05e4d50 (GPL-3.0): 10.5 fps on Series X with its patches on (no run length on this base; 4 to 4.7 fps over 25 min on the earlier one), RX 7800 XT; not yet run here"
 upstream = "https://github.com/ka1qux/BRVIctory-ka1qux"
 updated = "2026-11-26 10:17"   # the pinned upstream commit's date (scripts/runtime-info.py)

@@ -2,6 +2,7 @@
 # Build, run and env are its README and scripts/play-4gb.ps1 (default: -Build diag, -Scale 0.5, Series S).
 name = "victory4gb"
 fork = "VIctory"   # README.md:3 (two lines of VIctory; base fxceless victory-fork, README.fxceless.md)
+rank = 43   # i95 rank: score 55.4 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-4gb 803ebfa (GPL-3.0): 6.5 to 7 fps open-world free play on an RTX 3050 Laptop 4 GB (README.md:20); not yet run here"
 upstream = "https://github.com/Dathinel/victory-4gb"
 updated = "2026-11-26 20:38"   # the pinned upstream commit's date (scripts/runtime-info.py)

@@ -2,7 +2,7 @@
 # Build and run are its README "How to run it" and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "united"
 fork = "VIctory"
-rank = 30   # #30 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 32   # i95 rank: score 59.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Victory-United fdd9e61 (GPL-3.0): VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with scripted movement, three 7-minute runs, Series S; 'not playable yet'; not yet run here"
 upstream = "https://github.com/Fayberr/Victory-United"
 updated = "2026-11-27 15:04"   # the pinned upstream commit's date (scripts/runtime-info.py)

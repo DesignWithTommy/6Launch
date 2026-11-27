@@ -552,7 +552,7 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
                     Some(n) => format!("{n} frames presented"),
                 }),
                 ("Frame rate", crate::runtimes::last_run_fps(&row.name).unwrap_or_else(|| "-".into())),
-                ("Leaderboard", crate::runtimes::rank(&row.name).map_or("-".into(), |r| format!("#{r} on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)"))),
+                ("Leaderboard", crate::runtimes::rank(&row.name).map_or("-".into(), |r| format!("#{r} in i95's ranking (PortWatch VI's scoring formula)"))),
             ]
         };
         // The preset rows' height, measured first: when the details and presets would

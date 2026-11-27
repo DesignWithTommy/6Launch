@@ -1,7 +1,7 @@
 # i95 launcher spec for KomanderDG88/VIniVIdiVIci: author build and run from its README.
 name = "vinividivici"
 fork = "VIctory"
-rank = 23   # #23 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 14   # i95 rank: score 63.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "VIniVIdiVIci 06ddcb8 (GPL-3.0): 6.0 fps median in the first room on its defaults, 38 minutes in the world, RTX 4060 Ti; not yet run here"
 upstream = "https://github.com/KomanderDG88/VIniVIdiVIci"
 updated = "2026-11-27 09:55"   # the pinned upstream commit's date (scripts/runtime-info.py)

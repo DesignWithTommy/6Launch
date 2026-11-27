@@ -2,7 +2,7 @@
 # Build, run and env are scripts/play-9070xt.ps1 (its measured settings) calling scripts/play.ps1 (diag build, not -Safe).
 name = "mavis9070xt"
 fork = "VIctory-7900XTX"
-rank = 33   # #33 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
+rank = 10   # i95 rank: score 64.9 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "mavis-9070xt 3904d23 (GPL-3.0): an 18.9 fps median over a 27-minute session, Series X at 1440p, ray tracing off, RX 9070 XT 16 GB with 32 GB RAM; not yet run here"
 upstream = "https://github.com/mavis140/mavis-9070xt"
 updated = "2026-11-26 14:29"   # the pinned upstream commit's date (scripts/runtime-info.py)
