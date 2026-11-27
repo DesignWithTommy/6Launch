@@ -1947,6 +1947,24 @@ fn warm(name: &str, mut cmd: Command, cache: &Path, to: f32) -> Result<(), Strin
             crate::splash::step(0.5, to, &format!("Warming the shaders ({name}): {what}"), d, total);
             continue;
         }
+        // victory's preload warm pass (apps/victory/src/warm.rs): "N pipelines known, ...; M to make, J processes",
+        // then "1000 of M, 12 s" every 1000 pipelines.
+        if let Some(m) = l.split_once(" to make, ").and_then(|(a, _)| a.rsplit(' ').next()).and_then(|n| n.parse::<u64>().ok()) {
+            if m > 0 {
+                crate::splash::step(0.5, to, &format!("Warming the shaders ({name}): building GPU pipelines"), 0, Some(m));
+            }
+            continue;
+        }
+        if let Some((d, rest)) = l.trim().split_once(" of ")
+            && let Some((m, secs)) = rest.split_once(", ")
+            && secs.ends_with(" s")
+            && let (Ok(d), Ok(m)) = (d.parse::<u64>(), m.parse::<u64>())
+            && m > 0
+            && d <= m
+        {
+            crate::splash::step(0.5, to, &format!("Warming the shaders ({name}): building GPU pipelines"), d, Some(m));
+            continue;
+        }
         // xcl's --pipelines pass after its shaders: "  pipelines: 800 made, 0 refused"
         // (no total): the count and a pulse, so the bar doesn't sit on the last shader count.
         if let Some(n) = l.trim().strip_prefix("pipelines: ").and_then(|r| r.split(' ').next()).and_then(|n| n.parse::<u64>().ok()) {
