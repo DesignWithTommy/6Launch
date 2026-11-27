@@ -46,7 +46,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== anyxboxx 14f488bca62f4cb63294a48324e89b548368ea33
+=== anyxboxx 173bee051ede1c58f2cf1d226e40db2358797bd8
 # Neonbridge launcher spec for vendor/anyxboxx: LooperSalty's AnyXboxX. Its game runtime is the VIctory
 # copy in third_party/victory (now built on Vice-Tay, README.md 5a08a33). The author's default is `anyxboxx run --game-dir <game>` (README.md:43), a Rust
 # wrapper (crates/anyxboxx/src/run) that builds victory, sets its TUNED env and spawns victory.exe. Replicated
@@ -54,10 +54,10 @@ menu = "Esc"
 name = "anyxboxx"
 fork = "Neptune"
 rank = 3   # #3 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "AnyXboxX 14f488b (GPL-3.0): 'About 24 fps median in the world in Full HD', 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER; not yet run here"
+about = "AnyXboxX 173bee0 (GPL-3.0): 'About 24 fps median in the world in Full HD', 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
-updated = "2026-11-27 09:13"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 494   # GitHub stars when last checked
+updated = "2026-11-27 10:42"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 496   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml"]   # crates/anyxboxx/src/run/steps.rs:71-73
 watch = ["third_party/victory/apps", "third_party/victory/crates", "third_party/victory/Cargo.toml", "third_party/victory/Cargo.lock"]
 exe = "third_party/victory/target/release/victory.exe"   # steps.rs:41-44
@@ -233,7 +233,7 @@ rank = 5   # #5 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VIctory-Belobug-AMD 4eb6cfd (GPL-3.0): 5 to 8 fps over a 15-minute drive, less while driving, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/Belobug/VIctory-Belobug-AMD"
 updated = "2026-11-26 17:27"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 4076   # GitHub stars when last checked
+stars = 4085   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:49
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/diag/victory.exe"   # play.ps1:29 (-Build diag default)
@@ -369,7 +369,7 @@ rank = 12   # #12 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "CGBJ 42b95b9 (cool_fox, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
 updated = "2026-11-27 06:03"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 828   # GitHub stars when last checked
+stars = 830   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:34
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"   # Play-VIctory.cmd runner fallback
@@ -558,7 +558,7 @@ rank = 26   # #26 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "darkworldhm 840243e (GPL-3.0): A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070"
 upstream = "https://github.com/darkworldhm/victory-fork-darkworldhm"
 updated = "2026-11-26 07:27"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 29   # GitHub stars when last checked
+stars = 30   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:512
 exe = "target/release/victory.exe"
 run = ["run", "{game_exe}", "--execute"]   # README.md:513
@@ -602,7 +602,7 @@ rank = 17   # #17 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "DexNom RayTime 8114ff7 (GPL-3.0): 1 fps with ray tracing on, 3.5 to 4 without, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/DexNom/VIctory"
 updated = "2026-11-26 18:11"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1367   # GitHub stars when last checked
+stars = 1369   # GitHub stars when last checked
 # README.md:36: the BCPack format tables first (the sources include_bytes! them; hash-checked, kept once fetched).
 prebuild = ["powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1"]
 build = ["cargo", "build", "--locked", "--release", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:36
@@ -1046,7 +1046,7 @@ rank = 21   # #21 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Kelvaroq 92606ea (GPL-3.0): ~10 fps in typical views (7 to 8 in the heaviest) at 4K on an RTX 5080; a tester's 36 min session without a crash; its unreleased direct memory path needs 22 ms of GPU work an open-world frame and holds 30 fps on loading screens; not yet run here"
 upstream = "https://github.com/stellarr-studio/kelvaroq"
 updated = "2026-11-27 04:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 466   # GitHub stars when last checked
+stars = 469   # GitHub stars when last checked
 build = ["python", "scripts/build_native.py"]   # README.md "Build from source" (fetches victory-fork f85101b)
 build_env = ["CARGO_FEATURE_PURE=1"]   # i95: blake3 in pure Rust; its MASM and C objects fail on the long target path under the 6ixpack source folder (A1009, C1083)
 watch = ["native", "scripts/build_native.py"]
@@ -1169,7 +1169,7 @@ rank = 4   # #4 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "KLBF Lab 502b70f (GPL-3.0): 14.0 fps average over 37 minutes of play, player in control through the prologue (77 min on an earlier build), RX 9070 XT; not yet run here"
 upstream = "https://github.com/PastiiJay/klbf-lab"
 updated = "2026-11-27 09:17"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 176   # GitHub stars when last checked
+stars = 177   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked"]   # README.md:127
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -1220,14 +1220,14 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== leonida b6cea00d79baa69b9c2583c94bb6d5a968db8333
+=== leonida 65f23c1f6308fc901048299d0babcdc3939b8169
 # Launcher spec for vendor/leonida: ProjectLeonidaL's Leonida Legacy (static recompilation, not a VIctory fork).
 # Build, run and env are its run-gta6.ps1, leonida.example.toml and README.
 name = "leonida"
 fork = "Leonida"
-about = "Leonida b6cea00 (GPL-3.0): static recompilation; about 10 fps in the first rooms with its newer switches; not yet run here"
+about = "Leonida 65f23c1 (GPL-3.0): static recompilation; about 10 fps in the first rooms with its newer switches; not yet run here"
 upstream = "https://github.com/ProjectLeonidaL/leonida"
-updated = "2026-11-27 08:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 10:37"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 537   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "leonida"]   # run-gta6.ps1:33, README.md:86
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -1241,6 +1241,8 @@ cache_env = "LEONIDA_CACHE_DIR"   # leonida.example.toml:11
 prewarm = ["translate", "--warm", "all"]   # run-gta6.ps1:77
 agility = false
 
+preset_nvidia_8gb = ["LEONIDA_TEXTURE_STAGE_MB=512", "LEONIDA_ASYNC_PRESENT=1"]   # gpu-profiles.json nvidia-8gb (opt-in): RTX 3060 Ti 8 GB room 312 -> 130 ms a frame
+
 [env]   # run-gta6.ps1:84; graphics come from its own measured profiles (leonida.example.toml:22-24)
 LEONIDA_LOG = "warn"
 === marvisak 63bcca43c6a00a758510398fa43096ce7e4f7df0
@@ -1251,7 +1253,7 @@ rank = 14   # #14 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VIctory 63bcca4 (GPL-3.0): The opening mission at about 1 fps on an RX 6700 XT, 'not playable'"
 upstream = "https://github.com/Marvisak/VIctory"
 updated = "2026-11-25 18:27"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 13671   # GitHub stars when last checked
+stars = 13678   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:92
 exe = "target/release/victory.exe"
 run = ["run", "{game_exe}", "--execute"]   # README.md:94
@@ -1484,7 +1486,7 @@ rank = 29   # #29 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VIctory-NVIDIA d12eb1b (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
 updated = "2026-11-27 08:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 787   # GitHub stars when last checked
+stars = 869   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-foxhound.ps1:133 (-Build release, its default)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -1816,7 +1818,7 @@ fork = "VIctory"
 about = "victory-scarlett-3070 ae29c7b (GPL-3.0): 16-21 fps in heavy scenes, lower when driving; not yet run here"
 upstream = "https://github.com/Yaekai/victory-scarlett-3070"
 updated = "2026-11-27 08:50"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 71   # GitHub stars when last checked
+stars = 72   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:375
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -1986,7 +1988,7 @@ rank = 9   # #9 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "ScarlettPort 03697a1 (GPL-3.0): about 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060; not yet run here"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 updated = "2026-11-27 09:32"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1059   # GitHub stars when last checked
+stars = 1065   # GitHub stars when last checked
 # scripts/setup-scarlett.ps1:18,21 (run in engine; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "engine/Cargo.toml", "--release", "-p", "scarlett", "--bin", "scarlett", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]
 watch = ["engine/apps", "engine/crates", "engine/Cargo.toml", "engine/Cargo.lock"]
@@ -2334,7 +2336,7 @@ fork = "VIctory"
 about = "SlaktarnVI (Valhalla) 42b2226 (GPL-3.0): Linux/Proton build tuned for an AMD RX 9070 XT, about 19-25 fps in gameplay (S70 preset, frame gen not counted); Windows path is its scripts/play.ps1; not yet run here"
 upstream = "https://github.com/Slaktarn700/SlaktarnVI"
 updated = "2026-11-27 09:44"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 74   # GitHub stars when last checked
+stars = 89   # GitHub stars when last checked
 # Its README builds with cargo xwin for Proton (README.md:69-76); natively on Windows the same profile/feature set is used.
 # scripts/play.ps1 defaults to -Build diag (play.ps1:12), the build all its measurements are of.
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:75 (minus xwin/--target)
@@ -2383,7 +2385,7 @@ fork = "VIctory"
 about = "victory-sley-fork ba6ce8e (GPL-3.0): 20.6 fps median at about 6,000 draws, 11-15 fps in dense night scenes; not yet run here"
 upstream = "https://github.com/Spaghetih/victory-sley-fork"
 updated = "2026-11-27 06:35"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 97   # GitHub stars when last checked
+stars = 99   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:149, Play-VIctory.cmd:18 (--locked)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"   # Play-VIctory.cmd:16
@@ -2671,7 +2673,7 @@ rank = 24   # #24 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VI-BR-PORT 2954325 (GPL-3.0): 24.0 fps on a scripted prison walk (30 standing, the cap) and 21.2 fps in the opening cutscene, RTX 4060 Ti 8 GB; the author now calls it playable with known picture problems"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
 updated = "2026-11-27 09:20"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 130   # GitHub stars when last checked
+stars = 131   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # play.ps1:5 (diag is its default; README.md:75 builds release)
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)
 diag_build = []   # its default build is already the diagnostics one
@@ -2739,7 +2741,7 @@ rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Vice-Tay 16edfec (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 updated = "2026-11-27 10:27"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 296   # GitHub stars when last checked
+stars = 298   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
 diag_build = []   # its default build is already the diagnostics one
@@ -2813,7 +2815,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== victory 5dbf5ce226690bb0f1b2949dc8ef822617ae81ea
+=== victory 52dfd12ea1f2c3ec9dd80b983aa6558ce115b51e
 # Neonbridge launcher spec for vendor/victory (src/runtimes.rs reads it).
 # Settings are play-victory.ps1's (ScarlettPort scripts, credit to its authors);
 # its user choices (VICTORY_FAST_BOOT, VICTORY_SAVE_SLOT, VICTORY_AUTO_INPUT)
@@ -2821,9 +2823,9 @@ menu = "Esc"
 name = "victory"
 fork = "victory-fork"
 rank = 2   # #2 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-fxceless 5dbf5ce (GPL-3.0): its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and light, 5 to 9 min runs ending in a crash in the game's script code, RTX 4070; without it about 11 fps at the first boat mission"
+about = "VIctory-fxceless 52dfd12 (GPL-3.0): its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and light, 5 to 9 min runs ending in a crash in the game's script code, RTX 4070; without it about 11 fps at the first boat mission"
 upstream = "https://github.com/fxceless/victory-fork"
-updated = "2026-11-27 10:06"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 10:42"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 3337   # GitHub stars when last checked
 # fxceless's victory has no Agility opt-in (no D3D12SDKVersion/D3D12SDKPath
 # exports, unlike ScarlettPort's copy): it runs on the system's D3D12.
@@ -2856,7 +2858,8 @@ preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB
 preset_16gb_ram = ["--console=series-s", "VICTORY_KEEP_SNAPSHOTS_MB=64", "VICTORY_TEXTURE_STAGE_MB=128"]   # ours: Series S with fewer worker threads and smaller snapshot/staging pools, for 16 GB PCs (only the switches this tree reads); untested
 preset_4060 = ["--console=series-s", "VICTORY_KEEP_SNAPSHOTS_MB=64", "VICTORY_TEXTURE_STAGE_MB=128", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_CARD_WINDOWS_MB=512", "VICTORY_TEXTURE_BUDGET_MB=4096", "VICTORY_DISPLAY_MODE=1920x1080"]   # ours: 8 GB card + 16 GB RAM, Vice-Tay's 4060 profile (~16 fps here) cut to the switches this tree reads; untested on this runtime
 preset_low_vram = ["--console=series-s", "VICTORY_LEVELS_ON_DEMAND=1", "VICTORY_TEXTURE_BUDGET_MB=4096"]   # ours: mip levels loaded on demand (PercyScarlett: ~3 GB less video memory) on Series S; untested
-preset_no_ray_tracing = ["VICTORY_BVH_BUILDER=0"]   # README.md:40-42: the builder is on by default; 0 for the quoted speeds
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # README.md: the builder is off by default now (play --set VICTORY_BVH_BUILDER=1)
+preset_dynamic_wait = ["VICTORY_DYNAMIC_WAIT=1"]   # README.md: draws wait only for the next ... (off by default)
 
 [env]
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
@@ -2953,14 +2956,14 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vilocity 648d1266398f8e2d9f212cd881c06035cae09445
+=== vilocity cb0a3f54b30f523b1994f8b838187ae8875caa9b
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
 rank = 18   # #18 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vilocity 648d126 (GPL-3.0): 33 fps median through the opening and 25 to 29 in the open world, 12 minutes of each unattended without a crash or driver timeout, Series S, RTX 5080; 'not playable yet'; not yet run here"
+about = "Vilocity cb0a3f5 (GPL-3.0): 33 fps median through the opening and 25 to 29 in the open world, 12 minutes of each unattended without a crash or driver timeout, Series S, RTX 5080; 'not playable yet'; not yet run here"
 upstream = "https://github.com/voidopcode/vilocity"
-updated = "2026-11-27 10:05"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 10:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 24   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"
@@ -2995,7 +2998,7 @@ VILOCITY_RELAY_COPY = "1"
 VILOCITY_WIDE_BACK = "1"
 VILOCITY_CARD_REHASH_RUNS = "1"
 VILOCITY_CARD_STEPS = "2"
-VILOCITY_AMBIENT_FLOOR = "0.05"   # launcher.ps1 (648d126) Night, on by default: a little light where no lamp reaches
+VILOCITY_AMBIENT_FLOOR = "0.05"   # launcher.ps1 (cb0a3f5) Night, on by default: a little light where no lamp reaches
 VILOCITY_CARD_AWAKE = "0"   # play-gta6.ps1 (8f6b185): 0 on NVIDIA cards (its keep-busy loop is for AMD); preset amd turns it back on
 VILOCITY_CARD_BUFFERS_MIN_KB = "64"
 VILOCITY_INDIRECT_WINDOW = "1"
@@ -3005,7 +3008,7 @@ VILOCITY_THIN = "1"
 VILOCITY_UPLOAD_AHEAD = "1"
 VILOCITY_SHOW_AFTER = "1"
 VILOCITY_FRAME_INTERVAL_MS = "0"
-VILOCITY_SUBMIT_FRAMES = "0"   # play-gta6.ps1 (648d126): JOIN_COPIES/JOIN_PARTS no longer set; torn frames 10 to 90 times fewer
+VILOCITY_SUBMIT_FRAMES = "0"   # play-gta6.ps1 (cb0a3f5): JOIN_COPIES/JOIN_PARTS no longer set; torn frames 10 to 90 times fewer
 VILOCITY_PIPELINE_BOOK = "1"   # play-gta6.ps1:76
 VILOCITY_FULLSCREEN = "1"   # launcher.ps1:89,454 (full on by default)
 
@@ -3144,7 +3147,7 @@ rank = 7   # #7 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VItoriaBr 15779f8 (GPL-3.0): 4 to 6 fps on its current settings; not yet run here"
 upstream = "https://github.com/uiliannn/VItoriaBr"
 updated = "2026-11-27 05:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 237   # GitHub stars when last checked
+stars = 238   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:95 (+--locked; Cargo.lock vendored)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"   # README.md:98
@@ -3399,7 +3402,7 @@ rank = 27   # #27 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "VIctory-7900XTX 014d52d (GPL-3.0): 13 to 17 fps in a city street at Series X 1440p, 16 to 23 with its patches off, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/avatarmanz/VIctory-7900XTX"
 updated = "2026-11-26 17:33"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1920   # GitHub stars when last checked
+stars = 1922   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:49
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/diag/victory.exe"   # play.ps1:29 (-Build diag default)
