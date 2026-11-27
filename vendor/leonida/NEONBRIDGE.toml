@@ -2,9 +2,9 @@
 # Build, run and env are its run-gta6.ps1, leonida.example.toml and README.
 name = "leonida"
 fork = "Leonida"
-about = "Leonida a3c5545 (GPL-3.0): static recompilation; about 10 fps in the first rooms with its newer switches; not yet run here"
+about = "Leonida 82a9f33 (GPL-3.0): static recompilation; about 10 fps in the first rooms with its newer switches; not yet run here"
 upstream = "https://github.com/ProjectLeonidaL/leonida"
-updated = "2026-11-27 11:17"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 11:29"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 537   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--release", "-p", "leonida"]   # run-gta6.ps1:33, README.md:86
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
