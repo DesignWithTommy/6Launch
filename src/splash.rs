@@ -20,8 +20,10 @@ use windows_sys::Win32::Graphics::Gdi::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
-const WIDTH: i32 = 560;
-const HEIGHT: i32 = 214;
+const WIDTH: i32 = 960;
+const HEIGHT: i32 = 540;
+/// The top of the status strip: the status line and the road sit below it.
+const BAND: i32 = HEIGHT - 76;
 /// The card's close button, top-right.
 const CLOSE_BOX: RECT = RECT { left: WIDTH - 30, top: 2, right: WIDTH - 2, bottom: 30 };
 const BACKGROUND: COLORREF = rgb(11, 11, 20);
@@ -500,7 +502,7 @@ unsafe fn paint(hwnd: HWND) {
             blit_art(dc, art, 0, 0, WIDTH, HEIGHT, 0, (ART_SIDE - band) / 2, ART_SIDE, band);
         }
         while y < HEIGHT {
-            let t = (y as f32 / 138.0).min(1.0);
+            let t = (y as f32 / BAND as f32).min(1.0);
             let c = if t < 0.55 { mix(night, dusk, t / 0.55) } else { mix(dusk, glow, (t - 0.55) / 0.45) };
             fill(dc, RECT { left: 0, top: y, right: WIDTH, bottom: y + 2 }, c);
             y += 2;
@@ -525,16 +527,16 @@ unsafe fn paint(hwnd: HWND) {
             if top + gap > cy + r {
                 break;
             }
-            let t = (top as f32 / 138.0).min(1.0);
+            let t = (top as f32 / BAND as f32).min(1.0);
             fill(dc, RECT { left: cx - r, top, right: cx + r, bottom: top + gap }, mix(dusk, glow, ((t - 0.55) / 0.45).clamp(0.0, 1.0)));
         }
         // Dark ground under the card's text.
         if art == 0 {
-            fill(dc, RECT { left: 0, top: 138, right: WIDTH, bottom: HEIGHT }, rgb(14, 6, 26));
-            fill(dc, RECT { left: 0, top: 138, right: WIDTH, bottom: 140 }, PINK);
+            fill(dc, RECT { left: 0, top: BAND, right: WIDTH, bottom: HEIGHT }, rgb(14, 6, 26));
+            fill(dc, RECT { left: 0, top: BAND, right: WIDTH, bottom: BAND + 2 }, PINK);
         } else {
             // A dark strip so the status line reads over the picture.
-            fill(dc, RECT { left: 24, top: 144, right: WIDTH - 24, bottom: 172 }, rgb(14, 6, 26));
+            fill(dc, RECT { left: 24, top: BAND + 6, right: WIDTH - 24, bottom: BAND + 34 }, rgb(14, 6, 26));
         }
 
         // The wordmark: heavy italic, white over a hot-pink drop shadow.
@@ -551,11 +553,11 @@ unsafe fn paint(hwnd: HWND) {
             Some(_) => ".".repeat((tick / 12 % 4) as usize),
             None => String::new(),
         };
-        text(dc, &format!("{line}{dots}"), RECT { left: 32, top: 146, right: WIDTH - 84, bottom: 170 }, TEXT, small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
+        text(dc, &format!("{line}{dots}"), RECT { left: 32, top: BAND + 8, right: WIDTH - 84, bottom: BAND + 32 }, TEXT, small, DT_LEFT | DT_VCENTER | DT_END_ELLIPSIS);
 
         // Progress: a road. Asphalt the whole way, the lane line painted as far
         // as the load has come, and a car at the front of it.
-        let road = RECT { left: 32, top: 174, right: WIDTH - 32, bottom: 196 };
+        let road = RECT { left: 32, top: BAND + 36, right: WIDTH - 32, bottom: BAND + 58 };
         fill(dc, road, rgb(34, 30, 44));
         fill(dc, RECT { bottom: road.top + 2, ..road }, rgb(150, 140, 170));
         fill(dc, RECT { top: road.bottom - 2, ..road }, rgb(150, 140, 170));
@@ -603,7 +605,7 @@ unsafe fn paint(hwnd: HWND) {
         poly(&quad(3.0, -4.0, 8.0, 4.0), CYAN);
         poly(&quad(-13.0, -6.0, -11.0, -3.0), rgb(255, 60, 60));
         poly(&quad(-13.0, 3.0, -11.0, 6.0), rgb(255, 60, 60));
-        text(dc, &format!("{}%", (shown * 100.0).floor() as u32), RECT { left: 32, top: 146, right: WIDTH - 32, bottom: 170 }, TEXT, small, DT_RIGHT | DT_VCENTER);
+        text(dc, &format!("{}%", (shown * 100.0).floor() as u32), RECT { left: 32, top: BAND + 8, right: WIDTH - 32, bottom: BAND + 32 }, TEXT, small, DT_RIGHT | DT_VCENTER);
 
         // The close button (the card is a captionless popup): top-right, quits i95.
         text(dc, "\u{2715}", CLOSE_BOX, TEXT, small, DT_CENTER | DT_VCENTER);
