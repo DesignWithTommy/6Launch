@@ -177,6 +177,9 @@ pub fn cpu_name() -> &'static str {
             let s = String::from_utf8_lossy(&raw);
             let clean = s
                 .trim_matches(|c: char| c == '\0' || c.is_whitespace())
+                // i95: the 5x7 font has no (R)/(TM) glyphs ("Intel(R) Core(TM)" drew as "INTELORO COREOTMO").
+                .replace("(R)", "")
+                .replace("(TM)", "")
                 .replace("8-Core Processor", "")
                 .replace("16-Core Processor", "")
                 .replace("12-Core Processor", "")
