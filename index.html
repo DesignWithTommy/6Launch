@@ -29,16 +29,21 @@ img{max-width:100%;border-radius:8px;margin:12px 0}
 .note{background:#2a1640;padding:12px 16px;border-radius:8px}
 li{margin:.2em 0}
 footer{opacity:.7;font-size:.9rem;margin-top:3em}
+.star{position:fixed;top:14px;right:14px;z-index:9;display:inline-flex;align-items:center;gap:8px;padding:7px 14px;background:#2a1640;color:#eee;border:1px solid #ff7846;border-radius:999px;font-weight:700;font-size:.9rem;text-decoration:none}
+.star:hover{background:#ff7846;color:#140a22}
+.star svg{width:16px;height:16px;fill:currentColor}
+.star b{padding-left:8px;border-left:1px solid currentColor;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
 <main>
+<a class="star" href="https://github.com/DesignWithTommy/i95-GTA6-PC-Launcher" rel="noopener" aria-label="Star i95 on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.27 5.82.85-4.21 4.1.99 5.8L12 16.88l-5.2 2.74.99-5.8-4.21-4.1 5.82-.85z"/></svg>Star<b id="stars" hidden></b></a>
 <img src="assets/banner.svg" alt="i95: GTA 6 PC Launcher banner">
 <h1>i95: GTA 6 PC Launcher</h1>
 <p>i95 is a free Windows app that runs the projects trying to bring the Xbox Series version of GTA VI (GTA 6) to PC. It compiles every runtime from source on your own PC, so you never run an exe someone else built. <strong>It doesn't include or download the game.</strong></p>
 <p class="note"><strong>Not confirmed playable yet.</strong> The GTA VI PC race tracker counts a runtime as playable at 20 fps for 30 minutes without a crash. Only Vice-Tay reports reaching it (21.1 fps median over 30 minutes on an RTX 4090), and nobody outside the project has checked it.</p>
 <a class="btn" href="https://github.com/DesignWithTommy/i95-GTA6-PC-Launcher/releases">Download</a>
-<a class="btn" href="https://github.com/DesignWithTommy/i95-GTA6-PC-Launcher">Source on GitHub</a>
+<a class="btn" href="https://github.com/DesignWithTommy/i95-GTA6-PC-Launcher">Star on GitHub</a>
 
 <h2>Screenshots</h2>
 <img src="assets/picker.png" alt="i95 GTA 6 PC launcher: the list of runtimes, details, presets and the game">
@@ -58,5 +63,6 @@ footer{opacity:.7;font-size:.9rem;margin-top:3em}
 
 <footer>i95 is an unofficial fan project. It is not affiliated with Rockstar Games, Take-Two or Microsoft. GTA and Grand Theft Auto are trademarks of Take-Two Interactive.</footer>
 </main>
+<script>fetch("https://api.github.com/repos/DesignWithTommy/i95-GTA6-PC-Launcher").then(r=>r.json()).then(d=>{if(d.stargazers_count>=0){var e=document.getElementById("stars");e.textContent=d.stargazers_count;e.hidden=false}}).catch(()=>{})</script>
 </body>
 </html>
