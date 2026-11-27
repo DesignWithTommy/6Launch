@@ -629,10 +629,12 @@ fn splash_art() -> isize {
     }
     let h = std::env::var("LOCALAPPDATA").ok().map_or(0, |base| {
         let path: Vec<u16> = format!("{base}\\6ixpack\\splash.bmp").encode_utf16().chain([0]).collect();
-        unsafe { LoadImageW(std::ptr::null_mut(), path.as_ptr(), IMAGE_BITMAP, ART_SIDE, ART_SIDE, LR_LOADFROMFILE) as isize }
+        unsafe { LoadImageW(std::ptr::null_mut(), path.as_ptr(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION) as isize }
     });
     ART.store(h, Ordering::Relaxed);
-    println!("[splash] start-screen art {}", if h != 0 { "loaded" } else { "not loaded" });
+    if h == 0 {
+        println!("[splash] start-screen art not loaded (error {})", unsafe { windows_sys::Win32::Foundation::GetLastError() });
+    }
     h
 }
 
