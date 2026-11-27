@@ -635,12 +635,14 @@ fn splash_art() -> isize {
             println!("[splash] start-screen art not loaded: not a 24- or 32-bit BMP");
             0
         }),
-        Some(Err(e)) if e.kind() == std::io::ErrorKind::NotFound => 0,
         Some(Err(e)) => {
-            println!("[splash] start-screen art not loaded: {e}");
+            println!("[splash] start-screen art not loaded from {}: {e}", path.as_ref().map_or(String::new(), |p| p.display().to_string()));
             0
         }
-        None => 0,
+        None => {
+            println!("[splash] start-screen art not loaded: no LOCALAPPDATA");
+            0
+        }
     };
     ART.store(h, Ordering::Relaxed);
     h
