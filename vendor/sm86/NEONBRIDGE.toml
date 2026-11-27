@@ -20,6 +20,11 @@ preset_framegen = ["VICTORY_DLSS=1", "VICTORY_DLSS_MODE=quality", "VICTORY_STREA
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]
 
+# NVIDIA Streamline SDK v2.14.16 (the version its author tested) from NVIDIA-RTX/Streamline releases, its bin\x64 into %LOCALAPPDATA%\6ixpack\streamline for the DLSS presets
+setup = [
+  "streamline: powershell -NoProfile -Command \"$d=Join-Path $env:LOCALAPPDATA '6ixpack\\streamline'; if (-not (Test-Path (Join-Path $d 'sl.interposer.dll'))) { $t=Join-Path $env:TEMP 'streamline-sdk-v2.14.16.zip'; Invoke-WebRequest -UseBasicParsing https://github.com/NVIDIA-RTX/Streamline/releases/download/v2.14.16/streamline-sdk-v2.14.16.zip -OutFile $t; $x=Join-Path $env:TEMP 'streamline-sdk-v2.14.16'; Expand-Archive -Force $t $x; New-Item -ItemType Directory -Force $d | Out-Null; $b=(Get-ChildItem $x -Recurse -Directory -Filter x64 | Where-Object { $_.Parent.Name -eq 'bin' } | Select-Object -First 1).FullName; Copy-Item (Join-Path $b '*') $d -Recurse -Force; Remove-Item -Recurse -Force $t,$x }\" [asks first: download]",
+]
+
 [env]   # Play-VIctory.cmd:18-38 (pareto-residency defaults)
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
 VICTORY_AMBIENT_AIR = "1.5"
