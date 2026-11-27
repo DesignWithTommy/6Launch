@@ -8,7 +8,6 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 |---|---|---|---|
 | `vendor/amd` | [victory-amd](https://github.com/myokex/victory-amd) | myokex | GPL-3.0 |
 | `vendor/anyxboxx` | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | LooperSalty and the authors in its THIRD_PARTY.md | GPL-3.0-or-later |
-| `vendor/belobug` | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | Belobug and the VIctory contributors | GPL-3.0 |
 | `vendor/cblvictory` | [cblvictoryvi](https://github.com/cocainebunnylaboratories/cblvictoryvi) | cocainebunnylaboratories | GPL-3.0 |
 | `vendor/cgbj` | [cool_fox](https://github.com/DoubleGhosty/cool_fox) | DoubleGhosty, continuing CGBJ (codec-d/cool_fox) | GPL-3.0 |
 | `vendor/coolfox12` | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | miaohaixiang1-netizen | GPL-3.0 |
@@ -44,7 +43,6 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/vinividivici` | [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) | KomanderDG88 | GPL-3.0 |
 | `vendor/vitoriabr` | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | uiliannn, fxceless, Marvis (Marvisak), Duff and the VIctory contributors | GPL-3.0 |
 | `vendor/mavis9070xt` | [mavis-9070xt](https://github.com/mavis140/mavis-9070xt) | mavis140 | GPL-3.0 |
-| `vendor/xtx` | [VIctory-7900XTX](https://github.com/avatarmanz/VIctory-7900XTX) | avatarmanz | GPL-3.0 |
 | `vendor/ztrx-victory` (archived, in git history) | [ztrx](https://github.com/Zettrox/ztrx) | Zettrox, Marvis (Marvisak), Duff, fxceless, 9hvn9yt2vk-netizen and the VIctory contributors | GPL-3.0 |
 All of the VIctory forks build on [VIctory](https://github.com/Marvisak/VIctory) by Marvisak and its contributors.
 
