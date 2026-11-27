@@ -2,7 +2,7 @@
 # Build, run and env are its README "Build" and scripts/play.ps1 (default: no switches, Series X, diag build, its mods on).
 name = "kitty6"
 fork = "VIctory-7900XTX"
-about = "Kitty6 2d3ac53 (GPL-3.0): 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker; not yet run here"
+about = "Kitty6 666342d (GPL-3.0): 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker; not yet run here"
 upstream = "https://github.com/kitty-core/Kitty6"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:86
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -15,6 +15,7 @@ cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
 preset_lean = ["--console=series-s", "VICTORY_TEXTURE_MIP_BIAS=1", "VICTORY_TEXTURE_ROOM_PERCENT=80", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1536", "VICTORY_CARD_WINDOWS_MB=1024", "VICTORY_PORT_CONSTANTS=1", "VICTORY_PORT_DESCRIPTORS=1", "VICTORY_PORT_CBV=1", "VICTORY_PORT_GUARD=1", "VICTORY_PORT_JOURNAL=1", "VICTORY_RT_RESOLVE=0", "VICTORY_AMBIENT=1", "VICTORY_RESIDENCY=1", "VICTORY_D3D12_DRED="]   # play.ps1 -Lean (its 20.5 fps figure)
+preset_rtx4070 = ["--console=series-s", "VICTORY_TEXTURE_MIP_BIAS=1", "VICTORY_TEXTURE_ROOM_PERCENT=80", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1536", "VICTORY_CARD_WINDOWS_MB=1024", "VICTORY_PORT_CONSTANTS=1", "VICTORY_PORT_DESCRIPTORS=1", "VICTORY_PORT_CBV=1", "VICTORY_PORT_GUARD=1", "VICTORY_PORT_JOURNAL=1", "VICTORY_RT_RESOLVE=0", "VICTORY_AMBIENT=1", "VICTORY_RESIDENCY=1", "VICTORY_D3D12_DRED=", "VICTORY_LAND_THREADS=4", "VICTORY_PIPELINE_WORKERS=3", "VICTORY_CARD_RESERVE_BUDGETS=1"]   # play.ps1 -Lean -Rtx4070 (Vice-Tay PR #69)
 preset_series_s = ["--console=series-s"]   # play.ps1 -Console S
 preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe
 preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing
@@ -44,6 +45,8 @@ VICTORY_XMA_REFILL = "1"
 VICTORY_THIN = "1"
 VICTORY_JOIN_PARTS = "8"
 VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_HALF_VIEWS = "0"   # play.ps1 (666342d): 16-bit views made shadows and faces blocky on NVIDIA
+K6_HALF_LOADS = "0"
 VICTORY_MODS = "{root}\\mods\\kitty6.k6mod"   # play.ps1:99-103: the mods it ships
 
 [controls]

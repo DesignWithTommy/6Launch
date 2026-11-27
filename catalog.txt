@@ -233,13 +233,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== cgbj 80e86198ac2cb0d82ac7821c3a5f2399337e9b06
+=== cgbj 8c23f18570083d827ccf61a023a78068bbb3d714
 # Neonbridge launcher spec for vendor/cgbj: DoubleGhosty's cool_fox, a continuation of CGBJ (codec-d/cool_fox, no longer on GitHub).
 # Build, run and env are its README and Play-VIctory.cmd (VICTORY_LOG=warn left out: the loader reads the info-level fps line).
 name = "cgbj"
 fork = "VIctory"
 rank = 12   # #12 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "CGBJ 80e8619 (cool_fox, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
+about = "CGBJ 8c23f18 (cool_fox, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:34
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -724,12 +724,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== kitty6 2d3ac53154a8d14a70ef588d80d7bf208006f376
+=== kitty6 666342dcc1986d284677efe87b983eb407e7fe0e
 # Launcher spec for vendor/kitty6: kitty-core's Kitty6 (VIctory-7900XTX fork tuned for an RTX 4070 12 GB, 32 GB RAM).
 # Build, run and env are its README "Build" and scripts/play.ps1 (default: no switches, Series X, diag build, its mods on).
 name = "kitty6"
 fork = "VIctory-7900XTX"
-about = "Kitty6 2d3ac53 (GPL-3.0): 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker; not yet run here"
+about = "Kitty6 666342d (GPL-3.0): 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker; not yet run here"
 upstream = "https://github.com/kitty-core/Kitty6"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:86
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -742,6 +742,7 @@ cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
 preset_lean = ["--console=series-s", "VICTORY_TEXTURE_MIP_BIAS=1", "VICTORY_TEXTURE_ROOM_PERCENT=80", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1536", "VICTORY_CARD_WINDOWS_MB=1024", "VICTORY_PORT_CONSTANTS=1", "VICTORY_PORT_DESCRIPTORS=1", "VICTORY_PORT_CBV=1", "VICTORY_PORT_GUARD=1", "VICTORY_PORT_JOURNAL=1", "VICTORY_RT_RESOLVE=0", "VICTORY_AMBIENT=1", "VICTORY_RESIDENCY=1", "VICTORY_D3D12_DRED="]   # play.ps1 -Lean (its 20.5 fps figure)
+preset_rtx4070 = ["--console=series-s", "VICTORY_TEXTURE_MIP_BIAS=1", "VICTORY_TEXTURE_ROOM_PERCENT=80", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1536", "VICTORY_CARD_WINDOWS_MB=1024", "VICTORY_PORT_CONSTANTS=1", "VICTORY_PORT_DESCRIPTORS=1", "VICTORY_PORT_CBV=1", "VICTORY_PORT_GUARD=1", "VICTORY_PORT_JOURNAL=1", "VICTORY_RT_RESOLVE=0", "VICTORY_AMBIENT=1", "VICTORY_RESIDENCY=1", "VICTORY_D3D12_DRED=", "VICTORY_LAND_THREADS=4", "VICTORY_PIPELINE_WORKERS=3", "VICTORY_CARD_RESERVE_BUDGETS=1"]   # play.ps1 -Lean -Rtx4070 (Vice-Tay PR #69)
 preset_series_s = ["--console=series-s"]   # play.ps1 -Console S
 preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe
 preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing
@@ -771,6 +772,8 @@ VICTORY_XMA_REFILL = "1"
 VICTORY_THIN = "1"
 VICTORY_JOIN_PARTS = "8"
 VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_HALF_VIEWS = "0"   # play.ps1 (666342d): 16-bit views made shadows and faces blocky on NVIDIA
+K6_HALF_LOADS = "0"
 VICTORY_MODS = "{root}\\mods\\kitty6.k6mod"   # play.ps1:99-103: the mods it ships
 
 [controls]
@@ -1686,13 +1689,13 @@ rs = "C / Middle mouse / H"
 dpad = "Arrows / 1 2 3 4 (E right)"
 view = "V"
 menu = "Esc / P"
-=== vibrport 31b9a82fb260f9bad6acc41b47ec4e0571e8febb
+=== vibrport 47d8669cd67fe7bf6973479d27fb3ac6fb930da0
 # Neonbridge launcher spec for vendor/vibrport: edsuuu's VI-BR-PORT, a victory-fork fork for
 # 8 GB NVIDIA cards (its author's RTX 4060 Ti 8 GB). Default launch is scripts/play.ps1.
 name = "vibrport"
 fork = "victory-fork"
 rank = 24   # #24 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VI-BR-PORT 31b9a82 (GPL-3.0): ~5.6 fps on Series X at 1080p and ~14 fps on Series S in the prison, RTX 4060 Ti 8 GB; the opening cutscene at ~18–19 fps; 'Ainda não está jogável' (not playable yet)"
+about = "VI-BR-PORT 47d8669 (GPL-3.0): ~5.6 fps on Series X at 1080p and ~14 fps on Series S in the prison, RTX 4060 Ti 8 GB; the opening cutscene at ~18–19 fps; 'Ainda não está jogável' (not playable yet)"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # play.ps1:5 (diag is its default; README.md:75 builds release)
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)
@@ -1752,13 +1755,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vicetay 4e3e366883fb1afb5018b299296208941850bf16
+=== vicetay cc9ed86c78ee44dae1392d0e101f7b3d2a91a9ec
 # Neonbridge launcher spec for vendor/vicetay: TaynanGT's Vice-Tay. Build and run are its README "How to run it"
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
 fork = "VIctory"
 rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vice-Tay 4e3e366 (GPL-3.0): The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet; not yet run here"
+about = "Vice-Tay cc9ed86 (GPL-3.0): The tracker's leader: a 21.6 fps median in a 30-minute boat test (one README sentence) and 70 minutes played by hand, RTX 4090; at the playable bar on speed and stability but not counted yet; not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
@@ -1836,7 +1839,7 @@ menu = "Esc"
 name = "victory"
 fork = "victory-fork"
 rank = 2   # #2 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-fxceless 4c60466 (GPL-3.0), the emulator victory"
+about = "VIctory-fxceless 4c60466 (GPL-3.0): 7.5 to 8.5 fps at the first boat mission, 10 to 14 in light scenes, RTX 4070"
 upstream = "https://github.com/fxceless/victory-fork"
 # fxceless's victory has no Agility opt-in (no D3D12SDKVersion/D3D12SDKPath
 # exports, unlike ScarlettPort's copy): it runs on the system's D3D12.
