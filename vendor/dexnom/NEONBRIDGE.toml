@@ -5,7 +5,7 @@ rank = 17   # #17 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "DexNom RayTime 8114ff7 (GPL-3.0): Its 'most complete tested build': ~1.1 to 1.3 fps in the city with ray tracing on, RX 7900 XTX"
 upstream = "https://github.com/DexNom/VIctory"
 updated = "2026-11-26"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1302   # GitHub stars when last checked
+stars = 1303   # GitHub stars when last checked
 # README.md:36: the BCPack format tables first.
 setup = [
   "format-tables: powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1 [asks first: download]",
