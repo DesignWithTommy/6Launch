@@ -5,10 +5,10 @@
 name = "victory"
 fork = "victory-fork"
 rank = 2   # #2 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-fxceless 9a9091d (GPL-3.0): its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and light, 5 to 9 min runs ending in a crash in the game's script code, RTX 4070; without it about 11 fps at the first boat mission"
+about = "VIctory-fxceless 5dbf5ce (GPL-3.0): its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and light, 5 to 9 min runs ending in a crash in the game's script code, RTX 4070; without it about 11 fps at the first boat mission"
 upstream = "https://github.com/fxceless/victory-fork"
-updated = "2026-11-27 00:28"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 3335   # GitHub stars when last checked
+updated = "2026-11-27 10:06"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 3336   # GitHub stars when last checked
 # fxceless's victory has no Agility opt-in (no D3D12SDKVersion/D3D12SDKPath
 # exports, unlike ScarlettPort's copy): it runs on the system's D3D12.
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:346 (+--locked)
@@ -17,7 +17,7 @@ exe = "target/release/victory.exe"
 # NEONBRIDGE_DIAG (on unless 0): the author's diagnostics build, used in place of build/exe; [] = none.
 diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # README.md:387 (+--locked)
 diag_exe = "target/diag/victory.exe"   # README.md:387
-run = ["run", "{game_exe}", "--execute"]   # README.md:347; console defaults to series-x (apps/victory/src/main.rs:108)
+run = ["run", "{game_exe}", "--console", "series-s", "--execute"]   # Play-VIctory.cmd (Series S)
 # Every shader container in the game, CPU only (about 5 min).
 prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]
 game_env = "VICTORY_GAME_DIR"
@@ -30,8 +30,9 @@ options = [
 ]
 # ScarlettPort play-victory.ps1:51-59 settings, not this author's: optional (README.md:44 names RELAY=2 as a newer switch).
 preset_scarlettport_settings = ["VICTORY_RELAY=2", "VICTORY_PIPELINE_WAIT_MS=0"]   # the ScarlettPort switches this tree reads
-preset_series_s = ["--console=series-s"]
+preset_series_x = ["--console=series-x"]
 # Below: Neonbridge plumbing only, no change to how the author's build runs.
+preset_plain = ["VICTORY_AMBIENT=", "VICTORY_AMBIENT_AIR=", "VICTORY_CARD_AWAKE=", "VICTORY_CARD_BUFFERS_MIN_KB=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_CARD_STEPS=", "VICTORY_INDIRECT_BATCH=", "VICTORY_INDIRECT_WINDOW=", "VICTORY_JOIN_COPIES=", "VICTORY_JOIN_PARTS=", "VICTORY_LEVELS_ON_DEMAND=", "VICTORY_LOG=", "VICTORY_MAP_THREADS=", "VICTORY_RELAY=", "VICTORY_RELAY_COPY=", "VICTORY_SHOW_AFTER=", "VICTORY_TEXTURE_NO_WAIT=", "VICTORY_THIN=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_WIDE_BACK="]   # the tree's own defaults (none of Play-VIctory.cmd's switches)
 preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]   # D3D12 crash breadcrumbs in the log (diagnostics build: host.rs reads it only there)
 preset_warp = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_WARP=1"]   # software GPU (slow; diagnostics build only, host.rs cfg!(feature = "diagnostics"))
 
@@ -43,6 +44,27 @@ preset_no_ray_tracing = ["VICTORY_BVH_BUILDER=0"]   # README.md:40-42: the build
 
 [env]
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
+# Play-VIctory.cmd (its Windows launcher): the author's defaults
+VICTORY_AMBIENT = "0.8"
+VICTORY_AMBIENT_AIR = "1.5"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_LOG = "warn"
+VICTORY_MAP_THREADS = "1"
+VICTORY_RELAY = "2"
+VICTORY_RELAY_COPY = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_THIN = "1"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_WIDE_BACK = "1"
 
 # Keyboard as the gamepad, shown by the controls overlay (F1). From
 # crates/victory-hle/src/modules/gameinput.rs FALLBACK_BUTTONS and fallback();
