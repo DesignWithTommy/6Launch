@@ -43,7 +43,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 15 | [Flamingo](https://github.com/realblastex/flamingo) | victory-fork | Tuned on "an NVIDIA RTX 4070". 9 to 12 fps in the first scene, a 24 min session | ⚠️ Runs at ~20 fps on average, but models are very dark and the screen flashes black and white |
 | 16 | [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) | victory-fork | 10.5 fps on Series X with ray tracing off, 6.7 with it on, 15 fps on Series S, RX 7800 XT | Not run yet |
 | 17 | [DexNom RayTime](https://github.com/DexNom/VIctory) | VIctory | Its "most complete tested build": ~1.1 to 1.3 fps in the city with ray tracing on, RX 7900 XTX | Not run yet |
-| 18 | [Vilocity](https://github.com/voidopcode/vilocity) | its own layer | "Not playable yet." About 11 fps on the Series S profile, RTX 5080; runs end about 7 min in | Not run yet |
+| 18 | [Vilocity](https://github.com/voidopcode/vilocity) | cool_fox (was its own layer) | 26–27 fps at 5,000 draws a frame, 17–19 at 10,000–11,000, Series S, RTX 5080 | Not run yet |
 | 19 | [CBL VIctory](https://github.com/cocainebunnylaboratories/cblvictoryvi) | VIctory, victory-fork | A 65 min session: 11.4 fps on the boat, 4.3 to 4.7 in the city, RTX 5080 | Not run yet |
 | 21 | [Kelvaroq](https://github.com/stellarr-studio/kelvaroq) | VIctory, victory-fork | ~10 fps in typical views on an RTX 5080; a tester's 36 min session without a crash; shaders now translated once (heavy frames ~18 s to ~60 ms) | Testing |
 | 22 | [victory-unified](https://github.com/Itsbatt/victory-unified) | VIctory | "A unified fork" of several, tuned for an RTX 3070 8 GB; ~22 fps on its RX 7900 XTX dev machine | Not run yet |

@@ -1891,44 +1891,47 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vilocity c51cb6651b8c907654e397f115c8b76a38d8fd1f
+=== vilocity 9ef6bc6706ae10e9f09750d5a08af153d8248769
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
 rank = 18   # #18 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vilocity c51cb66 (GPL-3.0): 'Not playable yet.' About 11 fps on the Series S profile, RTX 5080; runs end about 7 min in"
+about = "Vilocity 9ef6bc6 (GPL-3.0): 26-27 fps at 5,000 draws, 17-19 at 10,000-11,000, Series S, RTX 5080 (now on cool_fox's engine); not yet run here"
 upstream = "https://github.com/voidopcode/vilocity"
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"
 run = ["play", "{game}"]   # README.md:158, scripts/play-gta6.ps1
-prewarm = ["native", "translate", "--cache", "--pipelines", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll"]   # README.md:173
+prewarm = ["native", "shaders", "{game}/shaders.rpf"]   # play-gta6.ps1:75 (9ef6bc6)
 watch = ["apps", "crates", "native", "compat", "Cargo.toml", "Cargo.lock"]
 game_env = "VILOCITY_GAME_DIR"
 cache_env = "VILOCITY_CACHE_DIR"
 agility = false
 
-preset_series_s = ["VILOCITY_CONSOLE=series-s"]   # apps/vilocity/src/main.rs:133
+preset_series_x = ["VILOCITY_CONSOLE=series-x"]   # play-gta6.ps1 -SeriesX
+preset_defaults = ["VILOCITY_AMBIENT=", "VILOCITY_AMBIENT_AIR=", "VILOCITY_TEXTURE_NO_WAIT=", "VILOCITY_RELAY=", "VILOCITY_RELAY_COPY=", "VILOCITY_WIDE_BACK=", "VILOCITY_CARD_REHASH_RUNS=", "VILOCITY_CARD_STEPS=", "VILOCITY_CARD_AWAKE=", "VILOCITY_CARD_BUFFERS_MIN_KB=", "VILOCITY_JOIN_COPIES=", "VILOCITY_JOIN_PARTS=", "VILOCITY_INDIRECT_WINDOW=", "VILOCITY_INDIRECT_BATCH=", "VILOCITY_MAP_THREADS=", "VILOCITY_THIN=", "VILOCITY_UPLOAD_AHEAD=", "VILOCITY_SHOW_AFTER=", "VILOCITY_FRAME_INTERVAL_MS="]   # play-gta6.ps1 -Defaults
+preset_16_cores = ["VILOCITY_THIN_THREADS=12", "VILOCITY_UNDER_THREADS=8", "VILOCITY_LAND_THREADS=6"]   # play-gta6.ps1:51-53 (32+ logical processors)
 
-[env]
-VILOCITY_MAX_FPS = "0"   # play-gta6.ps1 (4e0c5e4): no limit
-VILOCITY_CONSOLE = "series-s"   # scripts/play-gta6.ps1, its measured set
-VILOCITY_ASYNC_SUBMIT = "1"
-VILOCITY_QUEUE2 = "1"
-VILOCITY_INDIRECT_WINDOW = "1"
-VILOCITY_TEXTURE_NO_WAIT = "2"
-VILOCITY_COPY_PLAIN = "1"
-VILOCITY_LEVELS_ON_DEMAND = "1"
-VILOCITY_DISPLAY_MODE = "1920x1080"
-VILOCITY_WIDE_REFRESH = "1"
-VILOCITY_WIDE_MERGE = "1"
+[env]   # scripts/play-gta6.ps1 (9ef6bc6): the native engine is now cool_fox (30e54b4), its own launcher's set
+VILOCITY_CONSOLE = "series-s"   # play-gta6.ps1:24 (default without -SeriesX)
+VILOCITY_AMBIENT = "0.8"
+VILOCITY_AMBIENT_AIR = "1.5"
+VILOCITY_TEXTURE_NO_WAIT = "1"
+VILOCITY_RELAY = "2"
+VILOCITY_RELAY_COPY = "1"
+VILOCITY_WIDE_BACK = "1"
+VILOCITY_CARD_REHASH_RUNS = "1"
+VILOCITY_CARD_STEPS = "2"
+VILOCITY_CARD_AWAKE = "1"
+VILOCITY_CARD_BUFFERS_MIN_KB = "64"
 VILOCITY_JOIN_COPIES = "1"
-VILOCITY_CARD_BUFFERS_MB = "1536"
-VILOCITY_LEAVE_OUT = "TraceRays_BVH,RTShadowTrace,RTDistantShadowTrace,RTDistantLODLightShadow,TraceShadowRays,RaytraceShadows,RaytraceVBuffer,IrradianceCache_ShadowTrace,ShadowRaytracing,CollisionRaytraced,PPR_Raytrace,CS_SpatialFilter,CS_BilateralBlur,CS_ScreenProbes_EvaluateRayRequests,CS_SortRayTiles,CS_Primary_RegisterAllocationRequests"
-VILOCITY_ZERO_OUT = "CS_CombinedReflections,CS_ScreenProbes_Inject,CS_DefragHeap_ComputeRelocations"
-VILOCITY_RENDER_SCALE = "0.5"   # play-gta6.ps1:27-30 (series-s, 3cc4b67)
-VILOCITY_OWN_UPSCALER = "1"
-VILOCITY_BVH_NO_HIT = "1"   # play-gta6.ps1:102
-VILOCITY_HAIR = "1"   # play-gta6.ps1:106
+VILOCITY_JOIN_PARTS = "8"
+VILOCITY_INDIRECT_WINDOW = "1"
+VILOCITY_INDIRECT_BATCH = "2"
+VILOCITY_MAP_THREADS = "1"
+VILOCITY_THIN = "1"
+VILOCITY_UPLOAD_AHEAD = "1"
+VILOCITY_SHOW_AFTER = "1"
+VILOCITY_FRAME_INTERVAL_MS = "0"
 
 [controls]
 left_stick = "W A S D"
