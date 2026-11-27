@@ -578,12 +578,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== fivestar e977ef84002680582a45549472f553b38d0091d6
+=== fivestar 49a4fce6b08205fdbfc80c403ec960b9d7b3fd74
 # Launcher spec for vendor/fivestar: ThatRecompDev's Five Star Recomp, a C# loader and shader translator for
 # GTA VI 1.0.2.1. Build and run are its README and docs/running.md (b42886f). Early: unranked, listed last.
 name = "fivestar"
 fork = "Five Star Recomp"
-about = "Five Star Recomp e977ef8 (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
+about = "Five Star Recomp 49a4fce (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
 upstream = "https://github.com/ThatRecompDev/five-star-recomp"
 updated = "2026-11-27 03:00"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 231   # GitHub stars when last checked
@@ -1532,14 +1532,14 @@ rt = "C"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== scarlettport e75d7e276731f7898b8932f994cd8e66679fea30
+=== scarlettport fb4d597fffa6e28ecab2dee54ba066a89def39ce
 # ScarlettPort's victory runtime (engine). Its second runtime, runtime/xcl, is a distinct
 # playable path (scripts/setup.ps1:15 `cargo build --release` in runtime\xcl -> runtime\xcl\target\release\xcl.exe,
 # scripts/play.ps1:34 `xcl run <game>` with XCL_DXC_THREADS=4, XCL_NO_WATCHDOG=1, XCL_PRESS_FILE); not modelled here.
 name = "scarlettport"
 fork = "victory-fork"
 rank = 9   # #9 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ScarlettPort e75d7e2 (GPL-3.0): about 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060; not yet run here"
+about = "ScarlettPort fb4d597 (GPL-3.0): about 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060; not yet run here"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 updated = "2026-11-27 03:06"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 779   # GitHub stars when last checked
