@@ -527,7 +527,7 @@ fn draw(dc: HDC, w: i32, h: i32, s: &mut State, f: &Fonts) {
     fill_rect(dc, rect(LEFT, HEADER + 1, LEFT + 1, foot), BORDER);
     text(dc, &format!("Runtimes ({})", s.rows.len()), rect(24, HEADER + 12, LEFT, HEADER + 36), SUB, f.small, DT_LEFT | DT_VCENTER);
     let fl = filters(&s.all);
-    let fr = rect(LEFT - 190, HEADER + 10, LEFT - 16, HEADER + 38);
+    let fr = rect(130, HEADER + 10, LEFT - 16, HEADER + 38);   // right of "Runtimes (52)", never over it
     if s.hover == Hit::Filter {
         fill_rect(dc, fr, ROW_HOT);
     }
@@ -1031,7 +1031,8 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
             let fresh = rows();
             with_state(|s| {
                 // By name: the fresh list may sort differently (ranks change).
-                for row in s.rows.iter_mut() {
+                // Both lists: rows is a filtered copy of all.
+                for row in s.rows.iter_mut().chain(s.all.iter_mut()) {
                     if let Some(new) = fresh.iter().find(|n| n.name == row.name) {
                         row.missing = new.missing.clone();
                     }
