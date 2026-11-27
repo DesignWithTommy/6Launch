@@ -311,7 +311,7 @@ preset_5080 = ["VICTORY_MAP_THREADS=4", "VICTORY_FAST_CORES=2", "VICTORY_D3D12_D
 preset_4070 = ["VICTORY_THIN_THREADS=8", "VICTORY_UNDER_THREADS=6", "VICTORY_LAND_THREADS=4", "VICTORY_MAP_THREADS=1", "VICTORY_PIPELINE_WORKERS=3", "VICTORY_CARD_RESERVE_BUDGETS=1", "VICTORY_CARD_BUFFERS_MIN_KB=64", "VICTORY_CARD_BUFFERS_MB=1536", "VICTORY_CARD_WINDOWS_MB=1024"]   # play.ps1 -Machine 4070 (8-core CPU)
 preset_amd = ["VICTORY_THIN_THREADS=", "VICTORY_UNDER_THREADS=", "VICTORY_LAND_THREADS=", "VICTORY_PLACED_ORDER=", "VICTORY_WAVE_WIDE_ONLY=", "VICTORY_MAP_THREADS=1", "VICTORY_CARD_AWAKE=1"]   # play.ps1 -Machine 7900xtx (auto on non-NVIDIA)
 preset_dred = ["VICTORY_D3D12_DRED=1"]
-preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting
+preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting, minus FILL_WAIT (this Vice-Tay tree does not read it)
 
 [env]   # play.ps1 defaults, NVIDIA (4090) profile
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
@@ -1365,7 +1365,7 @@ preset_fsr_quality_4k = ["VICTORY_RAY_TRACING=1", "VICTORY_LOCAL_GPU_INPUTS=1", 
 # Launcher-side extras (--warp, --native-1440p, capture/trace switches) are left out.
 
 [env]   # play_launcher.rs:260-271 (m1lk-play defaults)
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"   # i95: one save/settings folder for the victory family (read at crates/victory-core/src/config.rs:110)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family (read at crates/victory-core/src/config.rs:110)
 VICTORY_DEBUG_HUD = "1"   # play_launcher.rs:260-261
 VICTORY_NO_WATCHDOG = "1"   # play_launcher.rs:265-266
 === marvisak 63bcca43c6a00a758510398fa43096ce7e4f7df0

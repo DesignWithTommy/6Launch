@@ -32,6 +32,6 @@ preset_fsr_quality_4k = ["VICTORY_RAY_TRACING=1", "VICTORY_LOCAL_GPU_INPUTS=1", 
 # Launcher-side extras (--warp, --native-1440p, capture/trace switches) are left out.
 
 [env]   # play_launcher.rs:260-271 (m1lk-play defaults)
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"   # i95: one save/settings folder for the victory family (read at crates/victory-core/src/config.rs:110)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family (read at crates/victory-core/src/config.rs:110)
 VICTORY_DEBUG_HUD = "1"   # play_launcher.rs:260-261
 VICTORY_NO_WATCHDOG = "1"   # play_launcher.rs:265-266
