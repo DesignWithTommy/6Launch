@@ -8,6 +8,8 @@
 //! the same recipe as TuxBox `build.py`). Providers are staged beside the exe;
 //! any game file they replace is moved to `<game>/_6ixpack_orig/` first and
 //! `--restore` puts it back.
+// No console window on a double-click; main() attaches the parent console for CLI use.
+#![windows_subsystem = "windows"]
 
 mod fetch;
 mod shaderkey;
@@ -152,23 +154,23 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
     // Started from the picker: no console, so the run's log is the only record.
     let mut gui = false;
     let (mut sets, mut preset, mut list_of): (Vec<String>, Option<String>, Option<Option<String>>) = (Vec::new(), None, None);
-    // Started by a double-click (the console is ours alone): it goes away; the
-    // picker window (game, runtime, options) and the loader follow.
-    // NEONBRIDGE_KEEP_CONSOLE=1 keeps it.
-    if args.is_empty() && std::env::var("NEONBRIDGE_KEEP_CONSOLE").map_or(true, |v| v.trim() != "1") {
+    // A GUI-subsystem exe (windows_subsystem above): a double-click opens no
+    // console window, so the picker is the first window. Started with
+    // arguments from a console, it writes to that console (AttachConsole);
+    // redirected output is inherited as before.
+    // NEONBRIDGE_KEEP_CONSOLE=1 opens a console of its own for a bare start.
+    {
         #[link(name = "kernel32")]
         unsafe extern "system" {
-            fn GetConsoleProcessList(list: *mut u32, count: u32) -> u32;
-            fn FreeConsole() -> i32;
+            fn AttachConsole(pid: u32) -> i32;
+            fn AllocConsole() -> i32;
+            fn GetStdHandle(which: u32) -> *mut std::ffi::c_void;
         }
-        let mut ids = [0u32; 4];
-        // SAFETY: plain kernel32 calls on a local buffer.
-        if unsafe { GetConsoleProcessList(ids.as_mut_ptr(), 4) } == 1 {
-            unsafe { FreeConsole() };
-            // The std handles still name the freed console; children that
-            // inherit them fail to start (os error 6), which the prerequisite
-            // probes read as "not found". NUL until redirect_output.
-            null_std_handles();
+        let keep = std::env::var("NEONBRIDGE_KEEP_CONSOLE").is_ok_and(|v| v.trim() == "1");
+        // SAFETY: plain kernel32 calls.
+        if unsafe { GetStdHandle(-11i32 as u32) }.is_null() {
+            let attached = if args.is_empty() { keep && (unsafe { AllocConsole() }) != 0 } else { (unsafe { AttachConsole(u32::MAX) }) != 0 };
+            if attached { console_std_handles() } else { null_std_handles() }
         }
     }
     let mut it = args.iter();
@@ -2058,7 +2060,22 @@ fn job_self() {
     }
 }
 
-/// Points stdin, stdout and stderr at NUL (after FreeConsole).
+/// Points stdin, stdout and stderr at the attached console.
+fn console_std_handles() {
+    use std::os::windows::io::IntoRawHandle;
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn SetStdHandle(which: u32, h: *mut std::ffi::c_void) -> i32;
+    }
+    for (which, name) in [(-10i32 as u32, "CONIN$"), (-11i32 as u32, "CONOUT$"), (-12i32 as u32, "CONOUT$")] {
+        if let Ok(f) = std::fs::OpenOptions::new().read(true).write(true).open(name) {
+            // SAFETY: the handle is ours and stays open for the process.
+            unsafe { SetStdHandle(which, f.into_raw_handle()) };
+        }
+    }
+}
+
+/// Points stdin, stdout and stderr at NUL (no console).
 fn null_std_handles() {
     use std::os::windows::io::IntoRawHandle;
     #[link(name = "kernel32")]
