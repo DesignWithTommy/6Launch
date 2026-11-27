@@ -3,9 +3,9 @@
 name = "minivi"
 fork = "cool_fox"   # README.md:3 (built on DoubleGhosty/cool_fox)
 rank = 48   # i95 rank: score 53.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "MiniVI 984ceb7 (GPL-3.0): 5-7 fps in its own notes (Play-VIctory.cmd:40), tuned for 8 GB VRAM GPUs; not yet run here"
+about = "MiniVI 42d79e2 (GPL-3.0): 5-7 fps in its own notes (Play-VIctory.cmd:40), tuned for 8 GB VRAM GPUs; not yet run here"
 upstream = "https://github.com/Androtim/MiniVI"
-updated = "2026-11-27 15:34"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 15:56"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 7   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:66; Play-VIctory.cmd:18
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
