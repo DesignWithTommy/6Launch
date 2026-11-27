@@ -1,55 +1,71 @@
 # Neonbridge launcher spec for vendor/nvidia: trustno1-coder's VIctory-NVIDIA (NVIDIA speed set on the 7900XTX base).
-# Build and env are its README "Build" section and scripts/play-nvidia.ps1 (default: the speed set, Series S).
+# Build and env are scripts/play-foxhound.ps1 (play-nvidia.ps1 now calls it): release build, Series X at 1440p, no frame cap; DLSS only with NVIDIA's files, so off here.
 name = "nvidia"
 fork = "VIctory"
 rank = 29   # #29 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-NVIDIA b190242 (GPL-3.0): 20 to 22 fps indoors on an RTX 5070, at half render scale on the Series S profile; no session length given; not yet run here"
+about = "VIctory-NVIDIA caab8b4 (GPL-3.0): CGBJ renderer with DLSS and frame generation; 15 to 17 fps on an RTX 5070 before generated frames; here without DLSS: Series X at native 1440p, uncapped"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
 updated = "2026-11-27"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 124   # GitHub stars when last checked
-build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:234
+stars = 125   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-foxhound.ps1:133 (-Build release, its default)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
-exe = "target/diag/victory.exe"
+exe = "target/release/victory.exe"
 diag_build = []
-run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play-nvidia.ps1:104-105 (Series S unless -SeriesX)
+run = ["run", "{game_exe}", "--console", "series-x", "--execute"]   # play-foxhound.ps1:113,149 (Series X unless -SeriesS)
 prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll"]   # its 7900XTX base's warm
 game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
 agility = false
 
-preset_quality = ["VICTORY_RELAY=1", "VICTORY_CARD_STEPS=0", "VICTORY_TEXTURE_NO_WAIT=0"]   # play-nvidia.ps1 -Quality: fewer stretched bodies, less rainbow skin, ~13 fps
-preset_8gb = ["VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours: its 1536 MB card buffers trimmed for 8 GB cards
-preset_half_scale = ["VICTORY_UPSCALE=", "VICTORY_RENDER_SCALE=0.5", "VICTORY_OWN_UPSCALER=1"]   # the old default: half render scale and the title's upscaler (play-nvidia.ps1 -Resolution 540)
+preset_series_s = ["--console=series-s", "VICTORY_NATIVE_1440P="]   # play-foxhound.ps1 -SeriesS
+preset_8gb = ["--console=series-s", "VICTORY_NATIVE_1440P=", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours: Series S for 8 GB cards
+preset_30fps = ["VICTORY_FRAME_INTERVAL_US=33333"]   # play-foxhound.ps1 -Fps 30: the title's own rate
+preset_4k = ["VICTORY_NATIVE_1440P="]   # play-foxhound.ps1 -Res 4k: the stock Series X output
 
-[env]   # play-nvidia.ps1 (6395727) $settings, no DLSS files
+[env]   # play-foxhound.ps1 (caab8b4) $settings, without NVIDIA's DLSS files
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
-VICTORY_TEXTURE_NO_WAIT = "0"   # play-nvidia.ps1 6395727: textures are waited for
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
 VICTORY_RELAY = "2"
-VICTORY_CARD_STEPS = "2"
+VICTORY_RELAY_COPY = "1"
 VICTORY_WIDE_BACK = "1"
 VICTORY_CARD_REHASH_RUNS = "1"
 VICTORY_JOIN_COPIES = "1"
-VICTORY_INDIRECT_WINDOW = "1"
-VICTORY_RELAY_COPY = "1"
-VICTORY_WINDOWS_BAR_MB = "3072"   # play-nvidia.ps1:89-93: 3072 under 24 GB RAM (0 above); kept on, harmless with more RAM
-VICTORY_INDIRECT_BATCH = "2"
-VICTORY_MAP_THREADS = "1"
-VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_STEPS = "2"
 VICTORY_CARD_AWAKE = "1"
-VICTORY_SHOW_AFTER = "1"
-VICTORY_AMBIENT = "0"   # 6395727: light stand-in off
-VICTORY_D3D12_DRED = "light"
-VICTORY_THIN = "1"
-VICTORY_JOIN_PARTS = "8"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_INDIRECT_BATCH = "2"
 VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_MAP_THREADS = "1"
+VICTORY_WC_NO_BACK = "1"
+VICTORY_WC_NO_BACK_MIN_KB = "1024"
+VICTORY_SOFT_VIEWS = "copies"
+VICTORY_TEXTURE_POOL = "1"
+VICTORY_RIPE_BLOCKS = "0"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_TEXTURE_CATCHUP = "0"
+VICTORY_TEXTURE_STAGE_MS = "16"
+VICTORY_LEVELS_ON_DEMAND = "0"
+VICTORY_PRELUDE_UPLOADS = "1"
+VICTORY_SHOW_NEW_LATER = "1"
+VICTORY_POOL_SMALL = "0"
+VICTORY_TABLED_REREAD = "1"
+VICTORY_QUEUE_HOST_TEXTURES = "0"
+VICTORY_HEAP_SYNC_FIRST = "1"
+VICTORY_SYNC_IN_PLACE = "1"
+VICTORY_SPANS_QUICK = "1"
+VICTORY_SYNC_FINE = "1"
+VICTORY_HEAP_SYNC_AT_SUBMIT = "1"
+VICTORY_AMBIENT = "0.8"
 VICTORY_AMBIENT_AIR = "1.5"
-VICTORY_NAN_SCRUB = "1"
-VICTORY_PIPELINE_WAIT_MS = "10000"
-VICTORY_DYNAMIC_SLOTS = "524288"
-VICTORY_CARD_BUFFERS_MIN_MB = "1"
-VICTORY_CARD_BUFFERS_MB = "1536"
-VICTORY_FETCH_CHECK = "1"   # 6395727: torn copy-backs fetched again
-VICTORY_UPSCALE = "stretch"   # 6395727: Series S without the DLSS files stretches its picture
+VICTORY_AMBIENT_SPECULAR = "1"
+VICTORY_EARLY_DEPTH = "1"
+VICTORY_LEAVE_OUT = "02384a60fda6f2d0,731a39171b568298"
+VICTORY_PIPELINE_BOOK = "1"
+VICTORY_NATIVE_1440P = "1"   # -Res 1440, its default
+VICTORY_FRAME_INTERVAL_US = "1000"   # -Fps 1000, its default: no cap
 
 [controls]
 left_stick = "W A S D"
