@@ -3,9 +3,9 @@
 name = "united"
 fork = "VIctory"
 rank = 32   # i95 rank: score 59.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "Victory-United fdd9e61 (GPL-3.0): VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with scripted movement, three 7-minute runs, Series S; 'not playable yet'; not yet run here"
+about = "Victory-United b57194f (GPL-3.0): VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with scripted movement, three 7-minute runs, Series S; 'not playable yet'; not yet run here"
 upstream = "https://github.com/Fayberr/Victory-United"
-updated = "2026-11-27 15:04"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 15:46"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 8   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:59
 exe = "target/diag/victory.exe"   # play.ps1:80 ($Build = diag)
