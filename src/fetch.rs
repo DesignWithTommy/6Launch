@@ -313,3 +313,93 @@ pub fn tree_hash(dir: &Path) -> String {
     }
     format!("{:x}", h.finalize())
 }
+
+const RELEASE_API: &str = "https://api.github.com/repos/DesignWithTommy/i95-GTA6-PC-Launcher/releases/latest";
+
+/// "v0.4.10" -> (0, 4, 10).
+fn version(t: &str) -> Option<(u32, u32, u32)> {
+    let mut p = t.trim().trim_start_matches('v').split('.').map(|n| n.parse::<u32>().ok());
+    Some((p.next()??, p.next()??, p.next().flatten().unwrap_or(0)))
+}
+
+/// The first `"key": "value"` in GitHub's JSON (no escapes in tags or asset URLs).
+fn json_str<'a>(json: &'a str, key: &str, from: usize) -> Option<(&'a str, usize)> {
+    let at = from + json[from..].find(&format!("\"{key}\""))?;
+    let rest = &json[at + key.len() + 2..];
+    let open = rest.find('"')? + 1;
+    let len = rest[open..].find('"')?;
+    Some((&rest[open..open + len], at + key.len() + 2 + open + len))
+}
+
+/// Startup: the newest GitHub release (5 s at most). When it is newer than
+/// this build, asked first: its zip is downloaded, i95.exe moved aside
+/// (i95.exe.old, removed at the next start) and the zip's files copied over
+/// this install, then the new i95 is started and this one exits.
+/// A checkout build (a .git above the exe) or NEONBRIDGE_UPDATE=0: nothing.
+pub fn self_update() {
+    let Ok(exe) = std::env::current_exe() else { return };
+    let Some(dir) = exe.parent().map(Path::to_path_buf) else { return };
+    let _ = fs::remove_file(exe.with_extension("exe.old"));
+    if std::env::var("NEONBRIDGE_UPDATE").is_ok_and(|v| v.trim() == "0") || dir.ancestors().any(|a| a.join(".git").exists()) {
+        return;
+    }
+    let tmp = std::env::temp_dir().join("i95-release.json");
+    let got = super::runtimes::command("curl").args(["-L", "--fail", "-sS", "--max-time", "5", "-H", "Accept: application/vnd.github+json", "-o"]).arg(&tmp).arg(RELEASE_API)
+        .status().is_ok_and(|s| s.success());
+    let Some(json) = got.then(|| fs::read_to_string(&tmp).ok()).flatten() else { return };
+    let _ = fs::remove_file(&tmp);
+    let Some((tag, _)) = json_str(&json, "tag_name", 0) else { return };
+    let (Some(new), Some(ours)) = (version(tag), version(env!("CARGO_PKG_VERSION"))) else { return };
+    if new <= ours {
+        return;
+    }
+    let mut at = 0;
+    let url = loop {
+        match json_str(&json, "browser_download_url", at) {
+            Some((u, _)) if u.ends_with(".zip") => break u.to_string(),
+            Some((_, next)) => at = next,
+            None => return,
+        }
+    };
+    if !ask(&format!("i95 {tag} is out (this is v{}).\n\nUpdate now? i95 restarts when it is done.", env!("CARGO_PKG_VERSION"))) {
+        return;
+    }
+    if let Err(e) = install_release(&url, &exe, &dir) {
+        println!("[update] {tag}: {e}");
+        if !exe.exists() {
+            let _ = fs::rename(exe.with_extension("exe.old"), &exe);
+        }
+        ask(&format!("The update to {tag} failed: {e}\n\nThis version starts instead. (Yes or No both continue.)"));
+        return;
+    }
+    println!("[update] {tag} installed; restarting");
+    let _ = super::runtimes::command(&exe).current_dir(&dir).spawn();
+    std::process::exit(0);
+}
+
+fn install_release(url: &str, exe: &Path, dir: &Path) -> Result<(), String> {
+    let work = std::env::temp_dir().join("i95-update");
+    let _ = fs::remove_dir_all(&work);
+    fs::create_dir_all(&work).map_err(|e| e.to_string())?;
+    let zip = work.join("i95.zip");
+    crate::splash::status(0.05, "Downloading the i95 update");
+    let ok = |c: &mut std::process::Command| c.status().is_ok_and(|s| s.success());
+    if !ok(super::runtimes::command("curl").args(["-L", "--fail", "-sS", "-o"]).arg(&zip).arg(url)) {
+        return Err(format!("download failed ({url})"));
+    }
+    let tar = PathBuf::from(std::env::var_os("SystemRoot").unwrap_or_else(|| r"C:\Windows".into())).join(r"System32\tar.exe");
+    if !ok(super::runtimes::command(&tar).arg("-xf").arg(&zip).arg("-C").arg(&work)) {
+        return Err("unpacking failed".into());
+    }
+    // The zip holds one folder (i95\) with i95.exe in it.
+    let top = fs::read_dir(&work).map_err(|e| e.to_string())?.flatten().map(|e| e.path()).find(|p| p.join("i95.exe").is_file())
+        .ok_or("the zip held no i95.exe")?;
+    // A running exe can be renamed, not overwritten.
+    fs::rename(exe, exe.with_extension("exe.old")).map_err(|e| format!("moving the running exe aside: {e}"))?;
+    copy_tree(&top, dir).map_err(|e| format!("copying the new files: {e}"))?;
+    if top.join("i95.exe") != *exe && exe.file_name() != Some(std::ffi::OsStr::new("i95.exe")) {
+        fs::copy(dir.join("i95.exe"), exe).map_err(|e| e.to_string())?;
+    }
+    let _ = fs::remove_dir_all(&work);
+    Ok(())
+}

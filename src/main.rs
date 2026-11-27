@@ -285,6 +285,7 @@ fn run(args: &[OsString]) -> Result<(), Box<dyn Error>> {
     }
     // No --game: the one-line picker (folder, exe or MicrosoftGame.Config).
     if game.is_none() && !want_report && mode != Mode::BuildOnly && mode != Mode::Prewarm && std::env::var("NEONBRIDGE_PICKER").map_or(true, |v| v.trim() != "0") {
+        fetch::self_update();
         fetch::sync_catalog(&runtimes::vendor());
         let Some(p) = picker::pick() else { return Ok(()) };
         gui = true;
