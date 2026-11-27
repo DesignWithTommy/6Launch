@@ -89,7 +89,7 @@ preset_warm_all = ["VICTORY_EARLY_ALL=1", "VICTORY_PIPELINE_BOOK=1"]   # ours: e
 preset_windowed = ["VICTORY_FULLSCREEN="]   # windowed instead of fullscreen
 
 [env]   # crates/anyxboxx/src/run/settings.rs TUNED + ALWAYS (5a08a33: Vice-Tay base, its play.ps1 -Machine 4070)
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"   # Neonbridge: one save/settings folder for the victory family
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
 VICTORY_TEXTURE_NO_WAIT = "1"
 VICTORY_RELAY = "2"
 VICTORY_WIDE_BACK = "1"
@@ -311,7 +311,7 @@ about = "GTA6-BootTest 32683d8 (no licence): boots, streams archives, runs the f
 upstream = "https://github.com/OnlyMoisties/GTA6-BootTest"
 updated = "2026-11-23 20:09"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 45   # GitHub stars when last checked
-build = ["cmd", "/c", "src\build.bat"]   # README.md:33
+build = ["cmd", "/c", "src\\build.bat"]   # README.md:33
 watch = ["src"]
 exe = "bin/harness.exe"   # run.bat:9
 run = ["{game_exe}", "{root}/bin/stubs", "{root}/logs", "60", "run", "-skip"]   # run.bat:9

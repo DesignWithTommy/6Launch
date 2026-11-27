@@ -838,7 +838,19 @@ fn diag_build(name: &str, root: &Path, spec: &Spec, cmd: &[String], exe: &Path) 
             Some(e) => (PathBuf::new(), root.join(e)),
             None => {
                 let to = root.join("target-diag");
-                let exe = exe.strip_prefix(root.join("target")).map(|rel| to.join(rel)).unwrap_or_else(|_| exe.to_path_buf());
+                // `--profile diag` builds into target-diag\diag, not \release
+                // (cgbj, rdna and coolfox12 were looked for in the wrong folder).
+                let profile = line.iter().position(|a| a == "--profile").and_then(|i| line.get(i + 1)).map(|p| if p == "dev" { "debug" } else { p.as_str() });
+                let exe = exe
+                    .strip_prefix(root.join("target"))
+                    .map(|rel| {
+                        let mut parts = rel.components();
+                        match (profile, parts.next()) {
+                            (Some(p), Some(_)) => to.join(p).join(parts.as_path()),
+                            _ => to.join(rel),
+                        }
+                    })
+                    .unwrap_or_else(|_| exe.to_path_buf());
                 (if line.first().map(String::as_str) == Some("cargo") { to } else { PathBuf::new() }, exe)
             }
         };
