@@ -1,0 +1,18 @@
+name = "cta"
+fork = "VIctory"
+about = "ClaudeTheftAuto (GPL-3.0): Vice-Tay plus CTA's patches, built in place from the CTA checkout (vendor/cta/tree: a junction to ..\\Vnity\\vendor\\vicetay, made by hand; not in git); rebuilt only when its sources change"
+upstream = "https://github.com/DesignWithTommy/ClaudeTheftAuto"
+# The tree is CTA's own (Vnity\\vendor\\vicetay with patches/*.patch applied by `cta setup`); reached through the tree junction.
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--manifest-path", "tree/Cargo.toml"]
+exe = "tree/target/diag/victory.exe"
+diag_build = []
+run = ["run", "{game_exe}", "--console", "series-x", "--execute"]
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]
+watch = ["tree/apps", "tree/crates", "tree/Cargo.toml", "tree/Cargo.lock"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+preset_measure = ["VICTORY_WATCH_STATS=1", "VICTORY_COMMIT_BREAKDOWN=1", "VICTORY_MEM_STATS_MS=5000", "VICTORY_CARD_MEMORY=1", "VICTORY_PASS_TIMES=1", "VICTORY_TABLE_COUNTS=1", "VICTORY_FENCE_WAIT_LOG_MS=16", "VICTORY_WAIT_LOGS=1", "VICTORY_PIPELINE_MISS_LOG=1", "VICTORY_COMPILE_START_LOG=1", "VICTORY_SAVE_LOG=1"]   # CTA presets/measure.toml
+[env]
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # one save/settings folder for the victory family
+VICTORY_OUTPUT = "1920x1080"   # CTA: every test at 1080p (resolution.rs patches the title's output size)

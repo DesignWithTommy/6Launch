@@ -25,3 +25,5 @@ __pycache__/
 vendor/m-*/
 DEVELOPERS.md
 
+vendor/cta/tree
+vendor/cta/crates
