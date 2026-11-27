@@ -1,0 +1,22 @@
+# Launcher spec for vendor/leonida: ProjectLeonidaL's Leonida Legacy (static recompilation, not a VIctory fork).
+# Build, run and env are its run-gta6.ps1, leonida.example.toml and README.
+name = "leonida"
+fork = "Leonida"
+about = "Leonida b6cea00 (GPL-3.0): static recompilation; about 10 fps in the first rooms with its newer switches; not yet run here"
+upstream = "https://github.com/ProjectLeonidaL/leonida"
+updated = "2026-11-27 08:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 536   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "-p", "leonida"]   # run-gta6.ps1:33, README.md:86
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/leonida.exe"   # run-gta6.ps1:35
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "leonida", "--features", "diagnostics"]   # README.md:290
+diag_exe = "target/diag/leonida.exe"   # Cargo.toml:79 [profile.diag]
+cwd = "target/release"
+run = ["run", "--execute"]   # run-gta6.ps1:86 (game folder from LEONIDA_GAME_DIR, run-gta6.ps1:61)
+game_env = "LEONIDA_GAME_DIR"   # leonida.example.toml:7
+cache_env = "LEONIDA_CACHE_DIR"   # leonida.example.toml:11
+prewarm = ["translate", "--warm", "all"]   # run-gta6.ps1:77
+agility = false
+
+[env]   # run-gta6.ps1:84; graphics come from its own measured profiles (leonida.example.toml:22-24)
+LEONIDA_LOG = "warn"

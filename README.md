@@ -67,6 +67,16 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 31 | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | VIctory | 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds | Not run yet |
 | 32 | [Scarlett fork](https://github.com/op-lite/victory-scarlett) | CGBJ | cool_fox plus a local fork's work: 16 to 21 fps in hand-played heavy scenes (prison yard, open world), Series X at 1440p, ray tracing off, RTX 4080 SUPER | Not run yet |
 | 33 | [mavis-9070xt](https://github.com/mavis140/mavis-9070xt) | VIctory-7900XTX | 18.9 fps median over a 27-minute session, Series X at 1440p, ray tracing off, RX 9070 XT 16 GB | Not run yet |
+| – | [Leonida](https://github.com/ProjectLeonidaL/leonida) | own (static recompilation) | About 10 fps in the first rooms with its newer switches; not a VIctory fork | Not run yet |
+| – | [victory-sley-fork](https://github.com/Spaghetih/victory-sley-fork) | VIctory | 20.6 fps median at about 6,000 draws, 11-15 in dense night scenes; FSR 3.1 on NVIDIA | Not run yet |
+| – | [victory-scarlett-3070](https://github.com/Yaekai/victory-scarlett-3070) | Scarlett fork | Tuned for 8 GB NVIDIA (RTX 3070): 16-21 fps in heavy scenes | Not run yet |
+| – | [foxhound](https://github.com/readmet3xt-lab/foxhound) | VIctory | DLSS and frame generation: 30 fps cap on a 4070 SUPER, 16-21 in heavier scenes | Not run yet |
+| – | [VIctory_sm86](https://github.com/whiteh4cker-tr/VIctory_sm86) | VIctory | 27-30 fps in the opening on an RTX 3090 (1440p, DLSS Quality) | Not run yet |
+| – | [POLSKAGUROM](https://github.com/polackangry/POLSKAGUROM) | VIctory | 19.4 fps average on an RTX 5060 Ti 16 GB (Series S) | Not run yet |
+| – | [SlaktarnVI](https://github.com/Slaktarn700/SlaktarnVI) | VIctory | Linux/Proton on an RX 9070 XT: 19-25 fps | Not run yet |
+| – | [VIscosity](https://github.com/FrancescoGelosoEterea/VIscosity) | victory-fork | 17.9 fps median on an RTX 5070 Ti (Series S) | Not run yet |
+| – | [Dark-Victory](https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI) | VIctory | About 10 fps on an RX 6600 | Not run yet |
+| – | [Neptune](https://github.com/Dolberthi/neptune-dolberth-nvidia-8gb) | VIctory | Tuned for 8 GB NVIDIA, 6-core Ryzen, 16 GB RAM; no fps figure yet | Not run yet |
 | – | [Kitty6](https://github.com/kitty-core/Kitty6) | VIctory-7900XTX | 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker | Not run yet |
 | – | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | VIctory-NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker | Not run yet |
 | – | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | CGBJ | cool_fox with VIctory-NVIDIA's 8 GB patches; 7.7 fps at half render scale, 2–3 fps native; not on the tracker | Not run yet |

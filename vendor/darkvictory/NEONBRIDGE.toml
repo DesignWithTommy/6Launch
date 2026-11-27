@@ -1,0 +1,57 @@
+# Launcher spec for vendor/darkvictory: darksidexc's Dark-Victory (RX 6600 + i7-14700KF).
+# Build, run and env are its README and scripts/play.ps1 (default: Series S, not -Safe; FidelityFX parts in preset_fsr4).
+name = "darkvictory"
+fork = "VIctory"
+about = "Dark-Victory a0e8954 (GPL-3.0): stable around 10 fps (9.5-10.7) on an RX 6600; 20 fps is its target; not yet run here"
+upstream = "https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI"
+updated = "2026-11-27 03:49"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 40   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play.ps1:5 -Build release
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"   # play.ps1:97
+# The author's default build is diag (README.md:98, play.ps1:27).
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:98
+diag_exe = "target/diag/victory.exe"   # play.ps1:97
+cwd = "target/release"
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play.ps1:18,135
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+prewarm = ["shaders", "{game}/shaders.rpf"]   # README.md:122 (then warm --used, play.ps1:132)
+agility = false
+
+preset_safe = ["VICTORY_JOIN_PARTS=", "VICTORY_TEXTURE_STAGE_MS=", "VICTORY_PORT_DESCRIPTORS=", "VICTORY_PORT_GUARD=", "VICTORY_PORT_JOURNAL=", "VICTORY_PORT_CONSTANTS=", "VICTORY_WINDOW_KB=", "VICTORY_WINDOW_TAILS=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1:42-56 -Safe
+preset_fsr4 = ["VICTORY_FFX_DIR=%LOCALAPPDATA%\\victory\\fidelityfx-sdk-2.4.0\\FidelityFX-SDK-2.4.0\\Kits\\FidelityFX\\signedbin", "VICTORY_FFX_UPSCALER=fsr4", "VICTORY_FRAMEGEN=1", "VICTORY_FFX_WARM=1", "VICTORY_CARD_BUFFERS_MB=768", "VICTORY_CARD_BUFFERS_MIN_KB=4096", "VICTORY_CARD_SMALL_MB=256", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_LAND_THREADS=8"]   # play.ps1:59-94 (its default when AMD-signed SDK 2.4 DLLs are there)
+preset_fullscreen = ["VICTORY_BORDERLESS=0", "VICTORY_FULLSCREEN=1"]   # play.ps1:32,57 -Fullscreen
+preset_windowed = ["VICTORY_BORDERLESS=0", "VICTORY_WINDOW_MAX=1600x900"]   # play.ps1:32,39-41 -Windowed
+preset_series_x = ["--console=series-x", "VICTORY_BORDERLESS=0", "VICTORY_WINDOW_MAX=1600x900", "VICTORY_PORT_DESCRIPTORS=", "VICTORY_PORT_GUARD=", "VICTORY_PORT_JOURNAL=", "VICTORY_PORT_CONSTANTS=", "VICTORY_WINDOW_KB=", "VICTORY_WINDOW_TAILS="]   # play.ps1:32,39,48 -ConsoleProfile series-x
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1:58 -RayTracing
+
+[env]   # play.ps1:30-56 (Series S, not -Safe)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_DISPLAY_MODE = "1920x1080"
+VICTORY_BORDERLESS = "1"
+VICTORY_AMBIENT_HISTORY_LIMIT = "0"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_SKIP_PIPELINES = "none"
+VICTORY_JOIN_PARTS = "4"
+VICTORY_TEXTURE_STAGE_MS = "16"
+VICTORY_PORT_DESCRIPTORS = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_PORT_JOURNAL = "1"
+VICTORY_PORT_CONSTANTS = "1"
+VICTORY_WINDOW_KB = "1024"
+VICTORY_WINDOW_TAILS = "1"

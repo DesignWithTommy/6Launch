@@ -1,0 +1,112 @@
+name = "neptune"
+fork = "VIctory"
+about = "Neptune (neptune-dolberth-nvidia-8gb) 99b231f (GPL-3.0): no fps figure in its README, tuned for 8 GB NVIDIA + 6-core Ryzen + 16 GB RAM; not yet run here"
+upstream = "https://github.com/Dolberthi/neptune-dolberth-nvidia-8gb"
+updated = "2026-11-26 18:37"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 18   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:83; run-neptune.ps1:33 (+--locked)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"   # run-neptune.ps1:31
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # Cargo.toml:81 [profile.diag]; neptune-diag.ps1 is only a log reader
+diag_exe = "target/diag/victory.exe"
+cwd = "target/release"   # run-neptune.ps1:203
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # run-neptune.ps1:152,202 (series-s unless -SeriesX)
+game_env = "VICTORY_GAME_DIR"   # run-neptune.ps1:158
+cache_env = "VICTORY_CACHE_DIR"   # Neonbridge: this runtime's own cache dir
+prewarm = ["warm"]   # run-neptune.ps1:177 (auto one-time warm before launch)
+agility = false   # cargo build copies redist/D3D12 (Agility 1.620.2) to target/release/D3D12 (README.md:62); run-neptune.ps1:45-52 refetches it
+preset_series_x = ["--console=series-x", "VICTORY_RESOLUTION=1920x1080"]   # run-neptune.ps1 -SeriesX (:152,155)
+preset_taa = ["VICTORY_TAA=1"]   # run-neptune.ps1 -Taa
+preset_no_thin = ["VICTORY_THIN="]   # run-neptune.ps1 -NoThin
+preset_sync_submit = ["VICTORY_ASYNC_SUBMIT=", "VICTORY_ASYNC_PRESENT="]   # run-neptune.ps1 -SyncSubmit
+preset_raw_indirect = ["VICTORY_INDIRECT_RAW=2"]   # run-neptune.ps1 -RawIndirect
+preset_texture_2048 = ["VICTORY_TEXTURE_MAX_DIM=2048"]   # run-neptune.ps1 -TextureMaxDim 2048 (usage line 6)
+preset_window_1600 = ["VICTORY_WINDOW_SIZE=1600x900"]   # run-neptune.ps1 -Window 1600x900 (usage line 7)
+preset_dred = ["VICTORY_D3D12_DRED=1"]   # run-neptune.ps1 -Dred
+# neptune-turbo.ps1 is a PC-prep/telemetry tool (power plan, closes NVIDIA Broadcast/Overlay, stops Sunshine); it sets no
+# runtime switches, so there is no preset_turbo. neptune-diag.ps1 only reads the log. VICTORY_AMBIENT_FILE (ambient.txt
+# written by run-neptune.ps1:139-141) is left out.
+
+[env]   # run-neptune.ps1:54-150, its default profile
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_CARD_WINDOWS_MB = "512"
+VICTORY_CARD_BUFFERS_MB = "1024"
+VICTORY_CARD_ROOM_FOR_TARGETS_MB = "512"
+VICTORY_CARD_ROOM_FOR_BUFFERS = "1"
+VICTORY_TEXTURE_ROOM_PERCENT = "92"
+VICTORY_TEXTURE_HEAPS = "1"
+VICTORY_SLOT_EVICT = "1"
+VICTORY_SLOT_EVICT_PERCENT = "90"
+VICTORY_SLOT_EVICT_MB = "256"
+VICTORY_VRAM_EVICT = "92"
+VICTORY_VRAM_IDLE_MS = "15000,4000,1500"
+VICTORY_TEXTURE_MAX_DIM = "0"
+VICTORY_CLAMP_WAITS = "0"
+VICTORY_RAM_TRIM_MB = "512"
+VICTORY_LIST_POOL_MB = "384"
+VICTORY_LIST_POOL_MOST = "768"
+VICTORY_LIST_POOL_IDLE_S = "10"
+VICTORY_TEXTURE_STAGE_MB = "256"
+VICTORY_DSTORAGE_STAGING_MB = "64"
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_DROP_DXIL = "1"
+VICTORY_PROCESS_PRIORITY = "normal"
+VICTORY_SHADER_META_CACHE = "1"
+VICTORY_THIN = "1"
+VICTORY_WATCH_4K = "1"
+VICTORY_GUARD_REST = "3000"
+VICTORY_RANGED = "1"
+VICTORY_INDIRECT_RAW = "3"
+VICTORY_SWEEP_MS = "5000"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_GROUPED_MESH_CLAMP = "1"
+VICTORY_CLAMP_OVER_DRAWS = "1"
+VICTORY_SMART_COPY_BACK = "1"
+VICTORY_SMART_COPY_BACK_KB = "4"
+VICTORY_RELAY_OWN_QUEUE = "1"
+VICTORY_RELAY = "2"
+VICTORY_COPY_CHANGED = "1"
+VICTORY_QUIET_BACK = "1"
+VICTORY_UNDER_WRITES_WORDS = "1"
+VICTORY_UNDER_WRITES_RUNS = "4000000"
+VICTORY_UNDER_WRITES_MASKS = "1"
+VICTORY_UNDER_WRITES_MASKS_LEAST = "1"
+VICTORY_WIDE_MERGE = "1"
+VICTORY_WIDE_REFRESH = "1"
+VICTORY_WIDE_BACK = "1"
+VICTORY_ASK_ONCE = "1"
+VICTORY_ASK_QUIET = "0"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_TEXTURE_HASH_EVERY = "32"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_CARD_REHASH_GAP = "4"
+VICTORY_CARD_SYNC_BATCH = "1"
+VICTORY_STEP_INDEX = "1"
+VICTORY_REFRESH_STAMP = "0"
+VICTORY_TAA = "0"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_WINDOW_TAILS = "1"
+VICTORY_WINDOW_KB = "1024"
+VICTORY_WINDOW_REUSE = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_CARD_WINDOW_UPLOAD = "1"
+VICTORY_LATE_WAIT_LISTS = "1024"
+VICTORY_D3D12_BACKGROUND = "0"
+VICTORY_WAVE_OWN_LDS_GROUPS = "64,128"
+VICTORY_NAN_GUARD = "1"
+VICTORY_EARLY_DEPTH = "1"
+VICTORY_BAKE_TEXTURES_MS = "10000"
+VICTORY_EARLY_TEXTURES_MS = "40"
+VICTORY_TEXTURE_BATCH = "1"
+VICTORY_HEAP_SYNC = "1"
+VICTORY_DESC_DATA = "1"
+VICTORY_OCEAN_READBACK = "1"
+VICTORY_RT_RESOLVE = "0"
+VICTORY_ACTIVATE_RAYS = "0"
+VICTORY_PIPELINE_WAIT_MS = "200"
+VICTORY_TITLE_WATCHDOG = "0"
+VICTORY_TEARING = "1"
+VICTORY_DISCORD = "0"
+VICTORY_ASYNC_SUBMIT = "1"
+VICTORY_ASYNC_PRESENT = "1"
+VICTORY_WINDOW_SIZE = "fullscreen"

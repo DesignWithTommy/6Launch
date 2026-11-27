@@ -1,0 +1,66 @@
+name = "viscosity"
+fork = "VIctory"
+about = "VIscosity e446866 (GPL-3.0): 17.9 fps median on an RTX 5070 Ti 16 GB (Series S, world at 1080p, diag build); not yet run here"
+upstream = "https://github.com/FrancescoGelosoEterea/VIscosity"
+updated = "2026-11-26 23:53"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 13   # GitHub stars when last checked
+# Its launcher runs the diag build (scripts/play-nvidia.ps1:25 -Build diag; the ray-tracing skip list is a diagnostics switch, README.md:65)
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:35; play-viscosity.ps1:8
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/diag/victory.exe"   # play-nvidia.ps1:88 ($Build = diag)
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:35
+diag_exe = "target/diag/victory.exe"   # Cargo.toml:78 [profile.diag]
+# cwd: repo root (play-nvidia.ps1:106 Push-Location .. "victory.toml is looked for here")
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play-nvidia.ps1:104-105
+game_env = "VICTORY_GAME_DIR"   # play-viscosity.ps1:24
+cache_env = "VICTORY_CACHE_DIR"   # play-viscosity.ps1:23 (Neonbridge: this runtime's own cache dir)
+prewarm = ["shaders", "{game}/shaders.rpf"]   # README.md:72 (then `victory warm`)
+agility = false   # not checked in the tree
+preset_fullscreen = ["VICTORY_FULLSCREEN=1", "VICTORY_WINDOW_SIZE="]   # play-viscosity.ps1 -Fullscreen (:35)
+preset_world_720 = ["VICTORY_RENDER_SCALE=0.667", "VICTORY_SHARPEN=0.6"]   # play-viscosity.ps1 -World 720 (:36-37)
+preset_world_810 = ["VICTORY_RENDER_SCALE=0.75", "VICTORY_SHARPEN=0.6"]   # play-viscosity.ps1 -World 810
+preset_quality = ["VICTORY_RELAY=1", "VICTORY_CARD_STEPS=0", "VICTORY_TEXTURE_NO_WAIT=0"]   # play-nvidia.ps1 -Quality (:67-72): about 7 fps slower
+preset_series_x = ["--console=series-x"]   # play-nvidia.ps1 -SeriesX (:105)
+preset_miamiwalk = ["VICTORY_NO_WATCHDOG=", "VICTORY_WINDOW_SIZE="]   # scripts/play-miamiwalk.ps1: same set with the title's watchdog on
+preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]
+
+[env]   # play-nvidia.ps1:28-57 overlaid by play-viscosity.ps1:26-37 (world 1080, windowed)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_CARD_STEPS = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_SKIP_PIPELINES = "none"   # its launcher fills this from scripts/rt_off_hashes.txt (1,034 RT shader hashes, play-nvidia.ps1:63-66); not inlined here
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_AMBIENT_AIR = "1.5"
+VICTORY_AMBIENT_MOST = "2"
+VICTORY_NAN_SCRUB = "1"
+VICTORY_PIPELINE_WAIT_MS = "10000"
+VICTORY_DYNAMIC_SLOTS = "524288"
+VICTORY_OWN_UPSCALER = "1"
+VICTORY_BVH_MISS = "1"
+VICTORY_CARD_BUFFERS_MIN_MB = "1"
+VICTORY_COMPOSE = "1"
+VICTORY_CARD_BUFFERS_MB = "3072"   # play-viscosity.ps1:27 (over play-nvidia's 1536)
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_SHARPEN = "0.3"   # play-viscosity.ps1:37 (world 1080)
+VICTORY_BURY_LAG = "24"
+VICTORY_RECHECK_FRAMES = "2,4,8,16,32,64,128,256"
+VICTORY_RECHECK_REFILLS = "4"
+VICTORY_DISPLAY_MODE = "2560x1440"
+VICTORY_NO_WATCHDOG = "1"
+VICTORY_WINDOW_SIZE = "1936x1119"
+VICTORY_RENDER_SCALE = "1.0"

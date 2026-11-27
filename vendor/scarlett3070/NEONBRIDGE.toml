@@ -1,0 +1,76 @@
+# Launcher spec for vendor/scarlett3070: Yaekai's victory-scarlett-3070.
+# Build, run and env are its README and Play-Scarlett.cmd -> scripts/play-scarlett.ps1 (Play-VIctory.cmd -> preset_play_victory).
+name = "scarlett3070"
+fork = "VIctory"
+about = "victory-scarlett-3070 ae29c7b (GPL-3.0): 16-21 fps in heavy scenes, lower when driving; not yet run here"
+upstream = "https://github.com/Yaekai/victory-scarlett-3070"
+updated = "2026-11-27 08:50"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 67   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:375
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+# The author's default build is diag (play-scarlett.ps1:7,32).
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # README.md:115, play-scarlett.ps1:60
+diag_exe = "target/diag/victory.exe"   # play-scarlett.ps1:58
+cwd = "target/release"
+run = ["run", "{game_exe}", "--execute"]   # play-scarlett.ps1:151 (Series X: no --console)
+game_env = "VICTORY_GAME_DIR"   # play-scarlett.ps1:70
+cache_env = "VICTORY_CACHE_DIR"   # play-scarlett.ps1:71
+prewarm = ["shaders", "{game}/shaders.rpf"]   # play-scarlett.ps1:128,136
+agility = false
+
+preset_ray_tracing = ["VICTORY_PROBE_RAYS=", "VICTORY_BVH_BUILDER=1"]   # play-scarlett.ps1:118-119 -RayTracing
+preset_no_probe_rays = ["VICTORY_PROBE_RAYS="]   # play-scarlett.ps1:14,118 -NoProbeRays
+preset_hooks = ["VICTORY_GPU_ONLY=1", "VICTORY_KNOWN_WRITES=1"]   # play-scarlett.ps1:114-117 -Hooks
+preset_play_victory = ["--console=series-s", "VICTORY_AMBIENT_AIR=1.5", "VICTORY_CARD_AWAKE=1", "VICTORY_AMBIENT=0.8", "VICTORY_THIN=1", "VICTORY_LEVELS_ON_DEMAND=1", "VICTORY_PIPELINE_WAIT_MS=", "VICTORY_LATE_WAIT_LISTS=", "VICTORY_BAKE_TEXTURES_MS=", "VICTORY_FRAME_LOG=", "VICTORY_CARD_METER="]   # Play-VIctory.cmd:31-52 (its pareto set, Series S); the fork's other switches stay on
+preset_dred = ["NEONBRIDGE_DIAG=1", "VICTORY_D3D12_DRED=1"]
+
+[env]   # play-scarlett.ps1:69-113,118
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_JOIN_COPIES = "1"
+VICTORY_REFRESH_ONCE = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_BACK_OWN_VIEW = "1"
+VICTORY_WIDE_MERGE = "1"
+VICTORY_MIRROR_FAST = "1"
+VICTORY_FRAME_LOG = "1"
+VICTORY_CARD_METER = "1"
+VICTORY_PIPELINE_WAIT_MS = "500"
+VICTORY_ASYNC_SUBMIT = "1"
+VICTORY_QUEUE2 = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_COPY_PLAIN = "1"
+VICTORY_WIDE_TEXTURES = "1"
+VICTORY_INDIRECT_GATHER = "1"
+VICTORY_LATE_WAIT_LISTS = "1024"
+VICTORY_CARD_FILLS_BATCH = "0"
+VICTORY_GATHER_DISPATCH = "0"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_CARD_AWAKE = "0"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_LEVELS_ON_DEMAND = "0"
+VICTORY_POOL_DISCARD = "1"
+VICTORY_FILL_TITLE = "1"
+VICTORY_PARTIAL_DELTA = "1"
+VICTORY_BAKE_DELTA = "1"
+VICTORY_MAP_LOCK_FINE = "1"
+VICTORY_POOL_CAP = "1"
+VICTORY_TABLE_MEMO = "1"
+VICTORY_LIST_ALIAS_EXACT = "1"
+VICTORY_LIST_HOLD = "1"
+VICTORY_BAKE_TEXTURES_MS = "10000"
+VICTORY_PLANE_NOW = "1"
+VICTORY_SOFT_VIEWS = "copies"
+VICTORY_SAMPLERS_MADE = "1"
+VICTORY_TABLE_NAMED_ONLY = "1"
+VICTORY_QUEUE_MARKS = "1"
+VICTORY_PROBE_RAYS = "1"

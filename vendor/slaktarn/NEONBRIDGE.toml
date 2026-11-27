@@ -1,0 +1,44 @@
+name = "slaktarn"
+fork = "VIctory"
+about = "SlaktarnVI (Valhalla) 03f0f10 (GPL-3.0): Linux/Proton build tuned for an AMD RX 9070 XT, about 19-25 fps in gameplay (S70 preset, frame gen not counted); Windows path is its scripts/play.ps1; not yet run here"
+upstream = "https://github.com/Slaktarn700/SlaktarnVI"
+updated = "2026-11-27 09:29"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 22   # GitHub stars when last checked
+# Its README builds with cargo xwin for Proton (README.md:69-76); natively on Windows the same profile/feature set is used.
+# scripts/play.ps1 defaults to -Build diag (play.ps1:12), the build all its measurements are of.
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:75 (minus xwin/--target)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/diag/valhalla.exe"   # apps/victory/Cargo.toml [[bin]] name = "valhalla" (play.ps1:29 still says victory.exe)
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:75
+diag_exe = "target/diag/valhalla.exe"   # Cargo.toml:78 [profile.diag]
+# cwd: repo root (play.ps1:44 Push-Location .. "victory.toml is looked for here")
+run = ["run", "{game_exe}", "--execute"]   # play.ps1:45 (no --console: Series X, as the S70 preset)
+game_env = "VICTORY_GAME_DIR"   # play.ps1:33
+cache_env = "VICTORY_CACHE_DIR"   # Neonbridge: this runtime's own cache dir
+prewarm = []   # no warm/shaders step in its README or scripts
+agility = false   # not checked in the tree
+preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe (:21-25)
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing (:26): about a third slower
+# The Linux launcher's presets (Low, Medium, High, S70, Ultra; linux/launcher/valhalla.py apply_preset, via linux/s70.sh)
+# need Proton, FSR 4 and Microsoft's dxil beside it; not ported.
+
+[env]   # play.ps1:15-25, its default (non -Safe) set
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
