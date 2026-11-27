@@ -471,12 +471,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== fivestar b42886f8c662510b3a65b1b799c52f92c769479f
+=== fivestar 566c05fac8014e14e522a48ee884db78e4474060
 # Launcher spec for vendor/fivestar: ThatRecompDev's Five Star Recomp, a C# loader and shader translator for
 # GTA VI 1.0.2.1. Build and run are its README and docs/running.md (b42886f). Early: unranked, listed last.
 name = "fivestar"
 fork = "Five Star Recomp"
-about = "Five Star Recomp b42886f (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
+about = "Five Star Recomp 566c05f (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
 upstream = "https://github.com/ThatRecompDev/five-star-recomp"
 build = ["dotnet", "build", "FiveStar.slnx"]   # README.md:46
 watch = ["src", "FiveStar.slnx", "global.json"]
@@ -932,13 +932,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== nvidia 9e7ab9d9a2947131e136015ab6d5d572460509bc
+=== nvidia 63957271cdd1783da4164f398d6ed75270035b74
 # Neonbridge launcher spec for vendor/nvidia: trustno1-coder's VIctory-NVIDIA (NVIDIA speed set on the 7900XTX base).
 # Build and env are its README "Build" section and scripts/play-nvidia.ps1 (default: the speed set, Series S).
 name = "nvidia"
 fork = "VIctory"
 rank = 29   # #29 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-NVIDIA 9e7ab9d (GPL-3.0): 20 to 22 fps indoors on an RTX 5070, at half render scale on the Series S profile; no session length given; not yet run here"
+about = "VIctory-NVIDIA 6395727 (GPL-3.0): 20 to 22 fps indoors on an RTX 5070, at half render scale on the Series S profile; no session length given; not yet run here"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:234
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -952,10 +952,11 @@ agility = false
 
 preset_quality = ["VICTORY_RELAY=1", "VICTORY_CARD_STEPS=0", "VICTORY_TEXTURE_NO_WAIT=0"]   # play-nvidia.ps1 -Quality: fewer stretched bodies, less rainbow skin, ~13 fps
 preset_8gb = ["VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours: its 1536 MB card buffers trimmed for 8 GB cards
+preset_half_scale = ["VICTORY_UPSCALE=", "VICTORY_RENDER_SCALE=0.5", "VICTORY_OWN_UPSCALER=1"]   # the old default: half render scale and the title's upscaler (play-nvidia.ps1 -Resolution 540)
 
-[env]   # play-nvidia.ps1:30-56, its default speed set
+[env]   # play-nvidia.ps1 (6395727) $settings, no DLSS files
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family
-VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_TEXTURE_NO_WAIT = "0"   # play-nvidia.ps1 6395727: textures are waited for
 VICTORY_RELAY = "2"
 VICTORY_CARD_STEPS = "2"
 VICTORY_WIDE_BACK = "1"
@@ -969,23 +970,19 @@ VICTORY_MAP_THREADS = "1"
 VICTORY_TITLE_PRIORITIES = "0"
 VICTORY_CARD_AWAKE = "1"
 VICTORY_SHOW_AFTER = "1"
-VICTORY_AMBIENT = "0.8"
+VICTORY_AMBIENT = "0"   # 6395727: light stand-in off
 VICTORY_D3D12_DRED = "light"
-VICTORY_SKIP_PIPELINES = "none"
 VICTORY_THIN = "1"
 VICTORY_JOIN_PARTS = "8"
 VICTORY_UPLOAD_AHEAD = "1"
 VICTORY_AMBIENT_AIR = "1.5"
-VICTORY_AMBIENT_MOST = "2"
 VICTORY_NAN_SCRUB = "1"
 VICTORY_PIPELINE_WAIT_MS = "10000"
 VICTORY_DYNAMIC_SLOTS = "524288"
-VICTORY_RENDER_SCALE = "0.5"
-VICTORY_OWN_UPSCALER = "1"
-VICTORY_BVH_MISS = "1"
 VICTORY_CARD_BUFFERS_MIN_MB = "1"
 VICTORY_CARD_BUFFERS_MB = "1536"
-VICTORY_COMPOSE = "1"
+VICTORY_FETCH_CHECK = "1"   # 6395727: torn copy-backs fetched again
+VICTORY_UPSCALE = "stretch"   # 6395727: Series S without the DLSS files stretches its picture
 
 [controls]
 left_stick = "W A S D"
@@ -1230,14 +1227,14 @@ rt = "C"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== scarlettport ba42a57e92076742b41fb073428c1aea0b46dd95
+=== scarlettport 41ec87cb9d3a96416028fd0b0368699544fde076
 # ScarlettPort's victory runtime (engine). Its second runtime, runtime/xcl, is a distinct
 # playable path (scripts/setup.ps1:15 `cargo build --release` in runtime\xcl -> runtime\xcl\target\release\xcl.exe,
 # scripts/play.ps1:34 `xcl run <game>` with XCL_DXC_THREADS=4, XCL_NO_WATCHDOG=1, XCL_PRESS_FILE); not modelled here.
 name = "scarlettport"
 fork = "victory-fork"
 rank = 9   # #9 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "ScarlettPort ba42a57 (victory runtime), GPL-3.0"
+about = "ScarlettPort 41ec87c (victory runtime), GPL-3.0"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 # scripts/setup-scarlett.ps1:18,21 (run in engine; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "engine/Cargo.toml", "--release", "-p", "scarlett", "--bin", "scarlett", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]
@@ -1965,12 +1962,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vilocity 4315c7728089cb522c8c858dcbba3ae1d907098f
+=== vilocity 8f6b185e1e88742eb3d17da4ac2867667de791fe
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
 rank = 18   # #18 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vilocity 4315c77 (GPL-3.0): 26-27 fps at 5,000 draws, 17-19 at 10,000-11,000, Series S, RTX 5080 (now on cool_fox's engine); not yet run here"
+about = "Vilocity 8f6b185 (GPL-3.0): 26-27 fps at 5,000 draws, 17-19 at 10,000-11,000, Series S, RTX 5080 (now on cool_fox's engine); not yet run here"
 upstream = "https://github.com/voidopcode/vilocity"
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"
@@ -1983,6 +1980,7 @@ agility = false
 
 preset_series_x = ["VILOCITY_CONSOLE=series-x"]   # play-gta6.ps1 -SeriesX
 preset_defaults = ["VILOCITY_AMBIENT=", "VILOCITY_AMBIENT_AIR=", "VILOCITY_TEXTURE_NO_WAIT=", "VILOCITY_RELAY=", "VILOCITY_RELAY_COPY=", "VILOCITY_WIDE_BACK=", "VILOCITY_CARD_REHASH_RUNS=", "VILOCITY_CARD_STEPS=", "VILOCITY_CARD_AWAKE=", "VILOCITY_CARD_BUFFERS_MIN_KB=", "VILOCITY_JOIN_COPIES=", "VILOCITY_JOIN_PARTS=", "VILOCITY_INDIRECT_WINDOW=", "VILOCITY_INDIRECT_BATCH=", "VILOCITY_MAP_THREADS=", "VILOCITY_THIN=", "VILOCITY_UPLOAD_AHEAD=", "VILOCITY_SHOW_AFTER=", "VILOCITY_FRAME_INTERVAL_MS="]   # play-gta6.ps1 -Defaults
+preset_amd = ["VILOCITY_CARD_AWAKE=1"]   # play-gta6.ps1: the keep-busy loop on AMD cards
 preset_16_cores = ["VILOCITY_THIN_THREADS=12", "VILOCITY_UNDER_THREADS=8", "VILOCITY_LAND_THREADS=6"]   # play-gta6.ps1:51-53 (32+ logical processors)
 
 [env]   # scripts/play-gta6.ps1 (9ef6bc6): the native engine is now cool_fox (30e54b4), its own launcher's set
@@ -1995,7 +1993,7 @@ VILOCITY_RELAY_COPY = "1"
 VILOCITY_WIDE_BACK = "1"
 VILOCITY_CARD_REHASH_RUNS = "1"
 VILOCITY_CARD_STEPS = "2"
-VILOCITY_CARD_AWAKE = "1"
+VILOCITY_CARD_AWAKE = "0"   # play-gta6.ps1 (8f6b185): 0 on NVIDIA cards (its keep-busy loop is for AMD); preset amd turns it back on
 VILOCITY_CARD_BUFFERS_MIN_KB = "64"
 VILOCITY_JOIN_COPIES = "1"
 VILOCITY_JOIN_PARTS = "8"
