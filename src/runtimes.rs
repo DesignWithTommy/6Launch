@@ -188,6 +188,10 @@ pub fn package(stage: &Path) -> Result<(Vec<String>, Vec<(String, String)>), Box
     if vendor().join("patches").is_dir() {
         copy_source(&vendor().join("patches"), &stage.join("vendor").join("patches"))?;
     }
+    // The loader art (splash.rs looks for it beside vendor\).
+    if let Some(art) = vendor().parent().map(|r| r.join("splash.bmp")).filter(|p| p.is_file()) {
+        fs::copy(&art, stage.join("splash.bmp"))?;
+    }
     Ok((done, skipped))
 }
 
