@@ -8,7 +8,7 @@ rank = 36   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's 
 about = "victory-amd aa8399e (GPL-3.0): 2 to 3 fps in the world over 8-minute runs, RTX 4070; not yet run here"
 upstream = "https://github.com/myokex/victory-amd"
 updated = "2026-11-25 18:46"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 226   # GitHub stars when last checked
+stars = 227   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:391 (+--locked)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"   # README.md:392
@@ -102,7 +102,7 @@ rank = 15   # i95 rank: score 62.9 by PortWatch VI's formula (from the author's 
 about = "AnyXboxX bebcfb1 (GPL-3.0): 'About 24 fps median in the world in Full HD', 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
 updated = "2026-11-27 14:50"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 515   # GitHub stars when last checked
+stars = 516   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml"]   # crates/anyxboxx/src/run/steps.rs:71-73
 watch = ["third_party/victory/apps", "third_party/victory/crates", "third_party/victory/Cargo.toml", "third_party/victory/Cargo.lock"]
 exe = "third_party/victory/target/release/victory.exe"   # steps.rs:41-44
@@ -652,7 +652,7 @@ rank = 2   # i95 rank: score 77.4 by PortWatch VI's formula (its own assessment;
 about = "DexNom RayTime 4ad8692 (GPL-3.0): 1 fps with ray tracing on, 3.5 to 4 without, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/DexNom/VIctory"
 updated = "2026-11-27 14:44"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1417   # GitHub stars when last checked
+stars = 1418   # GitHub stars when last checked
 # README.md:36: the BCPack format tables first (the sources include_bytes! them; hash-checked, kept once fetched).
 prebuild = ["powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1"]
 build = ["cargo", "build", "--locked", "--release", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:36
@@ -796,7 +796,7 @@ rank = 29   # i95 rank: score 59.3 by PortWatch VI's formula (from the author's 
 about = "foxhound 3d52ac8 (GPL-3.0): 30 fps (the title's cap) on a 4070 SUPER + 7800X3D, 16-21 fps in heavier scenes; not yet run here"
 upstream = "https://github.com/readmet3xt-lab/foxhound"
 updated = "2026-11-27 16:06"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 78   # GitHub stars when last checked
+stars = 80   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:76
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"   # play-foxhound.ps1:22,85
@@ -879,7 +879,7 @@ rank = 11   # i95 rank: score 63.7 by PortWatch VI's formula (from the author's 
 about = "Victory Grimkaaah 7dbe793 (GPL-3.0): 24.3 fps average in busy world scenes with ray tracing off, 13.9 with it on, 3-9 min sessions, RX 7900 XTX, Series X; AMD cards only; not yet run here"
 upstream = "https://github.com/Grimkaaah/Victory-Grimkaaah"
 updated = "2026-11-26 20:13"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 47   # GitHub stars when last checked
+stars = 49   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--release", "-p", "victory", "--manifest-path", "source/Cargo.toml"]   # tools/build.ps1:11-14
 watch = ["source/apps", "source/crates", "source/Cargo.toml", "source/Cargo.lock"]
 exe = "source/target/release/victory.exe"
@@ -1108,7 +1108,7 @@ rank = 4   # i95 rank: score 68.8 by PortWatch VI's formula (its own assessment;
 about = "Kelvaroq 92606ea (GPL-3.0): ~10 fps in typical views (7 to 8 in the heaviest) at 4K on an RTX 5080; a tester's 36 min session without a crash; its unreleased direct memory path needs 22 ms of GPU work an open-world frame and holds 30 fps on loading screens; not yet run here"
 upstream = "https://github.com/stellarr-studio/kelvaroq"
 updated = "2026-11-27 04:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 495   # GitHub stars when last checked
+stars = 498   # GitHub stars when last checked
 build = ["python", "scripts/build_native.py"]   # README.md "Build from source" (fetches victory-fork f85101b)
 build_env = ["CARGO_FEATURE_PURE=1"]   # i95: blake3 in pure Rust; its MASM and C objects fail on the long target path under the 6ixpack source folder (A1009, C1083)
 watch = ["native", "scripts/build_native.py"]
@@ -1232,7 +1232,7 @@ rank = 7   # i95 rank: score 67.5 by PortWatch VI's formula (from the author's r
 about = "KLBF Lab 619cc12 (GPL-3.0): 14.0 fps average over 37 minutes of play, player in control through the prologue (77 min on an earlier build), RX 9070 XT; not yet run here"
 upstream = "https://github.com/PastiiJay/klbf-lab"
 updated = "2026-11-27 15:13"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 185   # GitHub stars when last checked
+stars = 186   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked"]   # README.md:127
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -1292,7 +1292,7 @@ rank = 39   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's 
 about = "Leonida 2313b8a (GPL-3.0): static recompilation; about 10 fps in the first rooms with its newer switches; not yet run here"
 upstream = "https://github.com/ProjectLeonidaL/leonida"
 updated = "2026-11-27 16:21"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 544   # GitHub stars when last checked
+stars = 545   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--release", "-p", "leonida"]   # run-gta6.ps1:33, README.md:86
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/leonida.exe"   # run-gta6.ps1:35
@@ -1345,16 +1345,16 @@ VICTORY_PIPELINE_PRIORITY = "normal"
 VICTORY_SHADER_LOOP_LIMIT = "1024"
 VICTORY_TEXTURE_SKIP_MIPS = "1"
 VICTORY_PRESENT_PLANE = "0"
-=== m1lk 13462d63a0a68e5114e3b2c08439f387016a1f96
+=== m1lk c1129bfa8741c4c309ff6dccbcf807698a69c267
 # Launcher spec for vendor/m1lk: 3cvil's M1LK (low-end NVIDIA: 8 GB VRAM + 16 GB RAM, RTX 4060 Laptop reference).
 # Build, run and env are its README, Setup-M1LK.ps1 and m1lk-play (apps/victory/src/play_launcher.rs): Series X, ray tracing at its config default.
 # Env: M1LK_* is copied to VICTORY_* at start (crates/victory-core/src/env_alias.rs:1-10); the launcher sets VICTORY_* so both spellings work.
 name = "m1lk"
 fork = "VIctory"   # README.md:7 (VIctory + the DexNom fork)
 rank = 46   # i95 rank: score 54.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "M1LK 13462d6 (GPL-3.0): about 4.5 fps walking median on an RTX 4060 Laptop 8 GB / 16 GB RAM (Series S, no RT); not yet run here"   # README.md:3,33
+about = "M1LK c1129bf (GPL-3.0): about 4.5 fps walking median on an RTX 4060 Laptop 8 GB / 16 GB RAM (Series S, no RT); not yet run here"   # README.md:3,33
 upstream = "https://github.com/3cvil/M1LK"
-updated = "2026-11-27 16:19"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 16:30"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 6   # GitHub stars when last checked
 # Initialize-FormatTables.ps1: the BCPack format tables its sources include_bytes! (fetched from Marvisak/VIctory, hash-checked).
 prebuild = ["powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1"]
@@ -1392,7 +1392,7 @@ rank = 49   # i95 rank: score 50.3 by PortWatch VI's formula (its own assessment
 about = "VIctory 63bcca4 (GPL-3.0): The opening mission at about 1 fps on an RX 6700 XT, 'not playable'"
 upstream = "https://github.com/Marvisak/VIctory"
 updated = "2026-11-25 18:27"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 13769   # GitHub stars when last checked
+stars = 13774   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:92
 exe = "target/release/victory.exe"
 run = ["run", "{game_exe}", "--execute"]   # README.md:94
@@ -1695,16 +1695,16 @@ VICTORY_DISCORD = "0"
 VICTORY_ASYNC_SUBMIT = "1"
 VICTORY_ASYNC_PRESENT = "1"
 VICTORY_WINDOW_SIZE = "fullscreen"
-=== nvidia 0f0ada19095979e2192d1b5a98bb5297cf4d53ea
+=== nvidia df2daafeb1b2170931cf7a6eddff6de254841d9c
 # Neonbridge launcher spec for vendor/nvidia: trustno1-coder's VIctory-NVIDIA (NVIDIA speed set on the 7900XTX base).
 # Build and env are scripts/play-foxhound.ps1 (play-nvidia.ps1 now calls it): release build, Series X at 1440p, no frame cap; DLSS only with NVIDIA's files, so off here.
 name = "nvidia"
 fork = "VIctory"
 rank = 1   # i95 rank: score 90.0 by PortWatch VI's formula (its own assessment; scripts/rank.py)
-about = "VIctory-NVIDIA 0f0ada1 (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
+about = "VIctory-NVIDIA df2daaf (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
-updated = "2026-11-27 15:53"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 2556   # GitHub stars when last checked
+updated = "2026-11-27 16:31"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 2612   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-foxhound.ps1:133 (-Build release, its default)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -2133,7 +2133,7 @@ rank = 42   # i95 rank: score 55.6 by PortWatch VI's formula (from the author's 
 about = "ScarlettPort 47aca82 (GPL-3.0): about 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060; not yet run here"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 updated = "2026-11-27 16:11"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1241   # GitHub stars when last checked
+stars = 1243   # GitHub stars when last checked
 # scripts/setup-scarlett.ps1:18,21 (run in engine; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "engine/Cargo.toml", "--release", "-p", "scarlett", "--bin", "scarlett", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]
 watch = ["engine/apps", "engine/crates", "engine/Cargo.toml", "engine/Cargo.lock"]
@@ -2482,7 +2482,7 @@ rank = 23   # i95 rank: score 60.5 by PortWatch VI's formula (from the author's 
 about = "SlaktarnVI (Valhalla) e5b0dc8 (GPL-3.0): Linux/Proton build tuned for an AMD RX 9070 XT, about 19-25 fps in gameplay (S70 preset, frame gen not counted); Windows path is its scripts/play.ps1; not yet run here"
 upstream = "https://github.com/Slaktarn700/SlaktarnVI"
 updated = "2026-11-27 11:02"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 150   # GitHub stars when last checked
+stars = 152   # GitHub stars when last checked
 # Its README builds with cargo xwin for Proton (README.md:69-76); natively on Windows the same profile/feature set is used.
 # scripts/play.ps1 defaults to -Build diag (play.ps1:12), the build all its measurements are of.
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:75 (minus xwin/--target)
@@ -2532,7 +2532,7 @@ rank = 26   # i95 rank: score 60.0 by PortWatch VI's formula (from the author's 
 about = "victory-sley-fork ba6ce8e (GPL-3.0): 20.6 fps median at about 6,000 draws, 11-15 fps in dense night scenes; not yet run here"
 upstream = "https://github.com/Spaghetih/victory-sley-fork"
 updated = "2026-11-27 06:35"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 145   # GitHub stars when last checked
+stars = 144   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:149, Play-VIctory.cmd:18 (--locked)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"   # Play-VIctory.cmd:16
@@ -2696,15 +2696,15 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== united b57194fafe1236003cef50f723b71a3b8853efc6
+=== united 006bb6d6b999245f6dc6e24d8fe69e622d288d4c
 # Neonbridge launcher spec for vendor/united: Fayberr's Victory-United (VIctory's best open PRs in one tree).
 # Build and run are its README "How to run it" and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "united"
 fork = "VIctory"
 rank = 32   # i95 rank: score 59.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "Victory-United b57194f (GPL-3.0): VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with scripted movement, three 7-minute runs, Series S; 'not playable yet'; not yet run here"
+about = "Victory-United 006bb6d (GPL-3.0): VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with scripted movement, three 7-minute runs, Series S; 'not playable yet'; not yet run here"
 upstream = "https://github.com/Fayberr/Victory-United"
-updated = "2026-11-27 15:46"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 16:27"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 8   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:59
 exe = "target/diag/victory.exe"   # play.ps1:80 ($Build = diag)
@@ -2849,7 +2849,7 @@ rank = 3   # i95 rank: score 73.0 by PortWatch VI's formula (from the author's r
 about = "Vice-Tay 0148258 (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 updated = "2026-11-27 15:33"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 337   # GitHub stars when last checked
+stars = 339   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
 diag_build = []   # its default build is already the diagnostics one
@@ -2937,7 +2937,7 @@ rank = 27   # i95 rank: score 59.8 by PortWatch VI's formula (its own assessment
 about = "VIctory-fxceless 2eade68 (GPL-3.0): its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and light, 5 to 9 min runs ending in a crash in the game's script code, RTX 4070; without it about 11 fps at the first boat mission"
 upstream = "https://github.com/fxceless/victory-fork"
 updated = "2026-11-27 15:14"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 3353   # GitHub stars when last checked
+stars = 3355   # GitHub stars when last checked
 # fxceless's victory has no Agility opt-in (no D3D12SDKVersion/D3D12SDKPath
 # exports, unlike ScarlettPort's copy): it runs on the system's D3D12.
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:346 (+--locked)
@@ -3165,14 +3165,14 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vilocity e7a5cbed3250171ca55f06b974eff87f88e33453
+=== vilocity 2c20a770f1d433bae0d5de8f499cd25e4c3001d2
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
 rank = 5   # i95 rank: score 68.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "Vilocity e7a5cbe (GPL-3.0): 33 fps median through the opening and 25 to 29 in the open world, 12 minutes of each unattended without a crash or driver timeout, Series S, RTX 5080; 'not playable yet'; not yet run here"
+about = "Vilocity 2c20a77 (GPL-3.0): 33 fps median through the opening and 25 to 29 in the open world, 12 minutes of each unattended without a crash or driver timeout, Series S, RTX 5080; 'not playable yet'; not yet run here"
 upstream = "https://github.com/voidopcode/vilocity"
-updated = "2026-11-27 16:16"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 16:25"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 35   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"
@@ -3207,7 +3207,7 @@ VILOCITY_RELAY_COPY = "1"
 VILOCITY_WIDE_BACK = "1"
 VILOCITY_CARD_REHASH_RUNS = "1"
 VILOCITY_CARD_STEPS = "2"
-VILOCITY_AMBIENT_FLOOR = "0.05"   # launcher.ps1 (e7a5cbe) Night, on by default: a little light where no lamp reaches
+VILOCITY_AMBIENT_FLOOR = "0.05"   # launcher.ps1 (2c20a77) Night, on by default: a little light where no lamp reaches
 VILOCITY_CARD_AWAKE = "0"   # play-gta6.ps1 (8f6b185): 0 on NVIDIA cards (its keep-busy loop is for AMD); preset amd turns it back on
 VILOCITY_CARD_BUFFERS_MIN_KB = "64"
 VILOCITY_INDIRECT_WINDOW = "1"
@@ -3217,7 +3217,7 @@ VILOCITY_THIN = "1"
 VILOCITY_UPLOAD_AHEAD = "1"
 VILOCITY_SHOW_AFTER = "1"
 VILOCITY_FRAME_INTERVAL_MS = "16.667"   # play-gta6.ps1: at most 60 fps (menus ran at ~1,000)
-VILOCITY_SUBMIT_FRAMES = "0"   # play-gta6.ps1 (e7a5cbe): JOIN_COPIES/JOIN_PARTS no longer set; torn frames 10 to 90 times fewer
+VILOCITY_SUBMIT_FRAMES = "0"   # play-gta6.ps1 (2c20a77): JOIN_COPIES/JOIN_PARTS no longer set; torn frames 10 to 90 times fewer
 VILOCITY_PIPELINE_BOOK = "1"   # play-gta6.ps1:76
 VILOCITY_FULLSCREEN = "1"   # launcher.ps1:89,454 (full on by default)
 

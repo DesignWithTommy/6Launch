@@ -3,10 +3,10 @@
 name = "nvidia"
 fork = "VIctory"
 rank = 1   # i95 rank: score 90.0 by PortWatch VI's formula (its own assessment; scripts/rank.py)
-about = "VIctory-NVIDIA 0f0ada1 (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
+about = "VIctory-NVIDIA df2daaf (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
-updated = "2026-11-27 15:53"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 2556   # GitHub stars when last checked
+updated = "2026-11-27 16:31"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 2612   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-foxhound.ps1:133 (-Build release, its default)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
