@@ -3,10 +3,10 @@
 name = "nvidia"
 fork = "VIctory"
 rank = 29   # #29 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "VIctory-NVIDIA ca9c75c (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
+about = "VIctory-NVIDIA 0cef07e (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
-updated = "2026-11-27 13:12"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1689   # GitHub stars when last checked
+updated = "2026-11-27 13:59"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 1784   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-foxhound.ps1:133 (-Build release, its default)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -15,7 +15,7 @@ run = ["run", "{game_exe}", "--console", "series-x", "--execute"]   # play-foxho
 prewarm = ["preload", "{game}"]   # apps/victory/src/main.rs Preload: shaders, then warm, then the loading pipelines (its F1 PRELOAD SHADERS)
 game_env = "VICTORY_GAME_DIR"
 cache_env = "VICTORY_CACHE_DIR"
-agility = false
+agility = true   # apps/victory/src/main.rs: D3D12SDKVersion 614, D3D12\D3D12Core.dll beside victory.exe (needed on Windows 10)
 
 preset_series_s = ["--console=series-s", "VICTORY_NATIVE_1440P="]   # play-foxhound.ps1 -SeriesS
 preset_8gb = ["--console=series-s", "VICTORY_NATIVE_1440P=", "VICTORY_TEXTURE_BUDGET_MB=5120"]   # ours: Series S for 8 GB cards

@@ -23,7 +23,6 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/nvidia` | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | trustno1-coder | GPL-3.0 |
 | `vendor/rdna` | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | XaviFortes | GPL-3.0 |
 | `vendor/rufflab` | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | LoverCatys | GPL-3.0 |
-| `vendor/scarlettfork` | [Scarlett fork](https://github.com/op-lite/victory-scarlett) | op-lite, on cool_fox (codec-d) and VIctory-7900XTX (avatarmanz) | GPL-3.0 |
 | `vendor/apexvi` | [ApexVI](https://github.com/KevinPratap/ApexVI) | KevinPratap, on VIctory | GPL-3.0 |
 | `vendor/grimkaaah` | [Victory Grimkaaah](https://github.com/Grimkaaah/Victory-Grimkaaah) | Grimkaaah, on VIctory | GPL-3.0 |
 | `vendor/pilotebox` | [PiloteBox](https://github.com/PiloteCode/PiloteBox) | PiloteCode, on VIctory | GPL-3.0 |
@@ -33,7 +32,6 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/scarlettport` | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | Ziggy (ZigZagBoi1), Vlad Bondarenko (vladbondarenko97), grooving6; its `runtime/victory` is the VIctory authors' and its `runtime/xcl` the xcl authors' | GPL-3.0-or-later; `runtime/xcl` GPL-2.0-only (its `LICENSE.md`) |
 | `vendor/unified` | [victory-unified](https://github.com/Itsbatt/victory-unified) | Itsbatt, with fxceless, Belobug, DexNom, Zettrox and the VIctory contributors | GPL-3.0-or-later |
 | `vendor/united` | [Victory-United](https://github.com/Fayberr/Victory-United) | Fayberr | GPL-3.0 |
-| `vendor/vertex` | [Vertex](https://github.com/proneonn/Vertex) | proneonn | GPL-3.0 |
 | `vendor/victoryperf` | [victory-perf](https://github.com/vitutu1/victory-perf) | vitutu1; built on victory-fork (fxceless), VIctory (Marvisak) and ScarlettPort (ZigZagBoi1) | GPL-3.0 |
 | `vendor/vibrport` | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | edsuuu; built on VIctory (Marvisak) and victory-fork (fxceless) | GPL-3.0 |
 | `src/hud.rs` (the fps panel over every runtime) | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) `crates/victory-gpu/src/host/panel.rs` | TaynanGT | GPL-3.0 |

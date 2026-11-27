@@ -1320,7 +1320,7 @@ pub fn cargo(cmd: &[String], cwd: &Path, target: &Path, label: &str) -> Result<(
 
 fn patch_root(name: &str, root: &Path) -> Option<PathBuf> {
     match name {
-        "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo" | "klbf" | "vicetay" | "vertex" | "amd" => Some(root.to_path_buf()),
+        "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo" | "klbf" | "vicetay" | "amd" => Some(root.to_path_buf()),
         "scarlettport" => Some(root.join("runtime").join("victory")),
         "anyxboxx" => Some(root.join("third_party").join("victory")),
         _ => None,
