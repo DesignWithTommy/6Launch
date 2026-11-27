@@ -1,0 +1,51 @@
+# Launcher spec for vendor/minivi: Androtim's MiniVI (8 GB VRAM, 16-32 GB RAM; RTX 4060 Ti 8 GB reference, README.md:3,54).
+# Build, run and env are its README and Play-VIctory.cmd (default: Series X); Play-VIctory-4GB.cmd and Play-VIctory-AMD.cmd are presets.
+name = "minivi"
+fork = "cool_fox"   # README.md:3 (built on DoubleGhosty/cool_fox)
+about = "MiniVI 4b9ac9b (GPL-3.0): 5-7 fps in its own notes (Play-VIctory.cmd:40), tuned for 8 GB VRAM GPUs; not yet run here"
+upstream = "https://github.com/Androtim/MiniVI"
+updated = "2026-11-27 10:08"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 7   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:66; Play-VIctory.cmd:18
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"   # Play-VIctory.cmd:16
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "--features", "diagnostics", "-p", "victory"]   # README.md:64
+diag_exe = "target/diag/victory.exe"   # README.md:79
+run = ["run", "{game_exe}", "--console", "series-x", "--execute"]   # Play-VIctory.cmd:63
+game_env = "VICTORY_GAME_DIR"   # Play-VIctory.cmd:7
+cache_env = "VICTORY_CACHE_DIR"   # Play-VIctory.cmd:22 (its default %LOCALAPPDATA%\VIctory\cache-pareto)
+prewarm = ["shaders", "{game}"]   # README.md:79 (Play-VIctory.cmd itself runs no warm step)
+agility = false   # README.md:67: agility-sdk feature only on Windows 10
+
+preset_4gb = ["--console=series-s", "VICTORY_AMBIENT=0.8", "VICTORY_TEXTURE_GUARD=", "VICTORY_CARD_BUFFERS_MIN_KB=4096", "VICTORY_CARD_BUFFERS_MB=256", "VICTORY_D3D12_BACKGROUND=0"]   # Play-VIctory-4GB.cmd:16,40-46
+preset_amd = ["VICTORY_THIN=1", "VICTORY_JOIN_PARTS=8", "VICTORY_PORT_CONSTANTS=1", "VICTORY_PORT_CBV=1"]   # Play-VIctory-AMD.cmd:38-50,57
+
+[env]   # Play-VIctory.cmd:21-60, its default
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_AMBIENT_AIR = "1.5"   # Play-VIctory.cmd:21
+VICTORY_TEXTURE_NO_WAIT = "1"   # Play-VIctory.cmd:23
+VICTORY_RELAY = "2"   # Play-VIctory.cmd:24
+VICTORY_WIDE_BACK = "1"   # Play-VIctory.cmd:25
+VICTORY_CARD_REHASH_RUNS = "1"   # Play-VIctory.cmd:26
+VICTORY_JOIN_COPIES = "1"   # Play-VIctory.cmd:27
+VICTORY_INDIRECT_WINDOW = "1"   # Play-VIctory.cmd:28
+VICTORY_RELAY_COPY = "1"   # Play-VIctory.cmd:29
+VICTORY_CARD_STEPS = "2"   # Play-VIctory.cmd:30
+VICTORY_INDIRECT_BATCH = "2"   # Play-VIctory.cmd:31
+VICTORY_MAP_THREADS = "1"   # Play-VIctory.cmd:32
+VICTORY_CARD_AWAKE = "1"   # Play-VIctory.cmd:33
+VICTORY_SHOW_AFTER = "1"   # Play-VIctory.cmd:34
+VICTORY_AMBIENT = "constant:0.8"   # Play-VIctory.cmd:37
+VICTORY_TEXTURE_GUARD = "0"   # Play-VIctory.cmd:41
+VICTORY_THIN = "0"   # Play-VIctory.cmd:45
+VICTORY_JOIN_PARTS = "0"   # Play-VIctory.cmd:46
+VICTORY_PORT_GUARD = "1"   # Play-VIctory.cmd:51
+VICTORY_PORT_JOURNAL = "1"   # Play-VIctory.cmd:52
+VICTORY_PORT_CONSTANTS = "0"   # Play-VIctory.cmd:53
+VICTORY_PORT_CBV = "0"   # Play-VIctory.cmd:54
+VICTORY_LIBRARY_STORE_LATER = "1"   # Play-VIctory.cmd:55
+VICTORY_PIPELINE_WAIT_MS = "0"   # Play-VIctory.cmd:56
+VICTORY_UPLOAD_AHEAD = "1"   # Play-VIctory.cmd:57
+VICTORY_LEVELS_ON_DEMAND = "1"   # Play-VIctory.cmd:58
+VICTORY_CARD_BUFFERS_MIN_KB = "64"   # Play-VIctory.cmd:59
+VICTORY_LOG = "warn"   # Play-VIctory.cmd:60 (only when RUST_LOG is unset)

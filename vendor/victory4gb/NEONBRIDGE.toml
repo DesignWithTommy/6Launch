@@ -1,0 +1,50 @@
+# Launcher spec for vendor/victory4gb: Dathinel's victory-4gb (RTX 3050 Laptop 4 GB + Ryzen 7 7435HS + 24 GB).
+# Build, run and env are its README and scripts/play-4gb.ps1 (default: -Build diag, -Scale 0.5, Series S).
+name = "victory4gb"
+fork = "VIctory"   # README.md:3 (two lines of VIctory; base fxceless victory-fork, README.fxceless.md)
+about = "victory-4gb 803ebfa (GPL-3.0): 6.5 to 7 fps open-world free play on an RTX 3050 Laptop 4 GB (README.md:20); not yet run here"
+upstream = "https://github.com/Dathinel/victory-4gb"
+updated = "2026-11-26 20:38"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 4   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-4gb.ps1:3,8 -Build release
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"   # play-4gb.ps1:33
+# The author's default build is diag (README.md:138,145; play-4gb.ps1:8): only it gets the ray-tracing skip list.
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:138 (+--locked)
+diag_exe = "target/diag/victory.exe"   # play-4gb.ps1:33
+run = ["run", "{game_exe}", "--console", "series-s", "--execute"]   # play-4gb.ps1:38
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"   # Neonbridge: this runtime's own cache dir
+prewarm = []   # none in its README or script; first run translates every shader (README.md:146-147)
+agility = false
+
+preset_native_scale = ["VICTORY_RENDER_SCALE=0.6667"]   # play-4gb.ps1:4 -Scale (0.6667 is the title's own)
+# -More (play-4gb.ps1:5,10,31) is free-form extra env; example only: VICTORY_TEXTURE_BUDGET_MB=2048
+preset_texture_2048 = ["VICTORY_TEXTURE_BUDGET_MB=2048"]   # play-4gb.ps1:5 -More example
+# VICTORY_SKIP_PIPELINES = contents of scripts/rt_off_hashes.txt, diag build only (play-4gb.ps1:29-30); not inlined here.
+
+[env]   # play-4gb.ps1:12-26 (default -Scale 0.5)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_LEVELS_ON_DEMAND = "1"   # play-4gb.ps1:14
+VICTORY_ASYNC_SUBMIT = "1"   # play-4gb.ps1:14
+VICTORY_QUEUE2 = "1"   # play-4gb.ps1:14
+VICTORY_INDIRECT_WINDOW = "1"   # play-4gb.ps1:14
+VICTORY_TEXTURE_NO_WAIT = "1"   # play-4gb.ps1:15
+VICTORY_MERGE_GAP = "64"   # play-4gb.ps1:15
+VICTORY_MERGE_RUNS = "4096"   # play-4gb.ps1:15
+VICTORY_STAGING_POOL = "0"   # play-4gb.ps1:15
+VICTORY_COPY_PLAIN = "1"   # play-4gb.ps1:16
+VICTORY_JOIN_PARTS = "1"   # play-4gb.ps1:16
+VICTORY_BACK_OWN_VIEW = "1"   # play-4gb.ps1:16
+VICTORY_INDIRECT_GATHER = "1"   # play-4gb.ps1:16
+VICTORY_CARD_REHASH_RUNS = "1"   # play-4gb.ps1:17
+VICTORY_TEXTURE_BUDGET_MB = "1536"   # play-4gb.ps1:19
+VICTORY_BLEND_INT_OFF = "1"   # play-4gb.ps1:21
+VICTORY_BVH_NO_HIT = "1"   # play-4gb.ps1:21
+VICTORY_WAVE_LDS_LOOSE = "0"   # play-4gb.ps1:21
+VICTORY_AMBIENT = "0.8"   # play-4gb.ps1:22
+VICTORY_AMBIENT_AIR = "1.5"   # play-4gb.ps1:22
+VICTORY_PIPELINE_WAIT_MS = "10000"   # play-4gb.ps1:22
+VICTORY_BAKE_SOURCES = "1"   # play-4gb.ps1:22
+VICTORY_RENDER_SCALE = "0.5"   # play-4gb.ps1:9,23
+VICTORY_FULLSCREEN = "1"   # play-4gb.ps1:25 (a framed window with fps in the title bar)

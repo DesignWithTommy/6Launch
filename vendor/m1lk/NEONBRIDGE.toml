@@ -1,0 +1,37 @@
+# Launcher spec for vendor/m1lk: 3cvil's M1LK (low-end NVIDIA: 8 GB VRAM + 16 GB RAM, RTX 4060 Laptop reference).
+# Build, run and env are its README, Setup-M1LK.ps1 and m1lk-play (apps/victory/src/play_launcher.rs): Series X, ray tracing at its config default.
+# Env: M1LK_* is copied to VICTORY_* at start (crates/victory-core/src/env_alias.rs:1-10); the launcher sets VICTORY_* so both spellings work.
+name = "m1lk"
+fork = "VIctory"   # README.md:7 (VIctory + the DexNom fork)
+about = "M1LK e3add7c (GPL-3.0): about 4.5 fps walking median on an RTX 4060 Laptop 8 GB / 16 GB RAM (Series S, no RT); not yet run here"   # README.md:3,33
+upstream = "https://github.com/3cvil/M1LK"
+updated = "2026-11-27 10:58"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 3   # GitHub stars when last checked
+# Initialize-FormatTables.ps1: the BCPack format tables its sources include_bytes! (fetched from Marvisak/VIctory, hash-checked).
+prebuild = ["powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1"]
+build = ["cargo", "build", "--release", "--locked", "-p", "victory", "--bins"]   # README.md:283 (+--locked, Setup-M1LK.ps1:50)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/m1lk.exe"   # README.md:290, apps/victory/Cargo.toml:14 (package victory, bin m1lk)
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:306
+diag_exe = "target/diag/m1lk.exe"   # README.md:305
+cwd = "target/release"   # play_launcher.rs:268 (runs from the launcher folder)
+run = ["run", "{game_exe}", "--execute", "--console", "series-x", "--unimplemented", "trap"]   # play_launcher.rs:39,280-286
+game_env = "VICTORY_GAME_DIR"   # m1lk.example.toml:7
+cache_env = "VICTORY_CACHE_DIR"   # play_launcher.rs:157,271
+prewarm = ["warm", "{game}"]   # README.md:360
+agility = false   # no Agility SDK fetch or redist in the repo
+
+preset_no_rt = ["VICTORY_RAY_TRACING=0"]   # play_launcher.rs:54,192 --no-rt; README.md:248,327
+preset_rt = ["VICTORY_RAY_TRACING=1"]   # play_launcher.rs:56,192 --rt; Setup-M1LK.ps1:88 "M1LK (Experimental RT)"
+preset_rt_static_bvh = ["VICTORY_RAY_TRACING=static-bvh"]   # play_launcher.rs:58,195; README.md:386
+preset_series_s = ["--console=series-s"]   # play_launcher.rs:94; README.md:384
+preset_low_end_nvidia = ["VICTORY_RAY_TRACING=0", "VICTORY_FSR_4K=0", "VICTORY_AMBIENT_FALLBACK=1", "VICTORY_LEVELS_ON_DEMAND=1"]   # README.md:373-375 (--no-rt --console series-x --sparse-textures)
+preset_sparse_textures = ["VICTORY_LEVELS_ON_DEMAND=1"]   # play_launcher.rs:75,235 --sparse-textures
+preset_pipeline_wait_24 = ["VICTORY_PIPELINE_WAIT_MS=24"]   # README.md:388
+preset_fsr_quality_4k = ["VICTORY_RAY_TRACING=1", "VICTORY_LOCAL_GPU_INPUTS=1", "VICTORY_FSR_4K=quality", "VICTORY_LEVELS_ON_DEMAND=1", "VICTORY_UPLOAD_AHEAD=0", "VICTORY_CAPTURE_READBACKS=1", "VICTORY_RT_WRITE_STATS=1"]   # Setup-M1LK.ps1:89; README.md:396 (AMD; needs the FidelityFX provider, play_launcher.rs:213-218)
+# Launcher-side extras (--warp, --native-1440p, capture/trace switches) are left out.
+
+[env]   # play_launcher.rs:260-271 (m1lk-play defaults)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"   # i95: one save/settings folder for the victory family (read at crates/victory-core/src/config.rs:110)
+VICTORY_DEBUG_HUD = "1"   # play_launcher.rs:260-261
+VICTORY_NO_WATCHDOG = "1"   # play_launcher.rs:265-266

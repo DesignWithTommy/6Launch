@@ -76,6 +76,9 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | – | [SlaktarnVI](https://github.com/Slaktarn700/SlaktarnVI) | VIctory | Linux/Proton on an RX 9070 XT: 19-25 fps | ✅ | Not run yet |
 | – | [VIscosity](https://github.com/FrancescoGelosoEterea/VIscosity) | victory-fork | 17.9 fps median on an RTX 5070 Ti (Series S) | ✅ | Not run yet |
 | – | [Dark-Victory](https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI) | VIctory | About 10 fps on an RX 6600 | ✅ | Not run yet |
+| – | [M1LK](https://github.com/3cvil/M1LK) | VIctory | Tuned for 8 GB VRAM and 16 GB RAM: playable at about 4 fps on an RTX 4060 Laptop 8 GB | ✅ | Not run yet |
+| – | [MiniVI](https://github.com/Androtim/MiniVI) | cool_fox | Built for 8 GB VRAM and 16-32 GB RAM, with an F3 FPS/VRAM overlay; 4 GB and AMD modes | ✅ | Not run yet |
+| – | [victory-4gb](https://github.com/Dathinel/victory-4gb) | victory-fork | 6.5 to 7 fps in open-world free play on a 4 GB RTX 3050 Laptop | ✅ | Not run yet |
 | – | [Neptune](https://github.com/Dolberthi/neptune-dolberth-nvidia-8gb) | VIctory | Tuned for 8 GB NVIDIA, 6-core Ryzen, 16 GB RAM; no fps figure yet | ✅ | Not run yet |
 | – | [Kitty6](https://github.com/kitty-core/Kitty6) | VIctory-7900XTX | 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker | ✅ | Not run yet |
 | – | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | VIctory-NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker | ✅ | Not run yet |
