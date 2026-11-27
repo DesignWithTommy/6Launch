@@ -1275,6 +1275,11 @@ pub fn controls_of(name: &str) -> Vec<(String, String)> {
 }
 
 /// A plain string or number field of the runtime's toml (updated =, stars =).
+/// `pin = true`: one of our own runtimes, listed first in the picker.
+pub fn pinned(name: &str) -> bool {
+    load(name).ok().is_some_and(|(_, s)| s.flag("pin"))
+}
+
 pub fn field(name: &str, key: &str) -> Option<String> {
     load(name).ok().and_then(|(_, s)| s.str(key).map(str::to_owned))
 }

@@ -1,4 +1,5 @@
 name = "cta"
+pin = true   # i95 picker: listed first as "Ours" (not a tracker rank)
 fork = "VIctory"
 about = "ClaudeTheftAuto (GPL-3.0): Vice-Tay plus CTA's patches, built in place from the CTA checkout (vendor/cta/tree: a junction to ..\\Vnity\\vendor\\vicetay, made by hand; not in git); rebuilt only when its sources change"
 upstream = "https://github.com/DesignWithTommy/ClaudeTheftAuto"

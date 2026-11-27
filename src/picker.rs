@@ -768,8 +768,10 @@ fn rows() -> Vec<Row> {
     let best = |g: &str| rows.iter().filter(|r| group(&r.name) == g).filter_map(|r| crate::runtimes::rank(&r.name)).min().unwrap_or(u32::MAX);
     let mut keyed: Vec<((u32, String, u32), Row)> = rows.iter().cloned().map(|r| { let g = group(&r.name); ((best(&g), g, crate::runtimes::rank(&r.name).unwrap_or(u32::MAX)), r) }).collect();
     // Flat, by leaderboard rank (grouping by fork put #2 below #27).
-    keyed.sort_by_key(|k| (k.0.2, k.0.1.clone()));
-    let mut rows: Vec<Row> = keyed.into_iter().map(|((_, g, rk), mut r)| { r.title = if rk == u32::MAX { format!("{g} \u{00B7} {}", r.title) } else { format!("#{rk} {g} \u{00B7} {}", r.title) }; r }).collect();
+    // Our own runtimes (`pin = true`, e.g. cta) first, unranked: not a tracker rank.
+    let pinned = crate::runtimes::pinned;
+    keyed.sort_by_key(|k| (!pinned(&k.1.name), k.0.2, k.0.1.clone()));
+    let mut rows: Vec<Row> = keyed.into_iter().map(|((_, g, rk), mut r)| { r.title = if pinned(&r.name) { format!("Ours \u{00B7} {}", r.title) } else if rk == u32::MAX { format!("{g} \u{00B7} {}", r.title) } else { format!("#{rk} {g} \u{00B7} {}", r.title) }; r }).collect();
     for r in &mut old {
         r.title = format!("Archived \u{00B7} {}", r.title);
     }
