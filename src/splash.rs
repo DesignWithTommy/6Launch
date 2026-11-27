@@ -641,6 +641,16 @@ unsafe fn blit_art(dst: HDC, art: isize, x: i32, y: i32, w: i32, h: i32, sx: i32
 
 /// Title mode: the curtain sits exactly over the game's client area.
 unsafe fn cover_game(hwnd: HWND) {
+    // watch() is not running for every runtime: the game is then the
+    // foreground window of another process (it has focus at its first frame).
+    if GAME.load(Ordering::Acquire) == 0 {
+        let fg = unsafe { GetForegroundWindow() };
+        let mut pid = 0;
+        unsafe { GetWindowThreadProcessId(fg, &mut pid) };
+        if !fg.is_null() && pid != std::process::id() {
+            GAME.store(fg as isize, Ordering::Release);
+        }
+    }
     let game = GAME.load(Ordering::Acquire) as HWND;
     if game.is_null() {
         return;
@@ -654,8 +664,8 @@ unsafe fn cover_game(hwnd: HWND) {
         ClientToScreen(game, &mut origin);
         let mut now: RECT = std::mem::zeroed();
         GetWindowRect(hwnd, &mut now);
-        if (now.left, now.top, now.right - now.left, now.bottom - now.top) != (origin.x, origin.y, r.right, r.bottom) {
-            SetWindowPos(hwnd, HWND_TOPMOST, origin.x, origin.y, r.right, r.bottom, SWP_NOACTIVATE);
-        }
+        // Every tick: the full-screen title puts itself on top again.
+        let _ = now;
+        SetWindowPos(hwnd, HWND_TOPMOST, origin.x, origin.y, r.right, r.bottom, SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
 }
