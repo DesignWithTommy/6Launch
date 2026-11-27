@@ -1,0 +1,62 @@
+name = "peppa"
+fork = "playablegames-peppa"
+about = "playablegames-peppa 14d8e9d (GPL-3.0): victory-fork with the RTX 4080 recipe and A/B-measured switches; 23.5 fps over 12 minutes in a house interior, Series S, RTX 5080 16 GB (its README); not yet run here"
+upstream = "https://github.com/Peppacodes/playablegames-peppa"
+updated = "2026-11-27 03:31"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 5   # GitHub stars when last checked
+# Settings are Play-VIctory.cmd pareto-residency's defaults (README.md:155-168): release build, Series S.
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:159
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]
+diag_exe = "target/diag/victory.exe"
+run = ["run", "{game_exe}", "--console", "series-s", "--execute"]   # Play-VIctory.cmd:63
+prewarm = ["shaders", "{game}"]   # README.md:180-181: victory shaders <archives> before the first run
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # scripts/play.ps1 -Safe (play.ps1:21-25)
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # scripts/play.ps1 -RayTracing (play.ps1:26): about a third slower
+preset_no_watchdog = ["VICTORY_NO_WATCHDOG=1"]   # README.md:167-168
+
+[env]   # Play-VIctory.cmd:18-62 (its VICTORY_CACHE_DIR left to i95's cache_env)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_AMBIENT_AIR = "1.5"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_CARD_BUFFERS_MB = "2048"
+VICTORY_FETCH_CHECK = "1"
+VICTORY_RENDER_SCALE = "0.6666667"
+VICTORY_OWN_UPSCALER = "1"
+VICTORY_PIPELINE_WAIT_MS = "150"
+VICTORY_PIPELINE_WORKERS = "6"
+VICTORY_PIPELINE_LOWEST = "1"
+VICTORY_TEXTURE_STAGE_MB = "512"
+VICTORY_TEXTURE_STAGE_MS = "50"
+VICTORY_TEXTURE_CATCHUP = "1"
+VICTORY_FILL_TITLE = "2"
+VICTORY_BURY_ASIDE = "1"
+VICTORY_PLACED_ORDER = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_LAND_ASIDE = "1"
+VICTORY_SKIP_WC_BACK = "1"
+VICTORY_SKIP_WC_KEEP = "1048576"
+VICTORY_MERGE_SUBMISSIONS = "1"
+VICTORY_LOG = "warn"

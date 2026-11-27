@@ -1,0 +1,35 @@
+name = "lnx"
+fork = "LNX-victory"
+about = "LNX-victory 05ad122 (GPL-3.0): VIctory tuned for 8 GB NVIDIA; reaches the prison yard at about 4 fps (3.3-4.6) Series X, 7-8 fps Series S + FSR, RTX 5060 Ti 8 GB (its README); not yet run here"
+upstream = "https://github.com/Linox-IDK/LNX-victory"
+updated = "2026-11-27 13:52"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 11   # GitHub stars when last checked
+# Settings are README.md:183-197 ("our settings for an 8 GB NVIDIA card"): release build, Series X.
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:184 (+--locked)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]
+diag_exe = "target/diag/victory.exe"
+run = ["run", "{game_exe}", "--execute", "--console", "series-x"]   # README.md:197
+prewarm = ["shaders", "{game}"]   # README.md:171-178: translate the shaders once before running
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_series_s = ["--console=series-s"]   # README.md:115 (Series S, 7-8 fps)
+preset_measured = ["VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_CARD_FETCH_INFLIGHT=0", "VICTORY_LDS_REGION_RACE=1", "VICTORY_FIRSTLANE_OWN=1"]   # README.md:68-74: the extra switches of its headline run
+
+[env]   # README.md:185-196
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_DISPLAY_MODE = "1920x1080"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_WIDE_REFRESH = "1"
+VICTORY_WIDE_MERGE = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_PIPELINE_WAIT_MS = "50"
+VICTORY_PIPELINE_PRIORITY = "normal"
+VICTORY_SHADER_LOOP_LIMIT = "1024"
+VICTORY_TEXTURE_SKIP_MIPS = "1"
+VICTORY_PRESENT_PLANE = "0"

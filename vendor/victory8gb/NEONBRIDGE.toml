@@ -1,0 +1,43 @@
+name = "victory8gb"
+fork = "victory-8gb"
+about = "victory-8gb 6fbceb7 (GPL-3.0): victory-fork snapshot for Series S on 8 GB NVIDIA; first Chapter I mission played, 5h45m session without a crash, about 115-215 ms a frame, RTX 3070 8 GB (its README); not yet run here"
+upstream = "https://github.com/CuteBooty/victory-8gb"
+updated = "2026-11-26 23:48"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 7   # GitHub stars when last checked
+# Settings are README.md:622-631 with "Switches used on an 8 GB card" (README.md:427-453): release build, Series S.
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:622 (+--locked)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]
+diag_exe = "target/diag/victory.exe"
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # README.md:623
+prewarm = []   # no warm step; README.md:24-34: the first launch builds pipelines in-run
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_series_x = ["--console=series-x"]   # README.md:626: untested there
+preset_ambient = ["VICTORY_AMBIENT=0.6"]   # README.md:345-359: the former recommended fill
+
+[env]   # README.md:434-453
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_SHADER_LOOP_LIMIT = "256"
+VICTORY_DISPLAY_MODE = "1920x1080"
+VICTORY_SKIP_BINK = "1"
+VICTORY_TEXTURE_DROP_MIPS = "1"
+VICTORY_SMALL_TEXTURE_KB = "0"
+VICTORY_QUEUE2 = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_ASYNC_SUBMIT = "1"
+VICTORY_ASYNC_SUBMIT_SAFE = "0"
+VICTORY_CARD_HASH_WIDE = "1"
+VICTORY_BAKE_TEXTURES_MS = "0"
+VICTORY_LATE_WAIT = "2"
+VICTORY_BACK_SETTLE = "0"
+VICTORY_LAND_ASIDE = "1"
+VICTORY_COPY_PLAIN = "1"
+VICTORY_FILLS_PLAIN = "1"
+VICTORY_REUSE_TARGET_BINDS = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_UPSCALE_HISTORY = "0.85"
+VICTORY_UPSCALE_HISTORY_MV = "2"

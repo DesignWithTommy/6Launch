@@ -69,6 +69,10 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 33 | [mavis-9070xt](https://github.com/mavis140/mavis-9070xt) | VIctory-7900XTX | AMD | 18.9 fps median over a 27-minute session, Series X at 1440p, ray tracing off, RX 9070 XT 16 GB | ✅ | Not run yet |
 | – | [Victory-naixue2233](https://github.com/naixue2233/Victory-naixue2233) | victory-fork | NVIDIA | About 11 fps at the first boat mission on an RTX 4070 (with its measured switches) | ✅ | Not run yet |
 | – | [victory-amd r13](https://github.com/tinygusie2/victory-amd) | victory-fork | AMD | About 3-5 fps in the open world on an RX 9060 XT | ✅ | Not run yet |
+| – | [CCS03](https://github.com/JozefDeTremmerie/CCS03) | victory-fork | NVIDIA 8 GB | Lucia's prologue played to chapter 1; 3 to 7.8 fps in the prison and on the water, RTX 4060 Laptop 8 GB | ✅ | Not run yet |
+| – | [LNX-victory](https://github.com/Linox-IDK/LNX-victory) | VIctory | NVIDIA 8 GB | Prison yard at about 4 fps (Series X), 7-8 fps with Series S + FSR, RTX 5060 Ti 8 GB | ✅ | Not run yet |
+| – | [victory-8gb](https://github.com/CuteBooty/victory-8gb) | VIctory | NVIDIA 8 GB | First Chapter I mission played, a 5 h 45 min session without a crash, RTX 3070 8 GB | ✅ | Not run yet |
+| – | [playablegames-peppa](https://github.com/Peppacodes/playablegames-peppa) | VIctory | NVIDIA | 23.5 fps over 12 minutes in a house interior, RTX 5080 16 GB | ✅ | Not run yet |
 | – | [Leonida](https://github.com/ProjectLeonidaL/leonida) | own (static recompilation) | Any | About 10 fps in the first rooms with its newer switches; not a VIctory fork | ✅ | Not run yet |
 | – | [victory-sley-fork](https://github.com/Spaghetih/victory-sley-fork) | VIctory | NVIDIA | 20.6 fps median at about 6,000 draws, 11-15 in dense night scenes; FSR 3.1 on NVIDIA | ✅ | Not run yet |
 | – | [victory-scarlett-3070](https://github.com/Yaekai/victory-scarlett-3070) | Scarlett fork | NVIDIA 8 GB | Tuned for 8 GB NVIDIA (RTX 3070): 16-21 fps in heavy scenes | ✅ | Not run yet |

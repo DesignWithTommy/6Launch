@@ -1,0 +1,47 @@
+name = "ccs03"
+fork = "CCS03"
+about = "CCS03 a00b2f7 (GPL-3.0): victory-fork with 8 GB NVIDIA tuning; Lucia's prologue played to chapter 1, 3 to 7.8 fps in the prison and on the water, menus 30 fps, RTX 4060 Laptop 8 GB (its README); not yet run here"
+upstream = "https://github.com/JozefDeTremmerie/CCS03"
+updated = "2026-11-26 09:20"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 15   # GitHub stars when last checked
+# Settings are ccs03/play.ps1's defaults (README.md:205-226): release build, Series S, the README's "Running" switches.
+build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # ccs03/play.ps1:43 (+--locked)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]
+diag_exe = "target/diag/victory.exe"
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # ccs03/play.ps1:38,103; README.md:214
+prewarm = []   # no warm step in its scripts
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_series_x = ["--console=series-x"]   # play.ps1 -Console series-x (needs more than 8 GB)
+preset_smooth = ["VICTORY_TEXTURE_STAGE_MS=25", "VICTORY_TEXTURE_STAGE_MB=48", "VICTORY_TEXTURE_CATCHUP=0"]   # play.ps1 -Smooth (play.ps1:87-91)
+preset_fast = ["VICTORY_WIDE_REFRESH=1"]   # play.ps1 -Fast (play.ps1:84)
+preset_low = ["VICTORY_DISPLAY_MODE=1280x720"]   # play.ps1 -Low (play.ps1:85)
+preset_steady = ["VICTORY_GAME_STEP_MS=33"]   # play.ps1 -Steady (play.ps1:86)
+preset_diag = ["NEONBRIDGE_DIAG=1"]   # play.ps1 -Diag: the diagnostics build
+
+[env]   # ccs03/play.ps1:62-83 (README.md:207-213)
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family
+VICTORY_DISPLAY_MODE = "1920x1080"
+VICTORY_RELAY = "2"
+VICTORY_ASYNC_SUBMIT = "1"
+VICTORY_QUEUE2 = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_COPY_PLAIN = "1"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_WIDE_TEXTURES = "1"
+VICTORY_TEXTURE_DROP_MIPS = "1"
+VICTORY_TEXTURE_ROOM_PERCENT = "86"
+VICTORY_CARD_ROOM_FOR_TARGETS_MB = "1024"
+VICTORY_CARD_BUFFERS_MB = "768"
+VICTORY_AMBIENT = "0.9"
+VICTORY_JOIN_PARTS = "1"
+VICTORY_BACK_OWN_VIEW = "1"
+VICTORY_INDIRECT_GATHER = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_TEXTURE_BACK = "1"
+VICTORY_CARD_HASH_LEN = "1"
+NO_COLOR = "1"
