@@ -627,15 +627,47 @@ fn splash_art() -> isize {
     if cached != -1 {
         return cached;
     }
-    let h = std::env::var("LOCALAPPDATA").ok().map_or(0, |base| {
-        let path: Vec<u16> = format!("{base}\\6ixpack\\splash.bmp").encode_utf16().chain([0]).collect();
-        unsafe { LoadImageW(std::ptr::null_mut(), path.as_ptr(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION) as isize }
-    });
+    // Read and built here, not with LoadImageW(LR_LOADFROMFILE): in the launcher
+    // process that call failed with "file not found" on a file that was there.
+    let path = std::env::var_os("LOCALAPPDATA").map(|b| std::path::PathBuf::from(b).join("6ixpack").join("splash.bmp"));
+    let h = match path.as_ref().map(std::fs::read) {
+        Some(Ok(bytes)) => bmp_bitmap(&bytes).unwrap_or_else(|| {
+            println!("[splash] start-screen art not loaded: not a 24- or 32-bit BMP");
+            0
+        }),
+        Some(Err(e)) if e.kind() == std::io::ErrorKind::NotFound => 0,
+        Some(Err(e)) => {
+            println!("[splash] start-screen art not loaded: {e}");
+            0
+        }
+        None => 0,
+    };
     ART.store(h, Ordering::Relaxed);
-    if h == 0 {
-        println!("[splash] start-screen art not loaded (error {})", unsafe { windows_sys::Win32::Foundation::GetLastError() });
-    }
     h
+}
+
+/// A DIB section holding a 24- or 32-bit BMP file's pixels.
+fn bmp_bitmap(b: &[u8]) -> Option<isize> {
+    use windows_sys::Win32::Graphics::Gdi::{BITMAPINFO, BITMAPINFOHEADER, CreateDIBSection, DIB_RGB_COLORS};
+    let u = |i: usize, n: usize| b.get(i..i + n).map(|s| s.iter().rev().fold(0u32, |a, &x| a << 8 | x as u32));
+    let (off, w, h, bpp) = (u(10, 4)? as usize, u(18, 4)? as i32, u(22, 4)? as i32, u(28, 2)? as u16);
+    if b.get(..2)? != b"BM" || w <= 0 || h == 0 || (bpp != 24 && bpp != 32) {
+        return None;
+    }
+    let size = (w as usize * bpp as usize / 8).div_ceil(4) * 4 * h.unsigned_abs() as usize;
+    let pixels = b.get(off..off + size)?;
+    let mut info: BITMAPINFO = unsafe { std::mem::zeroed() };
+    info.bmiHeader = BITMAPINFOHEADER { biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32, biWidth: w, biHeight: h, biPlanes: 1, biBitCount: bpp, ..unsafe { std::mem::zeroed() } };
+    let mut bits = std::ptr::null_mut();
+    // SAFETY: a plain DIB section; `size` bytes are copied into its own buffer.
+    unsafe {
+        let bmp = CreateDIBSection(std::ptr::null_mut(), &info, DIB_RGB_COLORS, &mut bits, std::ptr::null_mut(), 0);
+        if bmp.is_null() || bits.is_null() {
+            return None;
+        }
+        std::ptr::copy_nonoverlapping(pixels.as_ptr(), bits as *mut u8, size);
+        Some(bmp as isize)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
