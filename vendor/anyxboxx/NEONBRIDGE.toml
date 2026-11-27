@@ -5,10 +5,10 @@
 name = "anyxboxx"
 fork = "Neptune"
 rank = 3   # #3 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "AnyXboxX b62053f (GPL-3.0): 'About 24 fps median in the world in Full HD', 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER; not yet run here"
+about = "AnyXboxX fa6b209 (GPL-3.0): 'About 24 fps median in the world in Full HD', 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER; not yet run here"
 upstream = "https://github.com/LooperSalty/AnyXboxX"
-updated = "2026-11-26 20:19"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 478   # GitHub stars when last checked
+updated = "2026-11-27 07:57"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 479   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "third_party/victory/Cargo.toml"]   # crates/anyxboxx/src/run/steps.rs:71-73
 watch = ["third_party/victory/apps", "third_party/victory/crates", "third_party/victory/Cargo.toml", "third_party/victory/Cargo.lock"]
 exe = "third_party/victory/target/release/victory.exe"   # steps.rs:41-44
@@ -30,7 +30,7 @@ preset_linux_amd = ["VICTORY_SHADER_LOOP_LIMIT=256", "VICTORY_LATE_WAIT=0", "VIC
 preset_defaults = ["VICTORY_TEXTURE_NO_WAIT=", "VICTORY_RELAY=", "VICTORY_WIDE_BACK=", "VICTORY_CARD_REHASH_RUNS=", "VICTORY_JOIN_COPIES=", "VICTORY_INDIRECT_WINDOW=", "VICTORY_RELAY_COPY=", "VICTORY_CARD_STEPS=", "VICTORY_TITLE_PRIORITIES=", "VICTORY_SHOW_AFTER=", "VICTORY_AMBIENT=", "VICTORY_D3D12_DRED=", "VICTORY_WAVE_WIDE_ONLY=", "VICTORY_THIN_THREADS=", "VICTORY_UNDER_THREADS=", "VICTORY_LAND_THREADS=", "VICTORY_MAP_THREADS=", "VICTORY_PIPELINE_WORKERS=", "VICTORY_CARD_RESERVE_BUDGETS=", "VICTORY_CARD_BUFFERS_MIN_KB=", "VICTORY_CARD_BUFFERS_MB=", "VICTORY_CARD_WINDOWS_MB=", "VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_INDIRECT_BATCH="]   # settings.rs (--no-tuned-settings): VIctory's own defaults
 preset_4k = ["VICTORY_OUTPUT="]   # the title's own size (4K as a Series X wrote it): about 20 fps on its RTX 4070 SUPER
 preset_16_cores = ["VICTORY_THIN_THREADS=12", "VICTORY_UNDER_THREADS=8", "VICTORY_LAND_THREADS=6"]   # settings.rs BIG_POOLS (2225a8e): applied by its wrapper on 16+ logical CPUs; 19.6 -> 23.8 fps on its i7-13700KF
-preset_24_cores = ["VICTORY_THIN_THREADS=12", "VICTORY_UNDER_THREADS=8", "VICTORY_LAND_THREADS=8"]   # settings.rs HUGE_POOLS (b62053f): its wrapper on 24+ logical CPUs; heavy scenes 17.1 -> 22.0 fps
+preset_24_cores = ["VICTORY_THIN_THREADS=12", "VICTORY_UNDER_THREADS=8", "VICTORY_LAND_THREADS=8"]   # settings.rs HUGE_POOLS (fa6b209): its wrapper on 24+ logical CPUs; heavy scenes 17.1 -> 22.0 fps
 preset_series_s = ["--console=series-s"]   # apps/victory/src/main.rs:155,179: Series S profile (less GPU memory)
 preset_8gb = ["VICTORY_RELAY=0", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_AMBIENT=0.6", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080"]   # VItoriaBr's 8 GB setting (its README.md:290-305); every var still read by this tree
 preset_16gb_ram = ["--console=series-s", "VICTORY_THIN_THREADS=6", "VICTORY_UNDER_THREADS=4", "VICTORY_LAND_THREADS=3", "VICTORY_MAP_THREADS=1", "VICTORY_PIPELINE_WORKERS=2", "VICTORY_SNAPSHOT_POOL=256", "VICTORY_KEEP_SNAPSHOTS_MB=64", "VICTORY_DSTORAGE_STAGING_MB=128", "VICTORY_TEXTURE_STAGE_MB=128"]   # ours: Series S with fewer worker threads and smaller snapshot/staging pools, for 16 GB PCs (only the switches this tree reads); untested

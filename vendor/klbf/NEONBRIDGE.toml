@@ -5,9 +5,9 @@
 name = "klbf"
 fork = "victory-fork"
 rank = 4   # #4 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "KLBF Lab ce3a2c7 (GPL-3.0): 14.0 fps average over 37 minutes of play, player in control through the prologue (77 min on an earlier build), RX 9070 XT; not yet run here"
+about = "KLBF Lab 7d92c11 (GPL-3.0): 14.0 fps average over 37 minutes of play, player in control through the prologue (77 min on an earlier build), RX 9070 XT; not yet run here"
 upstream = "https://github.com/PastiiJay/klbf-lab"
-updated = "2026-11-27 07:27"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-27 08:00"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 175   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked"]   # README.md:127
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
