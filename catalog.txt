@@ -313,12 +313,12 @@ watch = ["src"]
 exe = "bin/harness.exe"   # run.bat:9
 run = ["{game_exe}", "{root}/bin/stubs", "{root}/logs", "60", "run", "-skip"]   # run.bat:9
 agility = false
-=== cblvictory 000af0f55dfd9037d064687394f0d82290f630d3
+=== cblvictory 1d130e5c99cdc400f93e0bbbea95126aa1e60824
 # i95 launcher spec for cocainebunnylaboratories/cblvictoryvi: author build and run from its README.
 name = "cblvictory"
 fork = "VIctory"
 rank = 19   # #19 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "cblvictoryvi 000af0f (GPL-3.0): A 65 min session: 11.4 fps on the boat, 4.3 to 4.7 in the city, RTX 5080"
+about = "cblvictoryvi 1d130e5 (GPL-3.0): A 65 min session: 11.4 fps on the boat, 4.3 to 4.7 in the city, RTX 5080"
 upstream = "https://github.com/cocainebunnylaboratories/cblvictoryvi"
 updated = "2026-11-27 04:12"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 6   # GitHub stars when last checked
@@ -2145,13 +2145,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vicetay f1b245a73f29106c14151bc64404a8910a7268ba
+=== vicetay 0036c3aca88320e13eb47d8f401c29998a333c0e
 # Neonbridge launcher spec for vendor/vicetay: TaynanGT's Vice-Tay. Build and run are its README "How to run it"
 # and scripts/play.ps1 (default: Series X, full screen, settings by card).
 name = "vicetay"
 fork = "VIctory"
 rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Vice-Tay f1b245a (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
+about = "Vice-Tay 0036c3a (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 updated = "2026-11-27 04:13"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 232   # GitHub stars when last checked
