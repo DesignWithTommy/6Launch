@@ -6,7 +6,7 @@ rank = 1   # #1 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
 about = "Vice-Tay 104c3d3 (GPL-3.0): The tracker's leader: a 21.1 fps median over 30 minutes played by hand, Series S profile, RTX 4090 (70 minutes on an earlier build); not yet run here"
 upstream = "https://github.com/TaynanGT/Vice-Tay"
 updated = "2026-11-27 13:06"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 317   # GitHub stars when last checked
+stars = 318   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:117
 exe = "target/diag/victory.exe"   # play.ps1:87 ($Build = diag)
 diag_build = []   # its default build is already the diagnostics one
