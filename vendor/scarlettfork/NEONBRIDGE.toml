@@ -3,7 +3,7 @@
 name = "scarlettfork"
 fork = "CGBJ"
 rank = 32   # #32 on vuyp's GTA VI PC race tracker (vuyp.github.io/gta6-pc-race)
-about = "Scarlett fork 835ca60 (GPL-3.0): 16 to 21 fps in hand-played heavy scenes (prison yard, open world), Series X 1440p, ray tracing off, RTX 4080 SUPER; not yet run here"
+about = "Scarlett fork bc264a4 (GPL-3.0): 16 to 21 fps in hand-played heavy scenes (prison yard, open world), Series X 1440p, ray tracing off, RTX 4080 SUPER; not yet run here"
 upstream = "https://github.com/op-lite/victory-scarlett"
 build = ["cargo", "build", "--profile", "diag", "-p", "victory", "--features", "diagnostics", "--locked"]   # README.md "Build once"
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
@@ -66,6 +66,10 @@ VICTORY_LIST_ALIAS_EXACT = "1"
 VICTORY_LIST_HOLD = "1"
 VICTORY_BAKE_TEXTURES_MS = "10000"
 VICTORY_PLANE_NOW = "1"
+VICTORY_SOFT_VIEWS = "copies"   # play-scarlett.ps1 (bc264a4): freeze fix
+VICTORY_SAMPLERS_MADE = "1"
+VICTORY_TABLE_NAMED_ONLY = "1"
+VICTORY_QUEUE_MARKS = "1"
 VICTORY_PROBE_RAYS = "1"
 
 [controls]   # README.md "Controls"
