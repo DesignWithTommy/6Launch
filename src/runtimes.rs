@@ -449,7 +449,7 @@ fn parse(text: &str) -> Result<Spec, String> {
     // A list may span lines: gather until its brackets close.
     let mut pending = String::new();
     for (n, raw) in text.lines().enumerate() {
-        let line = if raw.trim_start().starts_with('#') { "" } else { raw };
+        let line = if raw.trim_start().starts_with('#') { "" } else { strip_comment(raw) };
         let line = if pending.is_empty() { line.trim().to_owned() } else { format!("{pending} {}", line.trim()) };
         if line.is_empty() {
             continue;
@@ -480,6 +480,10 @@ fn parse(text: &str) -> Result<Spec, String> {
         } else {
             spec.keys.insert(table.as_ref().map_or(k.clone(), |t| format!("{t}.{k}")), val);
         }
+    }
+    if !pending.is_empty() {
+        let key = pending.split_once('=').map_or(pending.as_str(), |(k, _)| k).trim();
+        return Err(format!("{key}: its list never closes (no ])"));
     }
     Ok(spec)
 }
@@ -559,7 +563,19 @@ fn settings(spec: &Spec, preset: Option<&str>, sets: &[String]) -> Result<Vec<(S
             let known: Vec<&str> = spec.keys.keys().filter_map(|k| k.strip_prefix("preset_")).collect();
             format!("no preset {p} (known: {})", if known.is_empty() { "none".into() } else { known.join(", ") })
         })?;
-        out.extend(list.iter().filter_map(|e| e.split_once('=')).map(|(k, v)| (k.trim().to_owned(), v.trim().to_owned())));
+        // "KEY=VALUE", "--flag=VALUE", a bare "--flag" (a switch), or a
+        // "--flag" followed by its value as the next item (["--mode", "s"]).
+        let mut items = list.iter().peekable();
+        while let Some(e) = items.next() {
+            if let Some((k, v)) = e.split_once('=') {
+                out.push((k.trim().to_owned(), v.trim().to_owned()));
+            } else if e.starts_with("--") {
+                let v = items.next_if(|n| !n.starts_with("--") && !n.contains('=')).map_or(String::new(), |n| n.trim().to_owned());
+                out.push((e.trim().to_owned(), v));
+            } else {
+                return Err(format!("preset {p}: cannot read {e} (KEY=VALUE or --flag)"));
+            }
+        }
     }
     for e in sets {
         let (k, v) = e.split_once('=').ok_or_else(|| format!("--set {e}: NAME=VALUE"))?;
@@ -1079,16 +1095,30 @@ fn starter(name: &str, root: &Path, spec: &Spec, program: &Path) -> Result<Comma
 /// places. The spec's [env] and presets are set after this.
 /// NEONBRIDGE_KEEP_ENV=1 keeps them.
 fn clear_leftovers(c: &mut Command) {
-    if std::env::var("NEONBRIDGE_KEEP_ENV").is_ok_and(|v| v.trim() == "1") {
-        return;
-    }
-    for (k, _) in std::env::vars_os() {
-        let n = k.to_string_lossy().to_ascii_uppercase();
-        if n.starts_with("VICTORY_") && !matches!(n.as_str(), "VICTORY_CONFIG" | "VICTORY_GAME_DIR" | "VICTORY_CACHE_DIR" | "VICTORY_DATA_DIR") {
-            println!("[launch] leftover {n} cleared (NEONBRIDGE_KEEP_ENV=1 keeps it)");
-            c.env_remove(&k);
+    static SAID: std::sync::Once = std::sync::Once::new();
+    let gone = leftovers();
+    SAID.call_once(|| {
+        for n in &gone {
+            println!("[launch] leftover {} cleared (NEONBRIDGE_KEEP_ENV=1 keeps it)", n.to_string_lossy());
         }
+    });
+    for k in gone {
+        c.env_remove(k);
     }
+}
+
+/// The VICTORY_* variables [`clear_leftovers`] takes out of a runtime's environment.
+fn leftovers() -> Vec<std::ffi::OsString> {
+    if std::env::var("NEONBRIDGE_KEEP_ENV").is_ok_and(|v| v.trim() == "1") {
+        return Vec::new();
+    }
+    std::env::vars_os()
+        .map(|(k, _)| k)
+        .filter(|k| {
+            let n = k.to_string_lossy().to_ascii_uppercase();
+            n.starts_with("VICTORY_") && !matches!(n.as_str(), "VICTORY_CONFIG" | "VICTORY_GAME_DIR" | "VICTORY_CACHE_DIR" | "VICTORY_DATA_DIR")
+        })
+        .collect()
 }
 
 /// Run as administrator: the GPU driver then keeps its shader cache in
@@ -1563,7 +1593,11 @@ struct Places {
 /// reached Flamingo literally, a relative path that resolved inside its tree.
 pub fn expand_env(s: &str) -> String {
     // Toml paths under %LOCALAPPDATA%ixpack follow the chosen output folder.
-    let moved = s.replacen("%LOCALAPPDATA%\\6ixpack", &pack_dir().display().to_string(), 1);
+    const PACK: &str = "%LOCALAPPDATA%\\6ixpack";
+    let moved = match s.find(PACK) {
+        Some(i) if s[i + PACK.len()..].is_empty() || s[i + PACK.len()..].starts_with(['\\', '/', '"', ';']) => format!("{}{}{}", &s[..i], pack_dir().display(), &s[i + PACK.len()..]),
+        _ => s.to_owned(),
+    };
     let s = moved.as_str();
     let mut out = String::new();
     let mut rest = s;
@@ -2085,10 +2119,14 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         if logging() {
             env.push(("VICTORY_LOG".to_owned(), "info".to_owned()));
         }
-        // One save folder for the family a toml or preset may still name another.
-        env.push(("VICTORY_DATA_DIR".to_owned(), family_saves().display().to_string()));
     }
     env.extend(spec.env.iter().map(|(k, v)| (k.clone(), fill(v, &places))));
+    // One save folder for the family, even where a toml names another (after
+    // the toml's [env], so it wins).
+    if family {
+        env.retain(|(k, _)| k != "VICTORY_DATA_DIR");
+        env.push(("VICTORY_DATA_DIR".to_owned(), family_saves().display().to_string()));
+    }
     // One fps panel for every runtime: i95's (Vice-Tay's HUD, src/hud.rs).
     // The runtimes' own overlays are switched off; NEONBRIDGE_RUNTIME_OVERLAY=1 keeps them.
     if std::env::var("NEONBRIDGE_RUNTIME_OVERLAY").map_or(true, |v| v.trim() != "1") {
@@ -2106,13 +2144,21 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     if logging() && !env.iter().any(|(k, _)| k == "RUST_LOG") {
         env.push(("RUST_LOG".to_owned(), "info".to_owned()));
     }
+    // Our environment wins over the toml, except the VICTORY_* leftovers
+    // clear_leftovers took out of the runtime's environment: those count as unset.
+    let cleared = leftovers();
     for (k, v) in env {
-        if std::env::var_os(&k).is_none() {
+        if std::env::var_os(&k).is_none() || cleared.iter().any(|c| c.eq_ignore_ascii_case(&k)) {
             cmd.env(k, v);
         }
     }
+    // "KEY=" in a preset or --set unsets KEY (not an empty value).
     for (k, v) in sets.iter().filter(|(k, _)| !k.starts_with("--")) {
-        cmd.env(k, fill(v, &places));
+        if v.is_empty() {
+            cmd.env_remove(k);
+        } else {
+            cmd.env(k, fill(v, &places));
+        }
     }
     let args: Vec<String> = match task {
         Task::Build => return Ok(()),
@@ -2127,6 +2173,18 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
             let mut a: Vec<String> = spec.list("run").unwrap_or_default().iter().map(|a| fill(a, &places)).collect();
             for (flag, v) in sets.iter().filter(|(k, _)| k.starts_with("--")) {
                 let v = fill(v, &places);
+                // --switch=0 / false: a bare switch is taken out, an absent one
+                // stays absent; a flag that carries a value gets the 0 as before.
+                if v == "0" || v.eq_ignore_ascii_case("false") {
+                    match a.iter().position(|x| x == flag) {
+                        Some(i) if a.get(i + 1).is_none_or(|n| n.starts_with("--")) => {
+                            a.remove(i);
+                            continue;
+                        }
+                        None if !a.iter().any(|x| x.starts_with(&format!("{flag}="))) => continue,
+                        _ => {}
+                    }
+                }
                 if let Some(i) = a.iter().position(|x| x == flag) {
                     if a.get(i + 1).is_some_and(|n| !n.starts_with("--")) { a[i + 1] = v } else { a.insert(i + 1, v) }
                 } else if let Some(i) = a.iter().position(|x| x.starts_with(&format!("{flag}="))) {
