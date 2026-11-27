@@ -36,7 +36,7 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | 4 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | VIctory, victory-fork | 14.0 fps average over 37 minutes of play, player in control through the prologue (77 min on an earlier build), RX 9070 XT | Testing again. Its intro crash was i95 leaving TuxBox DLLs in the game folder (fixed). The intro video flickers |
 | 5 | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | VIctory | 5 to 8 fps over a 15-minute drive, less while driving, RX 7900 XTX | ❌ |
 | 7 | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | VIctory, victory-fork | 4 to 6 fps on its current settings | ✅ 3D prison scene at 2 to 3 fps |
-| 9 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | victory-fork | 3.4 fps in the world on 0.5.0, RTX 3060 | ✅ 3D at 2 to 3 fps |
+| 9 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | victory-fork | About 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060 | ✅ 3D at 2 to 3 fps |
 | 12 | CGBJ ([cool_fox](https://github.com/DoubleGhosty/cool_fox), a continuation) | VIctory | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub | Not run yet |
 | 13 | [victory-amd](https://github.com/myokex/victory-amd) | victory-fork | 2 to 3 fps in the world over 8-minute runs, RTX 4070 | Not run yet |
 | 14 | [VIctory](https://github.com/Marvisak/VIctory) | (the original) | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | Not run yet |
