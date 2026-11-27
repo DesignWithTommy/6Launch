@@ -839,7 +839,7 @@ fn stale(root: &Path, spec: &Spec, exe: &Path) -> bool {
     }
     src > built
 }
-
+/// Diagnostics builds for every runtime.
 /// Diagnostics builds, on by default for every runtime (the user's rule);
 /// Off by default; NEONBRIDGE_DIAG=1 or the picker's Diagnostics box turns them on. A tree
 /// builds with its toml's `diag` line, else (victory family) with its
