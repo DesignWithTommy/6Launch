@@ -631,7 +631,10 @@ fn splash_art() -> isize {
     }
     // Read and built here, not with LoadImageW(LR_LOADFROMFILE): in the launcher
     // process that call failed with "file not found" on a file that was there.
-    let path = std::env::var_os("LOCALAPPDATA").map(|b| std::path::PathBuf::from(b).join("6ixpack").join("splash.bmp"));
+    // splash.bmp at the i95 root (beside vendor/: gitignored, never published), else
+    // %LOCALAPPDATA%\6ixpack\splash.bmp.
+    let root = crate::runtimes::vendor().parent().map(|r| r.join("splash.bmp")).filter(|p| p.is_file());
+    let path = root.or_else(|| std::env::var_os("LOCALAPPDATA").map(|b| std::path::PathBuf::from(b).join("6ixpack").join("splash.bmp")));
     let h = match path.as_ref().map(std::fs::read) {
         Some(Ok(bytes)) => bmp_bitmap(&bytes).unwrap_or_else(|| {
             println!("[splash] start-screen art not loaded: not a 24- or 32-bit BMP");

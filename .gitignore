@@ -24,3 +24,6 @@ __pycache__/
 /dist/
 vendor/m-*/
 DEVELOPERS.md
+
+# The loader picture: personal, never published
+/splash.bmp
