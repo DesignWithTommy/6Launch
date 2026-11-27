@@ -758,6 +758,12 @@ fn remembered() -> Vec<(String, String)> {
     fs::read_to_string(last_pick()).unwrap_or_default().lines().filter_map(|l| l.split_once('=')).map(|(k, v)| (k.to_owned(), v.to_owned())).collect()
 }
 
+/// The preset last picked for runtime `name` (preset.<name>= in last_pick.txt).
+fn remembered_preset(name: &str) -> Option<String> {
+    let key = format!("preset.{name}");
+    remembered().into_iter().find(|(k, _)| *k == key).map(|(_, v)| v)
+}
+
 /// Install... for the PC GDK: asks first, then fetches Microsoft's GDK
 /// release (about 1.4 GB) into %LOCALAPPDATA%\6ixpack\gdk on a thread of
 /// its own, and re-checks the runtimes when it is done.
@@ -800,7 +806,8 @@ fn select(hwnd: HWND, i: usize) {
         ok
     });
     if changed == Some(true) {
-        refill_presets(None);
+        // Each runtime's own last preset (a pick on another runtime no longer drops it).
+        refill_presets(remembered_preset(&running()).as_deref());
         unsafe { InvalidateRect(hwnd, null(), 0) };
     }
 }
@@ -822,6 +829,15 @@ fn play(hwnd: HWND) {
     let mut memory = format!("runtime={sel_name}\n");
     if let Some(p) = &preset {
         memory.push_str(&format!("preset={p}\n"));
+    }
+    // preset.<runtime>= for every runtime: this one's pick, the others' kept.
+    for (k, v) in remembered() {
+        if k.strip_prefix("preset.").is_some_and(|r| r != sel_name) {
+            memory.push_str(&format!("{k}={v}\n"));
+        }
+    }
+    if let Some(p) = &preset {
+        memory.push_str(&format!("preset.{sel_name}={p}\n"));
     }
     for s in &sets {
         memory.push_str(&format!("opt={s}\n"));
@@ -1442,7 +1458,7 @@ pub fn pick() -> Option<Pick> {
         return None;
     }
     create_advanced(hwnd, &memory);
-    refill_presets(get("preset").as_deref());
+    refill_presets(remembered_preset(&running()).or_else(|| get("preset")).as_deref());
     unsafe {
         ShowWindow(hwnd, SW_SHOW);
         SetFocus(hwnd);

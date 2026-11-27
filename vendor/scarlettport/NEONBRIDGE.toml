@@ -293,6 +293,10 @@ preset_fast = ["SCARLETT_OWN_UPSCALER=1", "SCARLETT_NO_WATCHDOG=1", "SCARLETT_RE
 preset_autoinput = ["SCARLETT_AUTO_INPUT=1"]
 preset_fastboot = ["SCARLETT_FAST_BOOT=1"]
 preset_series_x = ["--console=series-x"]
+preset_16gb_ram = ["--console=series-s", "SCARLETT_THIN_THREADS=6", "SCARLETT_UNDER_THREADS=4", "SCARLETT_LAND_THREADS=3", "SCARLETT_MAP_THREADS=1", "SCARLETT_PIPELINE_WORKERS=2", "SCARLETT_SNAPSHOT_POOL=256", "SCARLETT_KEEP_SNAPSHOTS_MB=64", "SCARLETT_DSTORAGE_STAGING_MB=128", "SCARLETT_TEXTURE_STAGE_MB=128"]   # ours: Series S with fewer worker threads and smaller snapshot/staging pools, for 16 GB PCs (only the switches this tree reads); untested
+preset_4060 = ["--console=series-s", "SCARLETT_THIN_THREADS=6", "SCARLETT_UNDER_THREADS=4", "SCARLETT_LAND_THREADS=3", "SCARLETT_MAP_THREADS=1", "SCARLETT_PIPELINE_WORKERS=2", "SCARLETT_SNAPSHOT_POOL=256", "SCARLETT_KEEP_SNAPSHOTS_MB=64", "SCARLETT_DSTORAGE_STAGING_MB=128", "SCARLETT_TEXTURE_STAGE_MB=128", "SCARLETT_CARD_BUFFERS_MIN_KB=64", "SCARLETT_CARD_BUFFERS_MB=1024", "SCARLETT_CARD_WINDOWS_MB=512", "SCARLETT_TEXTURE_BUDGET_MB=4096", "SCARLETT_OUTPUT=1920x1080"]   # ours: 8 GB card + 16 GB RAM, Vice-Tay's 4060 profile (~16 fps here) cut to the switches this tree reads; untested on this runtime
+preset_low_vram = ["--console=series-s", "SCARLETT_LEVELS_ON_DEMAND=1", "SCARLETT_TEXTURE_BUDGET_MB=4096"]   # ours: mip levels loaded on demand (PercyScarlett: ~3 GB less video memory) on Series S; untested
+preset_warm_all = ["SCARLETT_EARLY_ALL=1", "SCARLETT_PIPELINE_BOOK=1"]   # ours: every pipeline built when the title creates it and recorded for later runs; first run slower, later runs stutter less; untested
 [env]   # scripts/play-scarlett.ps1 (4866673): its Stable preset (CAND4)
 SCARLETT_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # Neonbridge: one save/settings folder for the victory family (storage/settings identical across trees)
 SCARLETT_OWN_UPSCALER = "1"
