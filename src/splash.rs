@@ -144,7 +144,8 @@ pub fn first_frame() {
         }
         return;
     }
-    if splash_art() == 0 || std::env::var("NEONBRIDGE_TITLE_ART").as_deref() == Ok("0") {
+    // The art over the game's start screen never showed reliably over the runtimes' windows: off unless asked for.
+    if splash_art() == 0 || std::env::var("NEONBRIDGE_TITLE_ART").as_deref() != Ok("1") {
         close();
         return;
     }
