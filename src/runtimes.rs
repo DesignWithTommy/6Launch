@@ -1320,7 +1320,7 @@ pub fn cargo(cmd: &[String], cwd: &Path, target: &Path, label: &str) -> Result<(
 
 fn patch_root(name: &str, root: &Path) -> Option<PathBuf> {
     match name {
-        "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo" | "klbf" | "xtx" | "vicetay" | "vertex" | "belobug" | "amd" => Some(root.to_path_buf()),
+        "victory" | "vitoriabr" | "vibrport" | "unified" | "flamingo" | "klbf" | "vicetay" | "vertex" | "amd" => Some(root.to_path_buf()),
         "scarlettport" => Some(root.join("runtime").join("victory")),
         "anyxboxx" => Some(root.join("third_party").join("victory")),
         _ => None,
@@ -1816,7 +1816,7 @@ enum WarmLine {
 fn cache_format(name: &str) -> Option<&'static str> {
     match name {
         "klbf" | "victory" | "vibrport" | "vitoriabr" | "scarlettport" | "unified" | "anyxboxx" | "amd" => Some("VSH1"),
-        "flamingo" | "belobug" => Some("VSH2"),
+        "flamingo" => Some("VSH2"),
         _ => None,
     }
 }
@@ -1834,7 +1834,7 @@ fn seed_cache(name: &str, cache: &Path) {
         return;
     }
     let Some(fmt) = cache_format(name) else { return };
-    let mut froms: Vec<(&str, PathBuf)> = ["klbf", "victory", "vibrport", "vitoriabr", "scarlettport", "unified", "anyxboxx", "amd", "flamingo", "belobug"]
+    let mut froms: Vec<(&str, PathBuf)> = ["klbf", "victory", "vibrport", "vitoriabr", "scarlettport", "unified", "anyxboxx", "amd", "flamingo"]
         .into_iter().filter(|f| *f != name && cache_format(f) == Some(fmt)).map(|f| (f, self::cache(f))).collect();
     // The old shared cache (6ixpack\cache) is VSH1: a key it has loads, a stale one is rejected and compiled.
     if fmt == "VSH1" {
