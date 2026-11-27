@@ -1,0 +1,20 @@
+# Launcher spec for vendor/pilotebox: PiloteCode's PiloteBox, a VIctory-based layer tuned for NVIDIA cards.
+# Build and run are its README "Quick start" (0d76a3c): `pilotebox play` sets its own measured settings.
+name = "pilotebox"
+fork = "VIctory"
+about = "PiloteBox 0d76a3c (GPL-3.0): 10.5 to 12.5 fps in the prologue's first playable scenes, Series X, no crash in eleven 4-5 min automated runs, RTX 5090; not yet run here"
+upstream = "https://github.com/PiloteCode/PiloteBox"
+build = ["cargo", "build", "--release", "-p", "victory"]   # README.md:75
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/pilotebox.exe"   # README.md:75
+run = ["play", "--game", "{game}"]   # README.md:77 (Series X by default)
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_series_s = ["--mode", "s"]   # README "Modes": 960x540 upscaled, much lighter on the card
+preset_ray_tracing = ["--rt"]   # README: the ray-tracing structure builder (dark rooms need it)
+preset_safe = ["--safe"]   # README: the newest speed-ups left out
+
+[env]
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"

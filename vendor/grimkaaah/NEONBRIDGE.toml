@@ -1,0 +1,51 @@
+# Launcher spec for vendor/grimkaaah: Grimkaaah's Victory Grimkaaah, a VIctory build for AMD Radeon cards only.
+# Build is tools/build.ps1 (cargo in source/); run and env are tools/play.ps1 and tools/settings.ps1 (7dbe793).
+name = "grimkaaah"
+fork = "VIctory"
+about = "Victory Grimkaaah 7dbe793 (GPL-3.0): 24.3 fps average in busy world scenes with ray tracing off, 13.9 with it on, 3-9 min sessions, RX 7900 XTX, Series X; AMD cards only; not yet run here"
+upstream = "https://github.com/Grimkaaah/Victory-Grimkaaah"
+build = ["cargo", "build", "--locked", "--release", "-p", "victory", "--manifest-path", "source/Cargo.toml"]   # tools/build.ps1:11-14
+watch = ["source/apps", "source/crates", "source/Cargo.toml", "source/Cargo.lock"]
+exe = "source/target/release/victory.exe"
+run = ["run", "{game_exe}", "--execute"]   # play.ps1:113 (Series X, the runtime default)
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_quality = ["VICTORY_BVH_BUILDER=1"]   # settings.ps1 Modes 'quality': ray tracing, 10-16 fps busy, 20-27 lighter
+preset_series_s = ["--console=series-s"]   # ours
+
+[env]   # tools/settings.ps1, the 'all' rows
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_PORT_CONSTANTS = "1"
+VICTORY_PORT_CBV = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_PORT_JOURNAL = "1"
+VICTORY_PORT_CONSTANTS_ORDER = "1"
+VICTORY_UP_QUEUE = "1"
+VICTORY_REAPER = "1"
+VICTORY_TEXBACK_FREE = "1"
+VICTORY_SUBMIT_FRAMES = "2"
+VICTORY_SUBMIT_DEPTH = "128"
+VICTORY_VSYNC = "1"
+VICTORY_FILL_FORWARD = "1"
+VICTORY_PLACED_ORDER = "1"
+VICTORY_COPY_AHEAD = "1"

@@ -25,6 +25,9 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/rdna` | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | XaviFortes | GPL-3.0 |
 | `vendor/rufflab` | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | LoverCatys | GPL-3.0 |
 | `vendor/scarlettfork` | [Scarlett fork](https://github.com/op-lite/victory-scarlett) | op-lite, on cool_fox (codec-d) and VIctory-7900XTX (avatarmanz) | GPL-3.0 |
+| `vendor/apexvi` | [ApexVI](https://github.com/KevinPratap/ApexVI) | KevinPratap, on VIctory | GPL-3.0 |
+| `vendor/grimkaaah` | [Victory Grimkaaah](https://github.com/Grimkaaah/Victory-Grimkaaah) | Grimkaaah, on VIctory | GPL-3.0 |
+| `vendor/pilotebox` | [PiloteBox](https://github.com/PiloteCode/PiloteBox) | PiloteCode, on VIctory | GPL-3.0 |
 | `vendor/percyscarlett` | [PercyScarlett](https://github.com/rpatty-dev/PercyScarlett) | rpatty-dev | GPL-2.0 |
 | `vendor/fivestar` | [Five Star Recomp](https://github.com/ThatRecompDev/five-star-recomp) | ThatRecompDev | GPL-3.0 |
 | `vendor/boottest` | [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) | OnlyMoisties | none (fetched, not copied) |

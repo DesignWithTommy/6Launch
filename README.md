@@ -24,14 +24,14 @@ i95 is a Windows launcher for the projects trying to run the Xbox Series version
 
 ## Standings
 
-Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 34 runtimes, and the launcher lists them in one list in that order.
+Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)). i95 has 37 runtimes, and the launcher lists them in one list in that order.
 
 "Its author reports" is what each project says about itself, in its own words where we could. "Here" is our own PC: i5-14400F, RTX 4060 8 GB, 16 GB RAM, Windows 11. Most authors test on faster cards, so expect less on yours if it's like ours.
 
 | Rank | Runtime | Based on | Its author reports | Here |
 |---:|---|---|---|---|
 | 1 | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | VIctory | The tracker's leader and playable by its own report: a 21.1 fps median over a 30-minute session played by hand, Series S profile, RTX 4090 | ✅ The 4060 preset: 3D at ~16 fps in the first room at 1080p on an RTX 4060 8 GB with 16 GB of RAM, but the picture looks rough (Series S plus low budgets). Plain Series S got 3 to 4 fps, because it used 17 GB of RAM and paged to disk; 8gb got 5 fps. Series X (its default) runs out of graphics memory on an 8 GB card in the first cutscene and crashes; use series_s or 8gb |
-| 2 | [victory-fork](https://github.com/fxceless/victory-fork) | VIctory | 9.7 fps at the first boat mission, 10 to 14 in light scenes, RTX 4070; the graphics card is the limit | ✅ Intro at 30 fps, 3D scene ~1 fps |
+| 2 | [victory-fork](https://github.com/fxceless/victory-fork) | VIctory | about 11 fps at the first boat mission, 10 to 14 in light scenes, RTX 4070; the graphics card is the limit | ✅ Intro at 30 fps, 3D scene ~1 fps |
 | 3 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | Vice-Tay (was Neptune) | "About 24 fps median in the world in Full HD", 30 (the game's cap) in lighter scenes, Series X, RTX 4070 SUPER | ⚠️ On its new Vice-Tay base: reaches 3D at 0.5 to 3 fps in two 2 to 3 min runs, no crash; RAM full (15.5 of 15.8 GB), so it pages. Its earlier Neptune build ran 10 min at ~14 fps |
 | 4 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | VIctory, victory-fork | "Player in control" through the prologue, ~5.7 to 7.3 fps, 77 min session, RX 9070 XT | Testing again. Its intro crash was i95 leaving TuxBox DLLs in the game folder (fixed). The intro video flickers |
 | 5 | [VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD) | VIctory | ~22 fps with ray tracing off on an RX 7900 XTX | ❌ |
@@ -60,6 +60,9 @@ Ranks come from vuyp's [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-r
 | – | [Kitty6](https://github.com/kitty-core/Kitty6) | VIctory-7900XTX | 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker | Not run yet |
 | – | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | VIctory-NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker | Not run yet |
 | – | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | CGBJ | cool_fox with VIctory-NVIDIA's 8 GB patches; 7.7 fps at half render scale, 2–3 fps native; not on the tracker | Not run yet |
+| – | [ApexVI](https://github.com/KevinPratap/ApexVI) | VIctory | Tuned for 6-8 GB laptop cards: a controllable character at 6.35 to 7.5 fps, 14-15 min runs without a crash, RTX 4050 6 GB; on the tracker's watch list | Not run yet |
+| – | [Victory Grimkaaah](https://github.com/Grimkaaah/Victory-Grimkaaah) | VIctory | AMD only: 24.3 fps average in busy world scenes (ray tracing off), 13.9 with it on, 3-9 min sessions, RX 7900 XTX; on the tracker's watch list | Not run yet |
+| – | [PiloteBox](https://github.com/PiloteCode/PiloteBox) | VIctory | For NVIDIA: 10.5 to 12.5 fps in the prologue (Series X), eleven 4-5 min runs without a crash, RTX 5090; on the tracker's watch list | Not run yet |
 | – | [PercyScarlett](https://github.com/rpatty-dev/PercyScarlett) | VIctory | Lit opening prison scene on Series S, 2-3 fps on an RTX 2060 SUPER; early, from PortWatch's watch list | Not run yet |
 | – | [Five Star Recomp](https://github.com/ThatRecompDev/five-star-recomp) | own (C#) | Intro and opening cutscene at 30 fps, world surfaces still black; needs the .NET SDK; early | Not run yet |
 | – | [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) | own (C) | Boot harness: frame loop and first UI screen; needs Visual Studio 2022 C tools; early | Not run yet |
