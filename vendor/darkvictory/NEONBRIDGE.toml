@@ -3,7 +3,7 @@
 name = "darkvictory"
 fork = "VIctory"
 gpu = "AMD 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 41   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 45   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Dark-Victory d65742f (GPL-3.0): stable around 10 fps (9.5-10.7) on an RX 6600; 20 fps is its target; not yet run here"
 upstream = "https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI"
 updated = "2026-11-27 20:23"   # the pinned upstream commit's date (scripts/runtime-info.py)

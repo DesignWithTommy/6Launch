@@ -1,7 +1,7 @@
 name = "peppa"
 fork = "playablegames-peppa"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 9   # i95 rank: score 66.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 10   # i95 rank: score 66.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "playablegames-peppa 14d8e9d (GPL-3.0): victory-fork with the RTX 4080 recipe and A/B-measured switches; 23.5 fps over 12 minutes in a house interior, Series S, RTX 5080 16 GB (its README); not yet run here"
 upstream = "https://github.com/Peppacodes/playablegames-peppa"
 updated = "2026-11-27 03:31"   # the pinned upstream commit's date (scripts/runtime-info.py)

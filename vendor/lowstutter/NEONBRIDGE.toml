@@ -1,0 +1,39 @@
+# Neonbridge launcher spec for vendor/lowstutter: tiadiff's VIctory-NVIDIA-LowStutter.
+# Build and env are its Play-VIctory.cmd (target/release/victory.exe, built from source).
+
+name = "lowstutter"
+fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README; the picker's filter)
+rank = 57   # i95 rank: score 53.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "VIctory-NVIDIA-LowStutter 1f52318 (GPL-3.0): a low-stutter VIctory-NVIDIA fork for RTX 20-50 (slow pipelines finish in the background instead of 500 ms stalls); no fps reported; not yet run here"
+upstream = "https://github.com/tiadiff/VIctory-NVIDIA-LowStutter"
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]
+exe = "target/release/victory.exe"
+run = ["run", "{game_exe}", "--console", "series-s", "--execute"]   # Play-VIctory.cmd
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]
+watch = ["apps", "crates", "src", "Cargo.toml", "Cargo.lock", "CMakeLists.txt"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+[env]   # Play-VIctory.cmd
+VICTORY_AMBIENT_AIR = "1.5"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_LOG = "warn"

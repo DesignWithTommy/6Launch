@@ -1,0 +1,54 @@
+# Neonbridge launcher spec for vendor/victorious: randomguy12000's VIctorious (branch 7900-base).
+# Build and env are its README and scripts/play.ps1: diag build, Series S with its interface plane and ports.
+
+name = "victorious"
+fork = "VIctory"
+gpu = "AMD"   # the card it is tuned for (README; the picker's filter)
+rank = 9   # i95 rank: score 67.3 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "VIctorious 6413e36 (GPL-3.0): a VIctory fork by way of VIctory-7900XTX for AMD RDNA 4: driving in the world at about 38 ms a frame (~26 fps), Series S, RX 9070 XT; not yet run here"
+upstream = "https://github.com/randomguy12000/VIctorious"
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]
+exe = "target/diag/victory.exe"
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # README.md:64 (play.ps1 -Console series-s -Ports)
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]
+watch = ["apps", "crates", "src", "Cargo.toml", "Cargo.lock", "CMakeLists.txt"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_series_x = ["--console=series-x", "VICTORY_COMPOSE=", "VICTORY_OWN_UPSCALER=", "VICTORY_CARD_ROOM_FOR_TARGETS_MB=", "VICTORY_TEXTURE_ROOM_PERCENT="]   # play.ps1 default console
+preset_safe = ["VICTORY_THIN=", "VICTORY_JOIN_PARTS=", "VICTORY_UPLOAD_AHEAD=", "VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0"]   # play.ps1 -Safe
+preset_ray_tracing = ["VICTORY_BVH_BUILDER=1"]   # play.ps1 -RayTracing
+
+[env]   # scripts/play.ps1 -Console series-s -Ports (README.md:64)
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_SKIP_PIPELINES = "none"
+VICTORY_TABLE_BATCH = "1"
+VICTORY_FIND_BY_RANGE = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_SYNC_AT_SUBMIT = "1"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_COMPOSE = "1"
+VICTORY_OWN_UPSCALER = "1"
+VICTORY_CARD_ROOM_FOR_TARGETS_MB = "1536"
+VICTORY_TEXTURE_ROOM_PERCENT = "94"
+VICTORY_PORT_CONSTANTS = "1"
+VICTORY_PORT_CBV = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_PORT_CONSTANTS_ORDER = "0"

@@ -1,0 +1,19 @@
+# Neonbridge launcher spec for vendor/danzi: Veria70's DanziLoader-Cpp (C++20 port of VIctory).
+# Build is its README (cmake --preset msvc-release, then cmake --build --preset msvc-release --target victory danzi_backend; build_after runs the second).
+
+name = "danzi"
+fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README; the picker's filter)
+rank = 13   # i95 rank: score 64.0 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "DanziLoader-Cpp 993fd7b (GPL-3.0): a C++20 port of the DanziLoader / VIctory runtime: prison to the boat pursuit, 16+ min in one process, ~11 fps in Chapter 1 at Series S and half render scale, RTX 5080; not yet run here"
+upstream = "https://github.com/Veria70/DanziLoader-Cpp"
+build = ["cmd", "/c", "cmake --preset msvc-release && cmake --build --preset msvc-release --target victory danzi_backend"]   # README.md:16-17
+exe = "build/cpp-release/victory.exe"
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # README.md:7 (Series S playtest)
+watch = ["apps", "crates", "src", "Cargo.toml", "Cargo.lock", "CMakeLists.txt"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+[env]   # README.md:7, the author's playtest (Series S, 50% render scale)
+VICTORY_RENDER_SCALE = "0.5"

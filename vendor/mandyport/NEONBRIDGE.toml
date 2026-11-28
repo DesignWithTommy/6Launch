@@ -1,0 +1,31 @@
+# Neonbridge launcher spec for vendor/mandyport: bolado-dev's mandy-port.
+# Build and run are its README: release build, Series S.
+
+name = "mandyport"
+fork = "VIctory"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README; the picker's filter)
+rank = 51   # i95 rank: score 55.5 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "mandy-port b60310b (GPL-3.0): a VIctory fork tuned for 8 GB cards: ~7 fps in the world (135-150 ms a frame), aiming at 15; not yet run here"
+upstream = "https://github.com/bolado-dev/mandy-port"
+build = ["cargo", "build", "--release", "-p", "victory"]   # README.md:98
+exe = "target/release/victory.exe"
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # README.md:99
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]
+watch = ["apps", "crates", "src", "Cargo.toml", "Cargo.lock", "CMakeLists.txt"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+[env]   # README.md:123-126 settings
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_ASYNC_SUBMIT = "1"
+VICTORY_QUEUE2 = "1"
+VICTORY_INDIRECT_BATCH = "1"
+VICTORY_COPY_FAST = "1"
+VICTORY_REFRESH_EDGES = "1"
+VICTORY_WATCH_4K = "1"
+VICTORY_GUARD_CACHE = "1"
+VICTORY_ALIAS_BACK = "1"
+VICTORY_GUARD_WALK = "1"
+VICTORY_MERGE_RUNS = "4096"
+VICTORY_HEAP_SYNC_BATCH = "1"

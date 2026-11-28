@@ -2,7 +2,7 @@
 name = "victoryperf"
 fork = "victory-fork"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 43   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 47   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-perf 3bc7937 (GPL-3.0): 14 fps in the prison corridor, 9 to 11 in interiors, 4.5 to 6.5 in heavy scenes, Series S at half render scale, RTX 4070 SUPER; lighting stand-ins for dark interiors; not yet run here"
 upstream = "https://github.com/vitutu1/victory-perf"
 updated = "2026-11-25 16:56"   # the pinned upstream commit's date (scripts/runtime-info.py)

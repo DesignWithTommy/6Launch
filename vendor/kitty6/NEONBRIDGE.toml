@@ -3,7 +3,7 @@
 name = "kitty6"
 fork = "VIctory-7900XTX"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 18   # i95 rank: score 62.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 20   # i95 rank: score 62.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Kitty6 84be060 (GPL-3.0): 20.5 fps median in the opening scene (Series S) on an RTX 4070, ~5 min runs; not on the tracker; not yet run here"
 upstream = "https://github.com/kitty-core/Kitty6"
 updated = "2026-11-27 19:12"   # the pinned upstream commit's date (scripts/runtime-info.py)

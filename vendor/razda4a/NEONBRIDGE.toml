@@ -4,7 +4,7 @@
 name = "razda4a"
 fork = "VIctory"
 gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 10   # i95 rank: score 65.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 11   # i95 rank: score 65.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "RAZDA4A-XEN a882361 (GPL-3.0): crossducking's VIctory fork for AMD RDNA: 15.2 to 23.4 fps native in the open world (14.1 for its base), 29 to 31 shown with FSR 3.1 frame generation; a prebuilt exe, no sources"
 upstream = "https://github.com/crossducking/RAZDA4A-XEN"
 updated = "2026-11-27 20:18"   # the pinned upstream commit's date (scripts/runtime-info.py)
