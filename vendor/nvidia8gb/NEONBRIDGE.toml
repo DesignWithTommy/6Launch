@@ -1,0 +1,39 @@
+# Neonbridge launcher spec for vendor/nvidia8gb: soldsawn's victory-nvidia-8gb (VIctory tuned for 8 GB NVIDIA).
+# Build and env are its scripts/play-nvidia-8gb.ps1: release build of victory, its default switches.
+name = "nvidia8gb"
+fork = "VIctory"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
+rank = 43   # i95 rank: score 56.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "victory-nvidia-8gb c09a44e (GPL-3.0): soldsawn's VIctory fork tuned for 8 GB NVIDIA (Wave32) cards: 8 to 10 fps on an RTX 4060 Laptop 8 GB, Series X profile at 1920x1080 with two texture mips dropped"
+upstream = "https://github.com/soldsawn/victory-nvidia-8gb"
+updated = "2026-11-25 16:55"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 97   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-nvidia-8gb.ps1:15 (cargo build --release)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = []
+run = ["run", "--execute", "{game_exe}"]   # play-nvidia-8gb.ps1:50 (no --console: the Series X profile)
+prewarm = ["preload", "{game}"]   # apps/victory/src/main.rs Preload: shaders, then warm, then the loading pipelines (its F1 PRELOAD SHADERS)
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = true   # apps/victory/src/main.rs: D3D12SDKVersion 614, D3D12\D3D12Core.dll beside victory.exe (needed on Windows 10)
+preset_borderless = ["VICTORY_BORDERLESS=1"]   # play-nvidia-8gb.ps1 -Borderless
+preset_water = ["VICTORY_TEXTURE_BACK=1"]   # play-nvidia-8gb.ps1 -Water
+
+[env]   # scripts/play-nvidia-8gb.ps1 (its defaults: -Resolution 1920x1080 -DropMips 2)
+VICTORY_RESOLUTION = "1920x1080"
+VICTORY_TEXTURE_DROP_MIPS = "2"
+VICTORY_COPY_PLAIN = "1"
+VICTORY_INDIRECT_GATHER = "1"
+VICTORY_HEAP_WORKER = "1"
+VICTORY_ALIAS_ONCE = "1"
+VICTORY_JOIN_PARTS = "1"
+VICTORY_BACK_OWN_VIEW = "1"
+VICTORY_INDIRECT_WINDOW_DRAWS = "1"
+VICTORY_GUARD_HOLES_FRAME = "1"
+VICTORY_COPY_CHANGED = "1"
+VICTORY_CARD_WINDOWS_MB = "2048"
+VICTORY_CARD_BUFFERS_MB = "1024"
+VICTORY_CLAMP_WAITS = "0"
+VICTORY_WIDE_MERGE = "1"
+VICTORY_RELAY_OWN_QUEUE = "1"

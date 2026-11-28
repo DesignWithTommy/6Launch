@@ -1,0 +1,49 @@
+# Neonbridge launcher spec for vendor/nvidiafg: pepezin-ai's VIctory-NVIDIA (branch fg-constants-fix: DLSS frame generation fixed).
+# Build and env are its scripts/play-nvidia.ps1: release build, Series S, DLSS only with NVIDIA's files.
+name = "nvidiafg"
+fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
+rank = 37   # i95 rank: score 56.8 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "VIctory-NVIDIA (pepezin-ai) 1469efe (GPL-3.0): VIctory-NVIDIA with DLSS frame generation fixed: 11 fps rendered, 44 shown at 4x, RTX 5070 12 GB in the prologue; here without NVIDIA's DLSS files: Series S, the title's upscaling stretched"
+upstream = "https://github.com/pepezin-ai/VIctory-NVIDIA"
+updated = "2026-11-26 22:10"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 53   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-foxhound.ps1:133 (-Build release, its default)
+watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/victory.exe"
+diag_build = []
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play-nvidia.ps1:102,213
+prewarm = ["preload", "{game}"]   # apps/victory/src/main.rs Preload: shaders, then warm, then the loading pipelines (its F1 PRELOAD SHADERS)
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = true   # apps/victory/src/main.rs: D3D12SDKVersion 614, D3D12\D3D12Core.dll beside victory.exe (needed on Windows 10)
+preset_series_x = ["--console=series-x"]   # play-nvidia.ps1 -SeriesX
+preset_quality = ["VICTORY_RELAY=1", "VICTORY_CARD_STEPS=0"]   # play-nvidia.ps1 -Quality
+
+[env]   # scripts/play-nvidia.ps1 $settings (its default: Series S; without DLSS files VICTORY_UPSCALE=stretch)
+VICTORY_TEXTURE_NO_WAIT = "0"
+VICTORY_RELAY = "2"
+VICTORY_CARD_STEPS = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_FETCH_CHECK = "1"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0"
+VICTORY_D3D12_DRED = "light"
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_AMBIENT_AIR = "1.5"
+VICTORY_NAN_SCRUB = "1"
+VICTORY_PIPELINE_WAIT_MS = "10000"
+VICTORY_DYNAMIC_SLOTS = "524288"
+VICTORY_CARD_BUFFERS_MIN_MB = "1"
+VICTORY_CARD_BUFFERS_MB = "1536"
+VICTORY_UPSCALE = "stretch"

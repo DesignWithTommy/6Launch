@@ -4,7 +4,7 @@
 name = "karamelo"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 35   # i95 rank: score 56.8 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 36   # i95 rank: score 56.8 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "VKarameloVI 2711f62 (GPL-3.0): 11 fps, or 21.8 with NVIDIA Smooth Motion (frame doubling), on its author's card; not on the tracker; not yet run here"
 upstream = "https://github.com/badDevelopper/VKarameloVI"
 updated = "2026-11-25 21:52"   # the pinned upstream commit's date (scripts/runtime-info.py)

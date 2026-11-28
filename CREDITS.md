@@ -21,6 +21,9 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/klbf` | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | PastiiJay and the VIctory contributors | GPL-3.0 |
 | `vendor/marvisak` | [VIctory](https://github.com/Marvisak/VIctory) | Marvisak | GPL-3.0 |
 | `vendor/nvidia` | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | trustno1-coder | GPL-3.0 |
+| `vendor/nvidiart` | [VIctory-NVIDIA-RT](https://github.com/Kemerd/VIctory-NVIDIA-RT) | Kemerd | GPL-3.0 |
+| `vendor/nvidiafg` | [VIctory-NVIDIA (pepezin-ai)](https://github.com/pepezin-ai/VIctory-NVIDIA) | pepezin-ai | GPL-3.0 |
+| `vendor/nvidia8gb` | [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) | soldsawn | GPL-3.0 |
 | `vendor/rdna` | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | XaviFortes | GPL-3.0 |
 | `vendor/rufflab` | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | LoverCatys | GPL-3.0 |
 | `vendor/apexvi` | [ApexVI](https://github.com/KevinPratap/ApexVI) | KevinPratap, on VIctory | GPL-3.0 |
@@ -65,6 +68,9 @@ Ranks come from [vuyp](https://github.com/vuyp)'s [GTA VI PC race tracker](https
 - [Vilocity](https://github.com/voidopcode/vilocity) by voidopcode, GPL-3.0-or-later per its Cargo.toml (vendor/vilocity)
 - [DexNom RayTime](https://github.com/DexNom/VIctory) by DexNom, GPL-3.0 (vendor/dexnom)
 - [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) by trustno1-coder, GPL-3.0 (vendor/nvidia)
+- [VIctory-NVIDIA-RT](https://github.com/Kemerd/VIctory-NVIDIA-RT) by Kemerd, GPL-3.0 (vendor/nvidiart)
+- [VIctory-NVIDIA (pepezin-ai)](https://github.com/pepezin-ai/VIctory-NVIDIA) by pepezin-ai, GPL-3.0 (vendor/nvidiafg)
+- [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) by soldsawn, GPL-3.0 (vendor/nvidia8gb)
 - [Victory-United](https://github.com/Fayberr/Victory-United) by Fayberr, GPL-3.0 (vendor/united)
 - i95-Victory, our own fork of Kelvaroq with fixes from VI-BR-PORT, soldsawn/victory-nvidia-8gb and VItoriaBr, GPL-3.0 (vendor/i95-victory; credits in its source/CREDITS.md)
 

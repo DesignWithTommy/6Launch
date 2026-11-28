@@ -26,7 +26,7 @@ OURS=dict(vicetay=P(21.1,.1,.5,.8),anyxboxx=P(24,.1,.25),klbf=P(14,.1,.25,.8),vi
  ccs03=P(5,.1),lnx=P(5.5),victory8gb=P(0,.25,.25,1),peppa=P(23.5,0,.25,.55),leonida=P(10),sleyfork=P(20.6),
  scarlett3070=P(18.5),foxhound=P(18.5),sm86=P(28.5),slaktarn=P(22),viscosity=P(17.9),darkvictory=P(10),m1lk=P(4),
  minivi=P(0),victory4gb=P(6.75),neptune=P(14,0,.25,.55),kitty6=P(20.5,0,.25,.25),karamelo=P(11),coolfox12=P(7.7),
- apexvi=P(7,0,.25,.55),grimkaaah=P(24.3,0,.25,.25),pilotebox=P(21),percyscarlett=W())
+ apexvi=P(7,0,.25,.55),nvidiart=P(21.9),nvidia8gb=P(9),nvidiafg=P(11),grimkaaah=P(24.3,0,.25,.25),pilotebox=P(21),percyscarlett=W())
 rows=[]
 for f in glob.glob('vendor/*/NEONBRIDGE.toml'):
     n=f.replace('\\','/').split('/')[-2]; t=open(f,encoding='utf-8').read()
