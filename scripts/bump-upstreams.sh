@@ -35,4 +35,9 @@ P
 printf '%s\n' "${changed[@]:-}" | sed '/^$/d' > "${TMPDIR:-/tmp}/bumped.txt"
 T=$(mktemp -d); if gh api repos/4lwayz/portwatch-vi/contents/data/tracker.json -H "Accept: application/vnd.github.raw" > "$T/pw.json" 2>/dev/null; then python -I scripts/rank.py "$T/pw.json" "$T/ranks.json" > /dev/null && python -I scripts/rank-write.py "$T/ranks.json" >&2; fi; rm -rf "$T"
 python -I scripts/sync-docs.py >&2
+# Flag runtimes the README table does not link (matched on the toml's upstream URL, case-insensitive).
+for d in vendor/*/; do
+  u=$(sed -n 's#^upstream *= *"\(https://github.com/[^"]*\)".*##p' "$d/NEONBRIDGE.toml" 2>/dev/null | head -1); u=${u%/}; u=${u%.git}
+  [ -n "$u" ] && ! grep -qiF "($u)" README.md && echo "README missing: $(basename "$d") $u" >&2
+done
 cat "${TMPDIR:-/tmp}/bumped.txt"
