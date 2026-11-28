@@ -3,7 +3,7 @@
 name = "foxhound"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 33   # i95 rank: score 59.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 36   # i95 rank: score 59.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "foxhound 7c53527 (GPL-3.0): 30 fps (the title's cap) on a 4070 SUPER + 7800X3D, 16-21 fps in heavier scenes; not yet run here"
 upstream = "https://github.com/readmet3xt-lab/foxhound"
 updated = "2026-11-28 05:57"   # the pinned upstream commit's date (scripts/runtime-info.py)

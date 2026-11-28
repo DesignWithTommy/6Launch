@@ -33,7 +33,7 @@ On an 8 GB card, pick a runtime's `8gb` or `series_s` preset: most runtimes defa
 
 ## Standings
 
-All 66 runtimes, ranked with [PortWatch VI](https://portwatch-vi.xyz/)'s scoring formula, are on the **[website](https://designwithtommy.github.io/i95-GTA6-PC-Launcher/#standings)** and in [STANDINGS.md](STANDINGS.md), with each author's own report and our results on an RTX 4060. The launcher lists them in the same order.
+All 72 runtimes, ranked with [PortWatch VI](https://portwatch-vi.xyz/)'s scoring formula, are on the **[website](https://designwithtommy.github.io/i95-GTA6-PC-Launcher/#standings)** and in [STANDINGS.md](STANDINGS.md), with each author's own report and our results on an RTX 4060. The launcher lists them in the same order.
 
 ## FAQ
 

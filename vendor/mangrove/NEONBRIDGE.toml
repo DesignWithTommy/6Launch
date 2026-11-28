@@ -4,7 +4,7 @@
 name = "mangrove"
 fork = "VIctory"
 gpu = "NVIDIA 8 GB"   # the card it is tuned for (README; the picker's filter)
-rank = 51   # i95 rank: score 56.5 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 55   # i95 rank: score 56.5 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "mangrove 1e53b0d (GPL-3.0): a VIctory fork for 8 GB cards: player control in the prologue at 2.5 fps, RTX 3070 (author); not yet run here"
 upstream = "https://github.com/Joaco9020/mangrove"
 updated = "2026-11-27 13:32"   # the pinned upstream commit's date (scripts/runtime-info.py)

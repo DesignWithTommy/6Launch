@@ -3,7 +3,7 @@
 name = "scarlett3070"
 fork = "VIctory"
 gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 34   # i95 rank: score 59.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 37   # i95 rank: score 59.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-scarlett-3070 ae29c7b (GPL-3.0): 16-21 fps in heavy scenes, lower when driving; not yet run here"
 upstream = "https://github.com/Yaekai/victory-scarlett-3070"
 updated = "2026-11-27 08:50"   # the pinned upstream commit's date (scripts/runtime-info.py)

@@ -3,7 +3,7 @@
 name = "nvidia8gb"
 fork = "VIctory"
 gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 52   # i95 rank: score 56.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 56   # i95 rank: score 56.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "victory-nvidia-8gb c09a44e (GPL-3.0): soldsawn's VIctory fork tuned for 8 GB NVIDIA (Wave32) cards: 8 to 10 fps on an RTX 4060 Laptop 8 GB, Series X profile at 1920x1080 with two texture mips dropped"
 upstream = "https://github.com/soldsawn/victory-nvidia-8gb"
 updated = "2026-11-25 16:55"   # the pinned upstream commit's date (scripts/runtime-info.py)

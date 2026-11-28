@@ -3,7 +3,7 @@
 name = "victory4gb"
 fork = "VIctory"   # README.md:3 (two lines of VIctory; base fxceless victory-fork, README.fxceless.md)
 gpu = "NVIDIA 4 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 57   # i95 rank: score 55.4 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 61   # i95 rank: score 55.4 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "victory-4gb f5f065e (GPL-3.0): 6.5 to 7 fps open-world free play on an RTX 3050 Laptop 4 GB (README.md:20); not yet run here"
 upstream = "https://github.com/Dathinel/victory-4gb"
 updated = "2026-11-28 10:44"   # the pinned upstream commit's date (scripts/runtime-info.py)

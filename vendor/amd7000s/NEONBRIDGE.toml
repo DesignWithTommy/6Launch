@@ -1,0 +1,90 @@
+# Neonbridge launcher spec for vendor/amd7000s: qekz's AMD-7000s.
+# Build and env are Play-AMD-7000s.cmd -> scripts/play-tuned.ps1 with no switches (README.md:130, 147-150).
+
+name = "amd7000s"
+fork = "VIctory"
+gpu = "AMD RX 7900 XTX"   # the card it is tuned for (README.md:17; the picker's filter)
+rank = 22   # i95 rank: score 62.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "AMD-7000s 2dbeb5d (GPL-3.0): a VIctory fork for an RX 7900 XTX + Ryzen 7 9800X3D, Series X profile: the 30 fps cap held in light scenes, about 24 fps in heavy ones (author); not yet run here"
+upstream = "https://github.com/qekz/amd-7000s"
+updated = "2026-11-27 21:41"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 1   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:130; Play-AMD-7000s.cmd:3
+exe = "target/release/victory.exe"   # scripts/play-tuned.ps1:60 (-Build release default)
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:180
+diag_exe = "target/diag/victory.exe"   # Cargo.toml:82 [profile.diag]
+cwd = "."   # scripts/play-tuned.ps1:350 (-WorkingDirectory $root: victory.toml is looked for there)
+run = ["run", "{game_exe}", "--console", "series-x", "--execute"]   # scripts/play-tuned.ps1:65, 350
+prewarm = ["shaders", "{game}"]   # scripts/prepare.ps1:33 (with the patch switches below set; then `warm`, prepare.ps1:38-39)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock"]   # Cargo.toml:3 members
+game_env = "VICTORY_GAME_DIR"   # scripts/play-tuned.ps1:340
+cache_env = "VICTORY_CACHE_DIR"   # scripts/play-tuned.ps1:340
+agility = false   # no D3D12SDKVersion export in the tree
+
+# scripts/play-tuned.ps1's switches (README.md:161-172; play-tuned.ps1:56-79)
+preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=0", "VICTORY_JOIN_PARTS=0", "VICTORY_UPLOAD_AHEAD=0"]   # -Safe (play-tuned.ps1:146-150: the script leaves the non-safe ones unset; 0 here)
+preset_raytracing = ["VICTORY_BVH_BUILDER=1"]   # -RayTracing (play-tuned.ps1:151)
+preset_flickerfix = ["VICTORY_PORT_CONSTANTS_ORDER=1"]   # -FlickerFix (play-tuned.ps1:163)
+preset_conservative = ["VICTORY_LATE_WAIT_LISTS=0", "VICTORY_FILL_TITLE=0"]   # -Conservative (play-tuned.ps1:174-177: left unset there; 0 here)
+preset_res1440 = ["VICTORY_RENDER_SCALE=1.0"]   # -Resolution 1440 (play-tuned.ps1:161)
+preset_res4k = ["VICTORY_OUTPUT=", "VICTORY_RENDER_SCALE="]   # -Resolution 4k (play-tuned.ps1:159: output and scale left unset)
+preset_fps20 = ["VICTORY_FRAME_INTERVAL_MS=50"]   # -Fps 20 (play-tuned.ps1:158)
+preset_series_s = ["--console=series-s"]   # -Console series-s (play-tuned.ps1:65)
+preset_fsr4k = ["VICTORY_FSR_4K=quality", "VICTORY_OUTPUT=", "VICTORY_RENDER_SCALE="]   # -Fsr4K quality (play-tuned.ps1:157-159; needs amd_fidelityfx_upscaler_dx12.dll, README.md:170, not fetched by any script)
+preset_windowed = ["VICTORY_BORDERLESS=0"]   # -Windowed (play-tuned.ps1:165)
+preset_nobigheap = ["VICTORY_BIG_HEAP=0"]   # -NoBigHeap (play-tuned.ps1:164)
+preset_nopatches = ["VICTORY_PORT_CONSTANTS=0", "VICTORY_PORT_DESCRIPTORS=0", "VICTORY_PORT_CBV=0", "VICTORY_PORT_GUARD=0", "VICTORY_PORT_JOURNAL=0"]   # -NoPatches (play-tuned.ps1:152-156)
+
+[env]   # scripts/play-tuned.ps1:140-207, no switches ($neu true: play-tuned.ps1:104)
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_THIN = "1"   # play-tuned.ps1:149 (not -Safe)
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_PORT_CONSTANTS = "1"   # play-tuned.ps1:152-156 (not -NoPatches)
+VICTORY_PORT_DESCRIPTORS = "1"
+VICTORY_PORT_CBV = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_PORT_JOURNAL = "1"
+VICTORY_OUTPUT = "2560x1440"   # play-tuned.ps1:159-162 (-Resolution 1080-1440 default)
+VICTORY_RENDER_SCALE = "0.75"
+VICTORY_PORT_CONSTANTS_ORDER = "0"   # play-tuned.ps1:163
+VICTORY_BIG_HEAP = "1"   # play-tuned.ps1:164
+VICTORY_BORDERLESS = "1"   # play-tuned.ps1:165
+VICTORY_CARD_BUFFERS_MIN_KB = "64"   # play-tuned.ps1:166-173
+VICTORY_WIDE_SPIN = "100"
+VICTORY_PORT_DESCRIPTORS_EVERY = "1"
+VICTORY_PORT_DESCRIPTORS_CHECK = "128"
+VICTORY_DSTORAGE_STAGING_MB = "256"
+VICTORY_TEXTURE_LOOK_MS = "250"
+VICTORY_HELPER_PRIORITY = "1"
+VICTORY_LAND_THREADS = "6"
+VICTORY_LATE_WAIT_LISTS = "1024"   # play-tuned.ps1:174-177 (not -Conservative)
+VICTORY_FILL_TITLE = "1"
+VICTORY_POOL_DISCARD = "1"   # play-tuned.ps1:178-185 ($neu)
+VICTORY_PRELUDE_POOL = "1"
+VICTORY_SKIP_WC_BACK = "1"
+VICTORY_THIN_THREADS = "20"   # play-tuned.ps1:182: the PC's logical processors (20 on the target rig's 14400F)
+VICTORY_WINDOW_BUDGET_MB = "1536"   # play-tuned.ps1:184 (VICTORY_TEXTURE_MAX=0 only with >= 20 GB VRAM, play-tuned.ps1:183: left out)
+VICTORY_BUFFER_NO_WAIT = "1"   # play-tuned.ps1:186-188 (no crash marker)
+VICTORY_INPLACE = "1"   # play-tuned.ps1:189-194
+VICTORY_INPLACE_MB = "1536"   # play-tuned.ps1:193: sized by RAM (1536 for 15-29 GB, the target rig's 16 GB)
+VICTORY_SOFT_VIEWS = "copies"   # play-tuned.ps1:199
+VICTORY_PORT_BUFFERS = "1"   # play-tuned.ps1:200
+VICTORY_SYNC_IN_PLACE = "1"   # play-tuned.ps1:201-204
+VICTORY_OWNERLESS_VIEWS = "1048576"
+VICTORY_PIPELINE_BOOK = "1"   # play-tuned.ps1:205-207
+VICTORY_MEMORY_MAP = "0"
+VICTORY_LOG = "info,victory_gpu::texture=warn"

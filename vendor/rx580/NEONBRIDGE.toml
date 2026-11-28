@@ -1,0 +1,56 @@
+# Neonbridge launcher spec for vendor/rx580: bymsec's VIctory RX 580 (Old Wolf), for GPUs without mesh shaders.
+# UPSTREAM pins branch rx580-main-fps, not the default branch: README.md:101-104 ("this branch, the one to use").
+# Build is README.md:88-89 (diag profile); env is its Old Wolf launcher's default Play (launcher/Services/LaunchPlanBuilder.cs
+# BuildPlayPlan, Rx580Main build, Basic mode at Balanced, Series S: launcher/Models/LauncherSettings.cs:41-47).
+
+name = "rx580"
+fork = "VIctory"
+gpu = "AMD RX 580"   # the card it is tuned for (README.md:5; the picker's filter)
+rank = 66   # i95 rank: score 53.8 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "VIctory RX 580 2404c54 (GPL-3.0): a VIctory fork for GPUs without mesh shaders (branch rx580-main-fps), on an RX 580 8 GB: boots and draws the city at about 2 fps in busy streets, not playable yet (author); not yet run here"
+upstream = "https://github.com/bymsec/victory-rx580"
+updated = "2026-11-28 11:12"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 10   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:88 (+--locked)
+exe = "target/diag/victory.exe"   # README.md:92 (package.ps1 -VictoryExe ..\target\diag\victory.exe)
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # LaunchPlanBuilder.cs:57-58, 203-210
+prewarm = ["translate", "--cache", "--jobs", "{jobs}", "{game}"]   # LaunchPlanBuilder.cs:262-265 (main-fps has no shaders command; then warm --used --jobs 3, :303-309)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock"]   # Cargo.toml:3 members
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"   # LaunchPlanBuilder.cs:68
+agility = false   # apps/victory/src/agility.rs:18: D3D12SDKVersion 620; i95 ships 1.614.1, so the setup step below fetches 1.620.2 (package.ps1:4 ships D3D12Core.dll in victory\D3D12)
+
+# Microsoft.Direct3D.D3D12 1.620.2 from nuget.org, D3D12Core.dll and d3d12SDKLayers.dll into target\release\D3D12 and target\diag\D3D12
+setup = [
+  "agility: powershell -NoProfile -Command \"$t=Join-Path $env:TEMP 'd3d12-1.620.2.zip'; Invoke-WebRequest -UseBasicParsing https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.620.2 -OutFile $t; $x=Join-Path $env:TEMP 'd3d12-1.620.2'; Expand-Archive -Force $t $x; foreach ($o in 'target\\release\\D3D12','target\\diag\\D3D12') { New-Item -ItemType Directory -Force $o | Out-Null; Copy-Item (Join-Path $x 'build\\native\\bin\\x64\\D3D12Core.dll'),(Join-Path $x 'build\\native\\bin\\x64\\d3d12SDKLayers.dll') $o -Force }; Remove-Item -Recurse -Force $t,$x\" [asks first: download]",
+]
+
+# Old Wolf's other settings (LaunchPlanBuilder.cs:158-196); FSR needs amd_fidelityfx_upscaler_dx12.dll, which no script in the tree fetches (package.ps1:6, 18-20)
+preset_fsr = ["VICTORY_FSR=performance", "VICTORY_FIDELITYFX_DIR=%LOCALAPPDATA%\\RpfViewer\\fidelityfx"]   # Basic Balanced with the FFX DLLs (:162-166; package.ps1:14)
+preset_fsr_ultra = ["VICTORY_FSR=ultra-performance", "VICTORY_FIDELITYFX_DIR=%LOCALAPPDATA%\\RpfViewer\\fidelityfx"]   # Basic Performance (:165), the README's measured setting (README.md:37-38)
+preset_audio_on = ["VICTORY_AUDIO="]   # Advanced mode, AudioOff false (:171-174)
+preset_series_x = ["--console=series-x"]   # Advanced mode, SeriesSProfile off (:57-58)
+preset_card_all = ["VICTORY_CARD_ALL=1"]   # Advanced CardCopiesAllBuffers (:192-195)
+
+[env]   # launcher/Services/LaunchPlanBuilder.cs:119-138 (Rx580Main: "mirrors boot\mainfps_start.ps1"), 158-161 (Basic mode)
+VICTORY_SHADER_LOOP_LIMIT = "256"
+VICTORY_WAVE32_HALVES = "1"
+VICTORY_MESH_POOL_MB = "8"
+VICTORY_MESH_INDIRECT_MB = "8"
+VICTORY_TEXTURE_MIP_DROP = "2"
+VICTORY_GI_STANDIN = "1"
+VICTORY_GI_STANDIN_SKIP = "1"
+VICTORY_SKIP_MOVIES = "1"
+VICTORY_ROOT_VIEW_LENIENT = "1"
+VICTORY_INDIRECT_REST = "0"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_WINDOW_MAX = "1280x720"
+VICTORY_SWAPCHAIN_MAX = "1280x720"
+VICTORY_SPARE_LISTS = "256"
+VICTORY_ALLOCATOR_RENEW_EVERY = "64"
+VICTORY_THIN = "0"
+VICTORY_FRAME_GEN = "0"
+VICTORY_OVERLAY = "hidden"   # :137 (Ctrl+Alt+0 shows the switch box)
+VICTORY_PATCH = "0x28d0d60=31c0c3:ffc9f7c1f7ffffff0f94c0c3"   # :28 DefaultPatchSpec
+VICTORY_AUDIO = "off"   # :161 (Basic mode)
+# Not copied: VICTORY_LIVE_FILE and VICTORY_SKIP_PIPELINES (:54-55, 139-156) read rx580\live.txt and amd_skip.txt, which are not in the tree.

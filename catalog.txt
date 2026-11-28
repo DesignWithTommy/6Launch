@@ -46,7 +46,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== amd4k 80e108c2c6c1e684a8b0489099a19dc1d3507ff7
+=== amd4k 818ff02b01f68435c4b35193495f0d0ad313e6c4
 # Neonbridge launcher spec for vendor/amd4k: elaboratecl's VIctory-AMD-4K.
 # Build and env are its launch_gta6.cmd (release build).
 
@@ -54,9 +54,9 @@ name = "amd4k"
 fork = "VIctory"
 gpu = "AMD"   # the card it is tuned for (README; the picker's filter)
 rank = 41   # i95 rank: score 58.0 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
-about = "VIctory-AMD-4K 80e108c (GPL-3.0): native 4K Series X on AMD: 13.0-16.1 fps, Ryzen 5 5600, RX 6800 16 GB, 16 GB RAM; not yet run here"
+about = "VIctory-AMD-4K 818ff02 (GPL-3.0): native 4K Series X on AMD: 13.0-16.1 fps, Ryzen 5 5600, RX 6800 16 GB, 16 GB RAM; not yet run here"
 upstream = "https://github.com/elaboratecl/victory-amd-4k"
-updated = "2026-11-28 12:47"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-28 13:08"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 6   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]
 exe = "target/release/victory.exe"
@@ -193,6 +193,96 @@ VICTORY_PIPELINE_WORKERS = "6"
 VICTORY_PIPELINE_LOWEST = "0"
 VICTORY_PIPELINE_LOW_MEMORY = "1"
 VICTORY_BURY_LAG = "8"
+=== amd7000s 2dbeb5d962fc1ce9e6fc11f282ef7b2bbd924fd9
+# Neonbridge launcher spec for vendor/amd7000s: qekz's AMD-7000s.
+# Build and env are Play-AMD-7000s.cmd -> scripts/play-tuned.ps1 with no switches (README.md:130, 147-150).
+
+name = "amd7000s"
+fork = "VIctory"
+gpu = "AMD RX 7900 XTX"   # the card it is tuned for (README.md:17; the picker's filter)
+about = "AMD-7000s 2dbeb5d (GPL-3.0): a VIctory fork for an RX 7900 XTX + Ryzen 7 9800X3D, Series X profile: the 30 fps cap held in light scenes, about 24 fps in heavy ones (author); not yet run here"
+upstream = "https://github.com/qekz/amd-7000s"
+updated = "2026-11-27 21:41"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 1   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:130; Play-AMD-7000s.cmd:3
+exe = "target/release/victory.exe"   # scripts/play-tuned.ps1:60 (-Build release default)
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:180
+diag_exe = "target/diag/victory.exe"   # Cargo.toml:82 [profile.diag]
+cwd = "."   # scripts/play-tuned.ps1:350 (-WorkingDirectory $root: victory.toml is looked for there)
+run = ["run", "{game_exe}", "--console", "series-x", "--execute"]   # scripts/play-tuned.ps1:65, 350
+prewarm = ["shaders", "{game}"]   # scripts/prepare.ps1:33 (with the patch switches below set; then `warm`, prepare.ps1:38-39)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock"]   # Cargo.toml:3 members
+game_env = "VICTORY_GAME_DIR"   # scripts/play-tuned.ps1:340
+cache_env = "VICTORY_CACHE_DIR"   # scripts/play-tuned.ps1:340
+agility = false   # no D3D12SDKVersion export in the tree
+
+# scripts/play-tuned.ps1's switches (README.md:161-172; play-tuned.ps1:56-79)
+preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=0", "VICTORY_JOIN_PARTS=0", "VICTORY_UPLOAD_AHEAD=0"]   # -Safe (play-tuned.ps1:146-150: the script leaves the non-safe ones unset; 0 here)
+preset_raytracing = ["VICTORY_BVH_BUILDER=1"]   # -RayTracing (play-tuned.ps1:151)
+preset_flickerfix = ["VICTORY_PORT_CONSTANTS_ORDER=1"]   # -FlickerFix (play-tuned.ps1:163)
+preset_conservative = ["VICTORY_LATE_WAIT_LISTS=0", "VICTORY_FILL_TITLE=0"]   # -Conservative (play-tuned.ps1:174-177: left unset there; 0 here)
+preset_res1440 = ["VICTORY_RENDER_SCALE=1.0"]   # -Resolution 1440 (play-tuned.ps1:161)
+preset_res4k = ["VICTORY_OUTPUT=", "VICTORY_RENDER_SCALE="]   # -Resolution 4k (play-tuned.ps1:159: output and scale left unset)
+preset_fps20 = ["VICTORY_FRAME_INTERVAL_MS=50"]   # -Fps 20 (play-tuned.ps1:158)
+preset_series_s = ["--console=series-s"]   # -Console series-s (play-tuned.ps1:65)
+preset_fsr4k = ["VICTORY_FSR_4K=quality", "VICTORY_OUTPUT=", "VICTORY_RENDER_SCALE="]   # -Fsr4K quality (play-tuned.ps1:157-159; needs amd_fidelityfx_upscaler_dx12.dll, README.md:170, not fetched by any script)
+preset_windowed = ["VICTORY_BORDERLESS=0"]   # -Windowed (play-tuned.ps1:165)
+preset_nobigheap = ["VICTORY_BIG_HEAP=0"]   # -NoBigHeap (play-tuned.ps1:164)
+preset_nopatches = ["VICTORY_PORT_CONSTANTS=0", "VICTORY_PORT_DESCRIPTORS=0", "VICTORY_PORT_CBV=0", "VICTORY_PORT_GUARD=0", "VICTORY_PORT_JOURNAL=0"]   # -NoPatches (play-tuned.ps1:152-156)
+
+[env]   # scripts/play-tuned.ps1:140-207, no switches ($neu true: play-tuned.ps1:104)
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_THIN = "1"   # play-tuned.ps1:149 (not -Safe)
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_PORT_CONSTANTS = "1"   # play-tuned.ps1:152-156 (not -NoPatches)
+VICTORY_PORT_DESCRIPTORS = "1"
+VICTORY_PORT_CBV = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_PORT_JOURNAL = "1"
+VICTORY_OUTPUT = "2560x1440"   # play-tuned.ps1:159-162 (-Resolution 1080-1440 default)
+VICTORY_RENDER_SCALE = "0.75"
+VICTORY_PORT_CONSTANTS_ORDER = "0"   # play-tuned.ps1:163
+VICTORY_BIG_HEAP = "1"   # play-tuned.ps1:164
+VICTORY_BORDERLESS = "1"   # play-tuned.ps1:165
+VICTORY_CARD_BUFFERS_MIN_KB = "64"   # play-tuned.ps1:166-173
+VICTORY_WIDE_SPIN = "100"
+VICTORY_PORT_DESCRIPTORS_EVERY = "1"
+VICTORY_PORT_DESCRIPTORS_CHECK = "128"
+VICTORY_DSTORAGE_STAGING_MB = "256"
+VICTORY_TEXTURE_LOOK_MS = "250"
+VICTORY_HELPER_PRIORITY = "1"
+VICTORY_LAND_THREADS = "6"
+VICTORY_LATE_WAIT_LISTS = "1024"   # play-tuned.ps1:174-177 (not -Conservative)
+VICTORY_FILL_TITLE = "1"
+VICTORY_POOL_DISCARD = "1"   # play-tuned.ps1:178-185 ($neu)
+VICTORY_PRELUDE_POOL = "1"
+VICTORY_SKIP_WC_BACK = "1"
+VICTORY_THIN_THREADS = "20"   # play-tuned.ps1:182: the PC's logical processors (20 on the target rig's 14400F)
+VICTORY_WINDOW_BUDGET_MB = "1536"   # play-tuned.ps1:184 (VICTORY_TEXTURE_MAX=0 only with >= 20 GB VRAM, play-tuned.ps1:183: left out)
+VICTORY_BUFFER_NO_WAIT = "1"   # play-tuned.ps1:186-188 (no crash marker)
+VICTORY_INPLACE = "1"   # play-tuned.ps1:189-194
+VICTORY_INPLACE_MB = "1536"   # play-tuned.ps1:193: sized by RAM (1536 for 15-29 GB, the target rig's 16 GB)
+VICTORY_SOFT_VIEWS = "copies"   # play-tuned.ps1:199
+VICTORY_PORT_BUFFERS = "1"   # play-tuned.ps1:200
+VICTORY_SYNC_IN_PLACE = "1"   # play-tuned.ps1:201-204
+VICTORY_OWNERLESS_VIEWS = "1048576"
+VICTORY_PIPELINE_BOOK = "1"   # play-tuned.ps1:205-207
+VICTORY_MEMORY_MAP = "0"
+VICTORY_LOG = "info,victory_gpu::texture=warn"
 === amdr13 bc646facd68cce4d77f9bc5fd93aec6cba5773ea
 name = "amdr13"
 fork = "victory-amd r13"
@@ -594,7 +684,7 @@ rank = 23   # i95 rank: score 61.5 by PortWatch VI's formula (from the author's 
 about = "CGBJ 42b95b9 (cool_fox, GPL-3.0): 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub; not yet run here"
 upstream = "https://github.com/DoubleGhosty/cool_fox"
 updated = "2026-11-27 06:03"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1049   # GitHub stars when last checked
+stars = 1056   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # README.md:34
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"   # Play-VIctory.cmd runner fallback
@@ -854,7 +944,7 @@ rank = 2   # i95 rank: score 77.4 by PortWatch VI's formula (its own assessment;
 about = "DexNom RayTime 4ad8692 (GPL-3.0): 1 fps with ray tracing on, 3.5 to 4 without, RX 7900 XTX; not yet run here"
 upstream = "https://github.com/DexNom/VIctory"
 updated = "2026-11-27 14:44"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1560   # GitHub stars when last checked
+stars = 1561   # GitHub stars when last checked
 # README.md:36: the BCPack format tables first (the sources include_bytes! them; hash-checked, kept once fetched).
 prebuild = ["powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-FormatTables.ps1"]
 build = ["cargo", "build", "--locked", "--release", "-p", "victory", "--features", "diagnostics", "--bins"]   # README.md:36
@@ -893,7 +983,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== el1xr 32c42b8435534868fef0a863ddf1778b09a63ccc
+=== el1xr 851da2bc3fa021ead052ee7806e8029afce5e495
 # Neonbridge launcher spec for vendor/el1xr: kylepelham's El1xr (Bone/Nevaa).
 # Build is tools/dev.py; env is the tuned set of tools/lancer_victory.ps1.
 
@@ -901,7 +991,7 @@ name = "el1xr"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README; the picker's filter)
 rank = 10   # i95 rank: score 66.8 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
-about = "El1xr 32c42b8 (GPL-3.0): VIctory tuned by Bone/Nevaa: 23.1-25.7 fps at 4K on an RTX 5090, playable in the open world (author); not yet run here"
+about = "El1xr 851da2b (GPL-3.0): VIctory tuned by Bone/Nevaa: 23.1-25.7 fps at 4K on an RTX 5090, playable in the open world (author); not yet run here"
 upstream = "https://github.com/kylepelham/El1xr"
 updated = "2026-11-28 11:42"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 27   # GitHub stars when last checked
@@ -1248,7 +1338,7 @@ rank = 32   # i95 rank: score 59.5 by PortWatch VI's formula (i95's assessment f
 about = "VIctory-Hydra 85e7e07 (GPL-3.0): ~18-20 fps at 1080p (37-40 shown with FSR 3 frame generation), RTX 3060 and Ryzen 5 5600X; 'not ready for full playthroughs'; not yet run here"
 upstream = "https://github.com/tolimanl/victory-hydra"
 updated = "2026-11-28 08:34"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 78   # GitHub stars when last checked
+stars = 80   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]
 exe = "target/release/victory.exe"
 run = ["run", "{game_exe}", "--console", "series-s", "--execute"]   # Play-VIctory.cmd
@@ -1518,6 +1608,100 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
+=== kaynvi 6b717b741db7dcf35b3b0dbad282d39b31bb69e7
+# Neonbridge launcher spec for vendor/kaynvi: caionickpi's KaynVI-Fork-GTA6 (mid-range, <= 8 GB).
+# Build is README.md:59-62; env is scripts/run-gtavi-rx7600.ps1 with no switches (README.md:63), the launch the README names
+# (not scripts/play.ps1, the upstream Belobug script left in the tree).
+
+name = "kaynvi"
+fork = "VIctory"
+gpu = "AMD 8 GB"   # the card it is tuned for (README.md:42-47: RX 7600 8 GB, Ryzen 5 5600; the picker's filter)
+about = "KaynVI-Fork-GTA6 6b717b7 (GPL-3.0): a VIctory/Belobug-AMD fork for mid-range PCs with up to 8 GB of VRAM, tuned on an RX 7600 (author reports no fps numbers); not yet run here"
+upstream = "https://github.com/caionickpi/kaynvi-fork-gta6"
+updated = "2026-11-27 19:07"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 1   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "--locked"]   # README.md:61 (+--locked)
+exe = "target/release/victory.exe"   # scripts/run-gtavi-rx7600.ps1:7, 14 (-Build release)
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # Cargo.toml:78
+diag_exe = "target/diag/victory.exe"   # Cargo.toml:80 [profile.diag]
+cwd = "."   # scripts/run-gtavi-rx7600.ps1:186 (Push-Location $repo)
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # scripts/run-gtavi-rx7600.ps1:4, 194
+prewarm = ["warm", "--used"]   # scripts/run-gtavi-rx7600.ps1:188-191 (before every start unless -SkipWarm)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock", ".cargo"]   # Cargo.toml:3 members; README.md:37 (.cargo/config.toml)
+game_env = "VICTORY_GAME_DIR"   # scripts/run-gtavi-rx7600.ps1:181
+cache_env = "VICTORY_CACHE_DIR"   # scripts/run-gtavi-rx7600.ps1:181
+agility = false   # no D3D12SDKVersion export in the tree
+# Not copied: run-gtavi-rx7600.ps1:37-83 rewrites the title's settings.xml (RT shadows, motion blur off, LOD, 60 fps limit)
+# and :164-166 sets VICTORY_GAME_OVERLAY_DIR only when its C:\GTA6-SSD-Hot folder exists.
+
+# scripts/run-gtavi-rx7600.ps1's switches (:3-10)
+preset_balanced = ["VICTORY_OUTPUT=1664x936", "VICTORY_CARD_ROOM_FOR_TARGETS_MB=1360"]   # -Preset balanced (:24, 27-31, 85-89)
+preset_quality = ["VICTORY_OUTPUT=1920x1080", "VICTORY_CARD_ROOM_FOR_TARGETS_MB=1536"]   # -Preset quality (:25, 27-31, 85-89)
+preset_series_x = ["--console=series-x"]   # -Console series-x (:4)
+preset_cap30 = ["VICTORY_FRAME_INTERVAL_MS="]   # -Cap30 (:168-170: the interval left unset)
+preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=0", "VICTORY_JOIN_PARTS=0", "VICTORY_UPLOAD_AHEAD=0"]   # -Safe (:172-179: the script leaves the non-safe ones unset; 0 here)
+
+[env]   # scripts/run-gtavi-rx7600.ps1:91-179 (-Preset performance -> 1280x720)
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "1"   # :92, 103 ("never 0 on 6 cores")
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_OUTPUT = "1280x720"   # :23, 111
+VICTORY_UPSCALER = "6"
+VICTORY_LEVELS_ON_DEMAND = "0"
+VICTORY_BURY_LAG = "128"
+VICTORY_JOIN_BARRIERS = "1"
+VICTORY_SYNC_FINE = "1"
+VICTORY_TEXTURE_ROOM_PERCENT = "92"
+VICTORY_TEXTURE_LOOK_MS = "750"
+VICTORY_TEXTURE_STAGE_MB = "256"
+VICTORY_CARD_ROOM_FOR_TARGETS_MB = "1200"   # :85-86, 120
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_CARD_BUFFERS_MB = "832"
+VICTORY_WINDOWS_BAR_MB = "0"
+VICTORY_KEEP_FREED = "0"
+VICTORY_RESIDENCY = "1"
+VICTORY_RESIDENCY_LIMITED = "1"
+VICTORY_D3D12_BACKGROUND = "0"
+VICTORY_WINDOW_KB = "4096"   # :130-134
+VICTORY_WINDOW_TAILS = "0"
+VICTORY_WINDOW_BUDGET_MB = "1024"
+VICTORY_SNAPSHOT_POOL = "32"
+VICTORY_LATE_WAIT_LISTS = "128"
+VICTORY_LANE_CORE = "0"   # :137-146 (Ryzen 5 5600 6c/12t)
+VICTORY_GUARD_HOT = "120"
+VICTORY_GUARD_REST = "6000"
+VICTORY_THIN_THREADS = "6"
+VICTORY_LAND_THREADS = "2"
+VICTORY_LAND_SKIP = "1"
+VICTORY_PIPELINE_WORKERS = "2"
+VICTORY_PIPELINE_WAIT_MS = "25"
+VICTORY_PIPELINE_BOOK = "1"
+RUST_LOG = "warn,victory_gpu::host=info,victory_hle::modules::dstorage=info"
+VICTORY_DSTORAGE_WORKERS = "8"   # :149-151
+VICTORY_DSTORAGE_HDD_WORKERS = "4"
+VICTORY_DSTORAGE_STAGING_MB = "256"
+VICTORY_AMBIENT = "1.0"   # :154-161
+VICTORY_D3D12_DRED = "light"
+VICTORY_PORT_CONSTANTS = "1"
+VICTORY_PORT_DESCRIPTORS = "1"
+VICTORY_PORT_CBV = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_PORT_JOURNAL = "1"
+VICTORY_KBM_GTA = "1"
+VICTORY_FRAME_INTERVAL_MS = "16.667"   # :168-170 (not -Cap30)
+VICTORY_THIN = "1"   # :176-178 (not -Safe)
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
 === kelvaroq 92606ea7f5da5bab74e4eee7f3045b060c7020a8
 # Neonbridge launcher spec for vendor/kelvaroq: fablinoo's Kelvaroq. Its native engine is fxceless's
 # victory-fork f85101b plus its patches (scripts/build_native.py fetches and builds it).
@@ -1645,7 +1829,7 @@ rank = 7   # i95 rank: score 67.5 by PortWatch VI's formula (from the author's r
 about = "KLBF Lab e1f51a7 (GPL-3.0): 14.0 fps average over 37 minutes of play, player in control through the prologue (77 min on an earlier build), RX 9070 XT; not yet run here"
 upstream = "https://github.com/PastiiJay/klbf-lab"
 updated = "2026-11-28 11:20"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 311   # GitHub stars when last checked
+stars = 312   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked"]   # README.md:127
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -1705,7 +1889,7 @@ rank = 50   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's 
 about = "Leonida 369106b (GPL-3.0): static recompilation; about 10 fps in the first rooms with its newer switches; not yet run here"
 upstream = "https://github.com/ProjectLeonidaL/leonida"
 updated = "2026-11-28 10:50"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 573   # GitHub stars when last checked
+stars = 574   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--release", "-p", "leonida"]   # run-gta6.ps1:33, README.md:86
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/leonida.exe"   # run-gta6.ps1:35
@@ -1732,7 +1916,7 @@ rank = 39   # i95 rank: score 58.5 by PortWatch VI's formula (i95's assessment f
 about = "VIctory-LITE 6fa91d9 (GPL-3.0): a VIctory fork for 4 GB cards: prologue 13-20 fps, first boat mission 19-22 fps (author); not yet run here"
 upstream = "https://github.com/vix0e0e/VIctory-LITE"
 updated = "2026-11-28 01:49"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 180   # GitHub stars when last checked
+stars = 182   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]
 exe = "target/release/victory.exe"
 run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # Play-VIctory.cmd
@@ -1883,17 +2067,17 @@ preset_fsr_quality_4k = ["VICTORY_RAY_TRACING=1", "VICTORY_LOCAL_GPU_INPUTS=1", 
 VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # i95: one save/settings folder for the victory family (read at crates/victory-core/src/config.rs:110)
 VICTORY_DEBUG_HUD = "1"   # play_launcher.rs:260-261
 VICTORY_NO_WATCHDOG = "1"   # play_launcher.rs:265-266
-=== mandy e8de040370d3381359e959a1c1ba23b24d923c20
+=== mandy d188f8b7664e0f3a872acc20ca1f5a192687b3cc
 # Launcher spec for vendor/mandy: projectleonida's Mandy, the continuation of Leonida; its D3D12 runtime (d3d12/).
 # Build, run and env are scripts/play-d3d12.ps1 with no switches (its default), which calls d3d12/scripts/play-nvidia.ps1.
 name = "mandy"
 fork = "Leonida"
 gpu = "NVIDIA"   # d3d12/README.md: tuned to run fastest on NVIDIA
 rank = 36
-about = "Mandy e8de040 (GPL-3.0): Leonida's continuation; its D3D12 runtime is playable in the world at 12 to 13 fps with the HUD, map and pause menu; its default here: Series X at 1440p, the title's own upscaler, no DLSS; not yet run here"
+about = "Mandy d188f8b (GPL-3.0): Leonida's continuation; its D3D12 runtime is playable in the world at 12 to 13 fps with the HUD, map and pause menu; its default here: Series X at 1440p, the title's own upscaler, no DLSS; not yet run here"
 upstream = "https://github.com/projectleonida/mandy"
-updated = "2026-11-28 12:59"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 3197   # GitHub stars when last checked
+updated = "2026-11-28 13:14"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 3202   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "leonida", "--features", "diagnostics,mimalloc", "--manifest-path", "d3d12/Cargo.toml"]   # d3d12/scripts/build-nvidia.ps1:25 (no DLSS files: diagnostics,mimalloc, :20)
 watch = ["d3d12/apps", "d3d12/crates", "d3d12/Cargo.toml", "d3d12/Cargo.lock"]
 exe = "d3d12/target/diag/leonida.exe"   # scripts/play-d3d12.ps1:62 (its play build is the diag profile)
@@ -2024,7 +2208,7 @@ rank = 65   # i95 rank: score 50.3 by PortWatch VI's formula (its own assessment
 about = "VIctory 63bcca4 (GPL-3.0): The opening mission at about 1 fps on an RX 6700 XT, 'not playable'"
 upstream = "https://github.com/Marvisak/VIctory"
 updated = "2026-11-25 18:27"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 14095   # GitHub stars when last checked
+stars = 14097   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:92
 exe = "target/release/victory.exe"
 run = ["run", "{game_exe}", "--execute"]   # README.md:94
@@ -2340,7 +2524,7 @@ rank = 1   # i95 rank: score 90.0 by PortWatch VI's formula (its own assessment;
 about = "VIctory-NVIDIA 9300875 (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
 updated = "2026-11-28 13:00"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 6216   # GitHub stars when last checked
+stars = 6251   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-foxhound.ps1:133 (-Build release, its default)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -2518,7 +2702,7 @@ rank = 28   # i95 rank: score 60.4 by PortWatch VI's formula (i95's assessment f
 about = "VIctory-NVIDIA-RT 2f0bc2d (GPL-3.0): Kemerd's faster fork of VIctory-NVIDIA (ultrawide, Reflex, HDR10, DLSS, frame generation): 21.9 fps median, 31.9 best in the open world, RTX 5090 at 1440p with DLSS Quality and no frame generation; here without DLSS"
 upstream = "https://github.com/Kemerd/VIctory-NVIDIA-RT"
 updated = "2026-11-27 19:07"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 318   # GitHub stars when last checked
+stars = 319   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # play-foxhound.ps1:133 (-Build release, its default)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/release/victory.exe"
@@ -2776,13 +2960,13 @@ VICTORY_CARD_BUFFERS_MIN_MB = "1"
 VICTORY_CARD_BUFFERS_MB = "1024"
 VICTORY_JOIN_COPIES = "1"
 VICTORY_CARD_REHASH_RUNS = "1"
-=== rufflab f9e00b4b239fe4fdbb0f8d458ad46235c679b398
+=== rufflab 31b94147ec9c90b7e97d6a94f41b5cf68ace798c
 # i95 launcher spec for LoverCatys/ruff-lab: author build and run from its README.
 name = "rufflab"
 fork = "klbf-lab"
 gpu = "AMD 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 16   # i95 rank: score 63.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "ruff-lab f9e00b4 (GPL-3.0): Built for 8 GB cards and 16 GB RAM: 6 to 7 fps by scene at 720p upscaled, 30 to 39 min runs without a crash, RX 6600 XT; not yet run here"
+about = "ruff-lab 31b9414 (GPL-3.0): Built for 8 GB cards and 16 GB RAM: 6 to 7 fps by scene at 720p upscaled, 30 to 39 min runs without a crash, RX 6600 XT; not yet run here"
 upstream = "https://github.com/LoverCatys/ruff-lab"
 updated = "2026-11-28 03:00"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 10   # GitHub stars when last checked
@@ -2849,6 +3033,62 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
+=== rx580 2404c54ed6760c45666692e9b4ef4cf584ce2844
+# Neonbridge launcher spec for vendor/rx580: bymsec's VIctory RX 580 (Old Wolf), for GPUs without mesh shaders.
+# UPSTREAM pins branch rx580-main-fps, not the default branch: README.md:101-104 ("this branch, the one to use").
+# Build is README.md:88-89 (diag profile); env is its Old Wolf launcher's default Play (launcher/Services/LaunchPlanBuilder.cs
+# BuildPlayPlan, Rx580Main build, Basic mode at Balanced, Series S: launcher/Models/LauncherSettings.cs:41-47).
+
+name = "rx580"
+fork = "VIctory"
+gpu = "AMD RX 580"   # the card it is tuned for (README.md:5; the picker's filter)
+about = "VIctory RX 580 2404c54 (GPL-3.0): a VIctory fork for GPUs without mesh shaders (branch rx580-main-fps), on an RX 580 8 GB: boots and draws the city at about 2 fps in busy streets, not playable yet (author); not yet run here"
+upstream = "https://github.com/bymsec/victory-rx580"
+updated = "2026-11-28 11:12"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 10   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:88 (+--locked)
+exe = "target/diag/victory.exe"   # README.md:92 (package.ps1 -VictoryExe ..\target\diag\victory.exe)
+run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # LaunchPlanBuilder.cs:57-58, 203-210
+prewarm = ["translate", "--cache", "--jobs", "{jobs}", "{game}"]   # LaunchPlanBuilder.cs:262-265 (main-fps has no shaders command; then warm --used --jobs 3, :303-309)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock"]   # Cargo.toml:3 members
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"   # LaunchPlanBuilder.cs:68
+agility = false   # apps/victory/src/agility.rs:18: D3D12SDKVersion 620; i95 ships 1.614.1, so the setup step below fetches 1.620.2 (package.ps1:4 ships D3D12Core.dll in victory\D3D12)
+
+# Microsoft.Direct3D.D3D12 1.620.2 from nuget.org, D3D12Core.dll and d3d12SDKLayers.dll into target\release\D3D12 and target\diag\D3D12
+setup = [
+  "agility: powershell -NoProfile -Command \"$t=Join-Path $env:TEMP 'd3d12-1.620.2.zip'; Invoke-WebRequest -UseBasicParsing https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.620.2 -OutFile $t; $x=Join-Path $env:TEMP 'd3d12-1.620.2'; Expand-Archive -Force $t $x; foreach ($o in 'target\\release\\D3D12','target\\diag\\D3D12') { New-Item -ItemType Directory -Force $o | Out-Null; Copy-Item (Join-Path $x 'build\\native\\bin\\x64\\D3D12Core.dll'),(Join-Path $x 'build\\native\\bin\\x64\\d3d12SDKLayers.dll') $o -Force }; Remove-Item -Recurse -Force $t,$x\" [asks first: download]",
+]
+
+# Old Wolf's other settings (LaunchPlanBuilder.cs:158-196); FSR needs amd_fidelityfx_upscaler_dx12.dll, which no script in the tree fetches (package.ps1:6, 18-20)
+preset_fsr = ["VICTORY_FSR=performance", "VICTORY_FIDELITYFX_DIR=%LOCALAPPDATA%\\RpfViewer\\fidelityfx"]   # Basic Balanced with the FFX DLLs (:162-166; package.ps1:14)
+preset_fsr_ultra = ["VICTORY_FSR=ultra-performance", "VICTORY_FIDELITYFX_DIR=%LOCALAPPDATA%\\RpfViewer\\fidelityfx"]   # Basic Performance (:165), the README's measured setting (README.md:37-38)
+preset_audio_on = ["VICTORY_AUDIO="]   # Advanced mode, AudioOff false (:171-174)
+preset_series_x = ["--console=series-x"]   # Advanced mode, SeriesSProfile off (:57-58)
+preset_card_all = ["VICTORY_CARD_ALL=1"]   # Advanced CardCopiesAllBuffers (:192-195)
+
+[env]   # launcher/Services/LaunchPlanBuilder.cs:119-138 (Rx580Main: "mirrors boot\mainfps_start.ps1"), 158-161 (Basic mode)
+VICTORY_SHADER_LOOP_LIMIT = "256"
+VICTORY_WAVE32_HALVES = "1"
+VICTORY_MESH_POOL_MB = "8"
+VICTORY_MESH_INDIRECT_MB = "8"
+VICTORY_TEXTURE_MIP_DROP = "2"
+VICTORY_GI_STANDIN = "1"
+VICTORY_GI_STANDIN_SKIP = "1"
+VICTORY_SKIP_MOVIES = "1"
+VICTORY_ROOT_VIEW_LENIENT = "1"
+VICTORY_INDIRECT_REST = "0"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_WINDOW_MAX = "1280x720"
+VICTORY_SWAPCHAIN_MAX = "1280x720"
+VICTORY_SPARE_LISTS = "256"
+VICTORY_ALLOCATOR_RENEW_EVERY = "64"
+VICTORY_THIN = "0"
+VICTORY_FRAME_GEN = "0"
+VICTORY_OVERLAY = "hidden"   # :137 (Ctrl+Alt+0 shows the switch box)
+VICTORY_PATCH = "0x28d0d60=31c0c3:ffc9f7c1f7ffffff0f94c0c3"   # :28 DefaultPatchSpec
+VICTORY_AUDIO = "off"   # :161 (Basic mode)
+# Not copied: VICTORY_LIVE_FILE and VICTORY_SKIP_PIPELINES (:54-55, 139-156) read rx580\live.txt and amd_skip.txt, which are not in the tree.
 === scarlett3070 ae29c7b4f7725461d932d6f0e80ffebd831d6e7a
 # Launcher spec for vendor/scarlett3070: Yaekai's victory-scarlett-3070.
 # Build, run and env are its README and Play-Scarlett.cmd -> scripts/play-scarlett.ps1 (Play-VIctory.cmd -> preset_play_victory).
@@ -2939,7 +3179,7 @@ rank = 55   # i95 rank: score 55.6 by PortWatch VI's formula (from the author's 
 about = "ScarlettPort e47f23f (GPL-3.0): about 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060; not yet run here"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 updated = "2026-11-28 00:45"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1520   # GitHub stars when last checked
+stars = 1521   # GitHub stars when last checked
 # scripts/setup-scarlett.ps1:18,21 (run in engine; --manifest-path keeps that workspace's own target dir)
 build = ["cargo", "rustc", "--manifest-path", "engine/Cargo.toml", "--release", "-p", "scarlett", "--bin", "scarlett", "--features", "diagnostics", "--locked", "--", "-C", "link-arg=/EXPORT:D3D12SDKVersion,DATA", "-C", "link-arg=/EXPORT:D3D12SDKPath,DATA"]
 watch = ["engine/apps", "engine/crates", "engine/Cargo.toml", "engine/Cargo.lock"]
@@ -3509,7 +3749,7 @@ rank = 22   # i95 rank: score 62.0 by PortWatch VI's formula (from the author's 
 about = "victory-unified 92dc878 (GPL-3.0): 'A unified fork' tuned for an RTX 3070 8 GB: 2 to 3 fps, about 58 minutes without a crash; not yet run here"
 upstream = "https://github.com/Itsbatt/victory-unified"
 updated = "2026-11-26 17:44"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 23   # GitHub stars when last checked
+stars = 24   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md (e20f64c): the launcher defaults to the diag build
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
 exe = "target/diag/victory.exe"   # scripts/play.ps1:12 (-Build diag default)
@@ -3652,7 +3892,7 @@ rank = 27   # i95 rank: score 60.5 by PortWatch VI's formula (from the author's 
 about = "VI-BR-PORT 1b8dd25 (GPL-3.0): 24.0 fps on a scripted prison walk (30 standing, the cap) and 21.2 fps in the opening cutscene, RTX 4060 Ti 8 GB; the author now calls it playable with known picture problems"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
 updated = "2026-11-28 12:45"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 222   # GitHub stars when last checked
+stars = 224   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # play.ps1:5 (diag is its default; README.md:75 builds release)
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)
 diag_build = []   # its default build is already the diagnostics one
@@ -4042,6 +4282,280 @@ VICTORY_REUSE_TARGET_BINDS = "1"
 VICTORY_CARD_REHASH_RUNS = "1"
 VICTORY_UPSCALE_HISTORY = "0.85"
 VICTORY_UPSCALE_HISTORY_MV = "2"
+=== victory8gbnv 73d18741651121dadbba1167a3d70780f9a1819d
+# Neonbridge launcher spec for vendor/victory8gbnv: sponex-hub's victory-8gb (8 GB NVIDIA).
+# Build and env are its default launcher, launchers/Play-Victory-FrameGen.cmd -> Play-Victory-FrameGen.ps1
+# -> scripts/play-local-test.ps1 -Build release -SeriesS -Dlss quality -FrameGen -FrameGenX 4 (README.md:43-50).
+# (Not vendor/victory8gb: that is CuteBooty's victory-8gb.)
+
+name = "victory8gbnv"
+fork = "VIctory"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README.md:3: RTX 5060 8 GB; the picker's filter)
+about = "victory-8gb 73d1874 (GPL-3.0): a VIctory build for 8 GB NVIDIA cards, Series S + DLSS Quality + frame generation on an RTX 5060: 17-25 fps rendered, 70-100 shown (author); not yet run here"
+upstream = "https://github.com/sponex-hub/victory-8gb"
+updated = "2026-11-28 11:49"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 1   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]   # scripts/play-local-test.ps1:134 (README.md:40 without --locked)
+exe = "target/release/victory.exe"   # scripts/play-local-test.ps1:125 (-Build release)
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # scripts/play-local-test.ps1:133
+diag_exe = "target/diag/victory.exe"   # Cargo.toml:78 [profile.diag]
+cwd = "."   # scripts/play-local-test.ps1:148 (victory.toml is read from the repository root)
+run = ["run", "{game_exe}", "--console", "series-s", "--execute"]   # scripts/play-local-test.ps1:115, 149 (-SeriesS: Play-Victory-FrameGen.ps1:59)
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]   # no warm step in its launchers; VICTORY_PIPELINE_BOOK feeds `victory warm` (play-local-test.ps1:84-85)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock"]   # Cargo.toml:3 members
+game_env = "VICTORY_GAME_DIR"   # Play-Victory-FrameGen.ps1:14
+cache_env = "VICTORY_CACHE_DIR"   # Play-Victory-FrameGen.ps1:15
+agility = false   # no D3D12SDKVersion export in the tree
+
+# NVIDIA Streamline SDK v2.14.16 (scripts/get-nvidia-sdks.ps1:7, run by Get-NVIDIA-DLSS.cmd) from NVIDIA-RTX/Streamline releases, its bin\x64 into %LOCALAPPDATA%\6ixpack\streamline (VICTORY_STREAMLINE_DIR below)
+setup = [
+  "streamline: powershell -NoProfile -Command \"$d=Join-Path $env:LOCALAPPDATA '6ixpack\\streamline'; if (-not (Test-Path (Join-Path $d 'sl.interposer.dll'))) { $t=Join-Path $env:TEMP 'streamline-sdk-v2.14.16.zip'; Invoke-WebRequest -UseBasicParsing https://github.com/NVIDIA-RTX/Streamline/releases/download/v2.14.16/streamline-sdk-v2.14.16.zip -OutFile $t; $x=Join-Path $env:TEMP 'streamline-sdk-v2.14.16'; Expand-Archive -Force $t $x; New-Item -ItemType Directory -Force $d | Out-Null; $b=(Get-ChildItem $x -Recurse -Directory -Filter x64 | Where-Object { $_.Parent.Name -eq 'bin' } | Select-Object -First 1).FullName; Copy-Item (Join-Path $b '*') $d -Recurse -Force; Remove-Item -Recurse -Force $t,$x }\" [asks first: download]",
+]
+
+# The author's other launchers and switches
+preset_cutscene = ["VICTORY_TEXTURE_ROOM_PERCENT=125", "VICTORY_TEXTURE_NO_WAIT=0", "VICTORY_DLSS=0", "VICTORY_FRAMEGEN=0"]   # launchers/Play-Victory-Cutscene.cmd (Play-Victory-FrameGen.ps1:47-53: -Dlss off -NoFrameGenReady)
+preset_framegen_2x = ["VICTORY_FRAMEGEN_X=2"]   # TITLE_FRAMEGEN_X=2 (Play-Victory-FrameGen.ps1:21; cards before RTX 50)
+preset_native_kbm = ["VICTORY_ONE_PAD=0", "VICTORY_NO_STANDIN=1"]   # -NativeKbm (Play-Victory-FrameGen.ps1:46; experiment)
+preset_series_x = ["--console=series-x", "VICTORY_NATIVE_1440P=1"]   # play-local-test.ps1 without -SeriesS (:20-23, 87-88)
+preset_no_water_light = ["VICTORY_WATER_LIGHT=0"]   # Play-Victory-FrameGen.ps1:32-34 ("if dark blocks show in the sea")
+
+[env]   # scripts/play-local-test.ps1:61-86 (settings), 92-101 (DLSS quality + frame gen), 107; Play-Victory-FrameGen.ps1:22-43 (-More)
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_RELAY = "2"
+VICTORY_RELAY_COPY = "1"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_MAP_THREADS = "1"
+VICTORY_WC_NO_BACK = "1"
+VICTORY_WC_NO_BACK_MIN_KB = "1024"
+VICTORY_SOFT_VIEWS = "copies"
+VICTORY_TEXTURE_POOL = "1"
+VICTORY_RIPE_BLOCKS = "0"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_TEXTURE_CATCHUP = "0"
+VICTORY_TEXTURE_STAGE_MS = "16"
+VICTORY_LEVELS_ON_DEMAND = "0"
+VICTORY_PRELUDE_UPLOADS = "1"
+VICTORY_SHOW_NEW_LATER = "1"
+VICTORY_POOL_SMALL = "0"
+VICTORY_TABLED_REREAD = "1"
+VICTORY_QUEUE_HOST_TEXTURES = "0"
+VICTORY_HEAP_SYNC_FIRST = "1"
+VICTORY_SYNC_IN_PLACE = "1"
+VICTORY_SPANS_QUICK = "1"
+VICTORY_SYNC_FINE = "1"
+VICTORY_HEAP_SYNC_AT_SUBMIT = "1"
+VICTORY_AMBIENT_AIR = "1.5"
+VICTORY_AMBIENT_SPECULAR = "1"
+VICTORY_EARLY_DEPTH = "1"
+VICTORY_LEAVE_OUT = "02384a60fda6f2d0,731a39171b568298"
+VICTORY_PIPELINE_BOOK = "1"
+VICTORY_DLSS = "1"   # play-local-test.ps1:95 (-Dlss quality)
+VICTORY_DLSS_MODE = "quality"
+VICTORY_STREAMLINE_DIR = "%LOCALAPPDATA%\\6ixpack\\streamline"   # play-local-test.ps1:93 (the setup step's folder; the script drops DLSS if sl.interposer.dll is missing)
+VICTORY_FRAMEGEN = "1"   # play-local-test.ps1:96 (-FrameGen)
+VICTORY_FRAMEGEN_X = "4"   # Play-Victory-FrameGen.ps1:21 (4x; needs an RTX 50)
+VICTORY_TEXTURE_ROOM_PERCENT = "80"   # play-local-test.ps1:101
+VICTORY_FRAME_INTERVAL_US = "1000"   # play-local-test.ps1:36, 107 (-Fps 1000: no cap)
+VICTORY_BVH_BUILDER = "0"   # Play-Victory-FrameGen.ps1:23-41
+VICTORY_LOG = "info"
+VICTORY_PANEL = "1"
+VICTORY_FPS_LINE = "1"
+VICTORY_PIPELINE_WAIT_MS = "50"
+VICTORY_LIBRARY_STATIC_SAMPLERS = "1"
+VICTORY_PLACED_ORDER = "1"
+VICTORY_WATER_LIGHT = "1"
+VICTORY_AMBIENT = "3"   # Play-Victory-FrameGen.ps1:37 (over play-local-test.ps1:79's 0.8)
+VICTORY_MOUSE_WARP = "1"
+VICTORY_THIN_THREADS = "12"   # Play-Victory-FrameGen.ps1:43 (16+ logical CPUs)
+VICTORY_UNDER_THREADS = "8"
+VICTORY_LAND_THREADS = "6"
+=== victorylite2 32437f2e502aaeb74ab8a238cbe06ae1da6e00e4
+# Neonbridge launcher spec for vendor/victorylite2: didgori-1121's VIctory-Lite (low-memory PCs).
+# Build is README.md:166 (the diagnostics build, which Play-Lite.cmd:12 takes first); env is Play-Lite.cmd.
+# (Not vendor/lite: that is vix0e0e's VIctory-LITE.)
+
+name = "victorylite2"
+fork = "VIctory"
+gpu = "NVIDIA 6 GB"   # the card it is tuned for (Play-Lite.cmd:3: RTX 2060 Mobile 6 GB, 16 GB RAM; the picker's filter)
+about = "VIctory-Lite 32437f2 (GPL-3.0): a VIctory fork for low-memory PCs (16 GB RAM, 6 GB VRAM): prison scene 10-12 fps on an RTX 2060 Mobile with DLSS Quality at 720p, reaches the open world at 5-11 fps (author); not yet run here"
+upstream = "https://github.com/didgori-1121/victory-lite"
+updated = "2026-11-28 13:24"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 2   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:166
+exe = "target/diag/victory.exe"   # Play-Lite.cmd:12 (target\diag before target\release)
+cwd = "."   # Play-Lite.cmd:128 (pushd the repository root: victory.toml, bindings.ini)
+run = ["run", "{game_exe}", "--console", "series-s", "--execute"]   # Play-Lite.cmd:129
+prewarm = ["shaders", "{game}/shaders.rpf", "--jobs", "{jobs}"]   # Setup-Lite.cmd:39 (then `warm --jobs`, Setup-Lite.cmd:35, after one play to the first scene)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock"]   # Cargo.toml:3 members
+game_env = "VICTORY_GAME_DIR"   # Play-Lite.cmd:19
+cache_env = "VICTORY_CACHE_DIR"
+agility = false   # no D3D12SDKVersion export in the tree
+
+# NVIDIA Streamline SDK v2.14.16 (scripts/get-nvidia-sdks.ps1:7, run by Get-NVIDIA-DLSS.cmd) from NVIDIA-RTX/Streamline releases, its bin\x64 into %LOCALAPPDATA%\6ixpack\streamline (VICTORY_STREAMLINE_DIR below)
+setup = [
+  "streamline: powershell -NoProfile -Command \"$d=Join-Path $env:LOCALAPPDATA '6ixpack\\streamline'; if (-not (Test-Path (Join-Path $d 'sl.interposer.dll'))) { $t=Join-Path $env:TEMP 'streamline-sdk-v2.14.16.zip'; Invoke-WebRequest -UseBasicParsing https://github.com/NVIDIA-RTX/Streamline/releases/download/v2.14.16/streamline-sdk-v2.14.16.zip -OutFile $t; $x=Join-Path $env:TEMP 'streamline-sdk-v2.14.16'; Expand-Archive -Force $t $x; New-Item -ItemType Directory -Force $d | Out-Null; $b=(Get-ChildItem $x -Recurse -Directory -Filter x64 | Where-Object { $_.Parent.Name -eq 'bin' } | Select-Object -First 1).FullName; Copy-Item (Join-Path $b '*') $d -Recurse -Force; Remove-Item -Recurse -Force $t,$x }\" [asks first: download]",
+]
+
+preset_no_dlss = ["VICTORY_DLSS=0", "VICTORY_OUTPUT="]   # Play-Lite.cmd:113-116: without the DLSS files, 1080p and no DLSS
+preset_own_mouse = ["VICTORY_MNK_BINDINGS=", "VICTORY_MOUSE_LOOK=1", "VICTORY_MOUSE_WARP=1"]   # Play-Lite.cmd:99-102: without bindings.ini
+preset_dark_floor = ["VICTORY_AMBIENT=1.5+0.3"]   # Play-Lite.cmd:87: "for a floor in dark rooms"
+
+[controls]   # README.md:176-178
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+
+[env]   # Play-Lite.cmd:28-119
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_RELAY = "2"
+VICTORY_RELAY_COPY = "1"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_MAP_THREADS = "1"
+VICTORY_WC_NO_BACK = "1"
+VICTORY_WC_NO_BACK_MIN_KB = "1024"
+VICTORY_SOFT_VIEWS = "copies"
+VICTORY_RIPE_BLOCKS = "0"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_TEXTURE_CATCHUP = "0"
+VICTORY_TEXTURE_STAGE_MS = "16"
+VICTORY_LEVELS_ON_DEMAND = "0"
+VICTORY_PRELUDE_UPLOADS = "1"
+VICTORY_SHOW_NEW_LATER = "1"
+VICTORY_POOL_SMALL = "0"
+VICTORY_TABLED_REREAD = "1"
+VICTORY_QUEUE_HOST_TEXTURES = "0"
+VICTORY_HEAP_SYNC_FIRST = "1"
+VICTORY_SYNC_IN_PLACE = "1"
+VICTORY_SPANS_QUICK = "1"
+VICTORY_SYNC_FINE = "1"
+VICTORY_HEAP_SYNC_AT_SUBMIT = "1"
+VICTORY_AMBIENT_AIR = "1.5"
+VICTORY_AMBIENT_SPECULAR = "1"
+VICTORY_EARLY_DEPTH = "1"
+VICTORY_LEAVE_OUT = "02384a60fda6f2d0,731a39171b568298"
+VICTORY_PIPELINE_BOOK = "1"
+VICTORY_SLOT_EVICT = "1"   # Play-Lite.cmd:68-70
+VICTORY_ALLOCATOR_TRIM = "1"
+VICTORY_BUDGET_PACK = "1"
+VICTORY_PIPELINE_LOWEST = "0"   # Play-Lite.cmd:74
+VICTORY_WINDOW_KB = "64"   # Play-Lite.cmd:77-78
+VICTORY_WINDOW_TAILS = "1"
+VICTORY_WINDOW_EVICT = "1"   # Play-Lite.cmd:81
+VICTORY_TEXTURE_POOL = "0"   # Play-Lite.cmd:83-84
+VICTORY_TEXTURE_ROOM_PERCENT = "90"
+VICTORY_CARD_ROOM_FOR_TARGETS_MB = "1024"   # Play-Lite.cmd:86
+VICTORY_AMBIENT = "1.5"   # Play-Lite.cmd:88
+VICTORY_WINDOW_SCALE = "2"   # Play-Lite.cmd:91-92
+VICTORY_MOUSE_CAPTURE = "1"
+VICTORY_MNK_BINDINGS = "bindings.ini"   # Play-Lite.cmd:95-98 (bindings.ini is in the tree; relative to cwd)
+VICTORY_MOUSE_LOOK = "0"
+VICTORY_MOUSE_WARP = "0"
+VICTORY_MOUSE_SENS = "3.0"   # Play-Lite.cmd:103
+VICTORY_STREAMLINE_DIR = "%LOCALAPPDATA%\\6ixpack\\streamline"   # Play-Lite.cmd:108 (the setup step's folder)
+VICTORY_DLSS = "1"   # Play-Lite.cmd:109-112
+VICTORY_DLSS_MODE = "quality"
+VICTORY_OUTPUT = "1280x720"
+VICTORY_LOG = "info"   # Play-Lite.cmd:118-119
+VICTORY_D3D12_DRED = "light"
+=== victyx a40b6960373d91aae6676f704d24d1b3e0aa4224
+# Neonbridge launcher spec for vendor/victyx: advantyx's VIctyx.
+# Build and env are its scripts/play.ps1 with no switches (README.md:103-104).
+
+name = "victyx"
+fork = "VIctory"
+gpu = "AMD RX 7900 XTX"   # the card it is tuned for (README.md:1-5; the picker's filter)
+about = "VIctyx a40b696 (GPL-3.0): a VIctory fork for the Series X profile on an RX 7900 XTX: first mission's boat 27-32 fps, open world just over 30 with the 30 fps cap lifted (author; no longer maintained); not yet run here"
+upstream = "https://github.com/advantyx/victyx"
+updated = "2026-11-28 03:48"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 17   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:103
+exe = "target/release/victory.exe"   # scripts/play.ps1:94
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:125
+diag_exe = "target/diag/victory.exe"   # Cargo.toml:78 [profile.diag]; scripts/play.ps1:42 -Build diag
+cwd = "."   # scripts/play.ps1:100-101: run from the repository root (victory.toml is read there)
+run = ["run", "{game_exe}", "--execute"]   # scripts/play.ps1:102 (no --console: its default, Series X, README.md:5)
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]   # README.md:117 (then `warm --used`, README.md:118)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock"]   # Cargo.toml:3 members
+game_env = "VICTORY_GAME_DIR"   # scripts/play.ps1:97
+cache_env = "VICTORY_CACHE_DIR"   # scripts/play.ps1:97
+agility = false   # apps/victory/src/agility.rs:15: D3D12SDKVersion 620; i95 ships 1.614.1, so the setup step below fetches 1.620.2 (README.md:107-112)
+
+# Microsoft.Direct3D.D3D12 1.620.2 from nuget.org, D3D12Core.dll and d3d12SDKLayers.dll into target\release\D3D12 and target\diag\D3D12 (README.md:107-112)
+setup = [
+  "agility: powershell -NoProfile -Command \"$t=Join-Path $env:TEMP 'd3d12-1.620.2.zip'; Invoke-WebRequest -UseBasicParsing https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.620.2 -OutFile $t; $x=Join-Path $env:TEMP 'd3d12-1.620.2'; Expand-Archive -Force $t $x; foreach ($o in 'target\\release\\D3D12','target\\diag\\D3D12') { New-Item -ItemType Directory -Force $o | Out-Null; Copy-Item (Join-Path $x 'build\\native\\bin\\x64\\D3D12Core.dll'),(Join-Path $x 'build\\native\\bin\\x64\\d3d12SDKLayers.dll') $o -Force }; Remove-Item -Recurse -Force $t,$x\" [asks first: download]",
+]
+
+# scripts/play.ps1's switches (play.ps1:4-26, 70-91)
+preset_overlay = ["VICTORY_PANEL=1"]   # -Overlay (play.ps1:82)
+preset_kbm = ["VICTORY_KBM_GTA=1"]   # -KBM (play.ps1:83)
+preset_smooth = ["VICTORY_CBV_SHADOW=1"]   # -Smooth (play.ps1:86)
+preset_raytracing = ["VICTORY_BVH_BUILDER=1", "VICTORY_PORT_CONSTANTS_ORDER=1", "VICTORY_AMBIENT_SPECULAR=0"]   # -RayTracing (play.ps1:80, 89)
+preset_foliage = ["VICTORY_PORT_CONSTANTS_ORDER=1"]   # -Foliage (play.ps1:81)
+preset_eyefix = ["VICTORY_REFLECTION_MISS=0"]   # -EyeFix (play.ps1:87)
+preset_noeyes = ["VICTORY_AMBIENT_SPECULAR=0"]   # -NoEyes (play.ps1:89: the script leaves it unset)
+preset_fps60 = ["VICTORY_FRAME_INTERVAL_MS=16.667"]   # -Fps 60 (play.ps1:91; the author's measured setting, README.md:18)
+preset_fast = ["VICTORY_WC_NO_BACK=1"]   # -Fast (play.ps1:88; the author's measured setting, README.md:18)
+preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=0", "VICTORY_JOIN_PARTS=0", "VICTORY_UPLOAD_AHEAD=0", "VICTORY_CARD_CPU_HEAP=0", "VICTORY_CARD_WINDOWS_MB=0", "VICTORY_PRELUDE_POOL=0", "VICTORY_WC_NO_BACK=0"]   # -Safe (play.ps1:70-79: the script leaves the non-safe ones unset; 0 here)
+
+[env]   # scripts/play.ps1:45-69 (settings), 73-78 (not -Safe), 89 (not -NoEyes)
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_SKIP_PIPELINES = "none"
+VICTORY_PIPELINE_BOOK = "1"
+VICTORY_RESIDENCY = "1"   # play.ps1:53
+VICTORY_KEEP_SHOWN = "2"
+VICTORY_PORT_CONSTANTS = "1"   # play.ps1:55-56
+VICTORY_PORT_DESCRIPTORS = "1"
+VICTORY_PORT_CBV = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_PORT_JOURNAL = "1"
+VICTORY_PORT_RT = "1"   # play.ps1:60
+VICTORY_TABLED_GRACE = "0"   # play.ps1:65
+VICTORY_COPIED_GRACE = "0"
+VICTORY_PORT_CONSTANTS_ORDER = "0"   # play.ps1:68
+VICTORY_THIN = "1"   # play.ps1:73
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_CARD_CPU_HEAP = "1"   # play.ps1:78
+VICTORY_CARD_WINDOWS_MB = "4096"
+VICTORY_PRELUDE_POOL = "1"
+VICTORY_AMBIENT_SPECULAR = "1"   # play.ps1:89
 === vilocity 59e192326f1a7dea4580fd484d3f5c1a1782d1d9
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
@@ -4050,7 +4564,7 @@ gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's fi
 rank = 5   # i95 rank: score 68.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Vilocity 59e1923 (GPL-3.0): 33 fps median through the opening and 25 to 29 in the open world, 12 minutes of each unattended without a crash or driver timeout, Series S, RTX 5080; 'not playable yet'; not yet run here"
 upstream = "https://github.com/voidopcode/vilocity"
-updated = "2026-11-28 12:37"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-28 13:03"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 62   # GitHub stars when last checked
 build = ["cargo", "build", "--release", "-p", "vilocity", "--locked"]   # README.md:149
 exe = "target/release/vilocity.exe"

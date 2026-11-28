@@ -1,0 +1,76 @@
+# Neonbridge launcher spec for vendor/victyx: advantyx's VIctyx.
+# Build and env are its scripts/play.ps1 with no switches (README.md:103-104).
+
+name = "victyx"
+fork = "VIctory"
+gpu = "AMD RX 7900 XTX"   # the card it is tuned for (README.md:1-5; the picker's filter)
+rank = 17   # i95 rank: score 63.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "VIctyx a40b696 (GPL-3.0): a VIctory fork for the Series X profile on an RX 7900 XTX: first mission's boat 27-32 fps, open world just over 30 with the 30 fps cap lifted (author; no longer maintained); not yet run here"
+upstream = "https://github.com/advantyx/victyx"
+updated = "2026-11-28 03:48"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 17   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--release", "-p", "victory"]   # README.md:103
+exe = "target/release/victory.exe"   # scripts/play.ps1:94
+diag_build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:125
+diag_exe = "target/diag/victory.exe"   # Cargo.toml:78 [profile.diag]; scripts/play.ps1:42 -Build diag
+cwd = "."   # scripts/play.ps1:100-101: run from the repository root (victory.toml is read there)
+run = ["run", "{game_exe}", "--execute"]   # scripts/play.ps1:102 (no --console: its default, Series X, README.md:5)
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]   # README.md:117 (then `warm --used`, README.md:118)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock"]   # Cargo.toml:3 members
+game_env = "VICTORY_GAME_DIR"   # scripts/play.ps1:97
+cache_env = "VICTORY_CACHE_DIR"   # scripts/play.ps1:97
+agility = false   # apps/victory/src/agility.rs:15: D3D12SDKVersion 620; i95 ships 1.614.1, so the setup step below fetches 1.620.2 (README.md:107-112)
+
+# Microsoft.Direct3D.D3D12 1.620.2 from nuget.org, D3D12Core.dll and d3d12SDKLayers.dll into target\release\D3D12 and target\diag\D3D12 (README.md:107-112)
+setup = [
+  "agility: powershell -NoProfile -Command \"$t=Join-Path $env:TEMP 'd3d12-1.620.2.zip'; Invoke-WebRequest -UseBasicParsing https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.620.2 -OutFile $t; $x=Join-Path $env:TEMP 'd3d12-1.620.2'; Expand-Archive -Force $t $x; foreach ($o in 'target\\release\\D3D12','target\\diag\\D3D12') { New-Item -ItemType Directory -Force $o | Out-Null; Copy-Item (Join-Path $x 'build\\native\\bin\\x64\\D3D12Core.dll'),(Join-Path $x 'build\\native\\bin\\x64\\d3d12SDKLayers.dll') $o -Force }; Remove-Item -Recurse -Force $t,$x\" [asks first: download]",
+]
+
+# scripts/play.ps1's switches (play.ps1:4-26, 70-91)
+preset_overlay = ["VICTORY_PANEL=1"]   # -Overlay (play.ps1:82)
+preset_kbm = ["VICTORY_KBM_GTA=1"]   # -KBM (play.ps1:83)
+preset_smooth = ["VICTORY_CBV_SHADOW=1"]   # -Smooth (play.ps1:86)
+preset_raytracing = ["VICTORY_BVH_BUILDER=1", "VICTORY_PORT_CONSTANTS_ORDER=1", "VICTORY_AMBIENT_SPECULAR=0"]   # -RayTracing (play.ps1:80, 89)
+preset_foliage = ["VICTORY_PORT_CONSTANTS_ORDER=1"]   # -Foliage (play.ps1:81)
+preset_eyefix = ["VICTORY_REFLECTION_MISS=0"]   # -EyeFix (play.ps1:87)
+preset_noeyes = ["VICTORY_AMBIENT_SPECULAR=0"]   # -NoEyes (play.ps1:89: the script leaves it unset)
+preset_fps60 = ["VICTORY_FRAME_INTERVAL_MS=16.667"]   # -Fps 60 (play.ps1:91; the author's measured setting, README.md:18)
+preset_fast = ["VICTORY_WC_NO_BACK=1"]   # -Fast (play.ps1:88; the author's measured setting, README.md:18)
+preset_safe = ["VICTORY_UNDER_WIDE=0", "VICTORY_LAND_ECHO=0", "VICTORY_THIN=0", "VICTORY_JOIN_PARTS=0", "VICTORY_UPLOAD_AHEAD=0", "VICTORY_CARD_CPU_HEAP=0", "VICTORY_CARD_WINDOWS_MB=0", "VICTORY_PRELUDE_POOL=0", "VICTORY_WC_NO_BACK=0"]   # -Safe (play.ps1:70-79: the script leaves the non-safe ones unset; 0 here)
+
+[env]   # scripts/play.ps1:45-69 (settings), 73-78 (not -Safe), 89 (not -NoEyes)
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_RELAY_COPY = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_MAP_THREADS = "1"
+VICTORY_TITLE_PRIORITIES = "0"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_AMBIENT = "0.8"
+VICTORY_D3D12_DRED = "light"
+VICTORY_SKIP_PIPELINES = "none"
+VICTORY_PIPELINE_BOOK = "1"
+VICTORY_RESIDENCY = "1"   # play.ps1:53
+VICTORY_KEEP_SHOWN = "2"
+VICTORY_PORT_CONSTANTS = "1"   # play.ps1:55-56
+VICTORY_PORT_DESCRIPTORS = "1"
+VICTORY_PORT_CBV = "1"
+VICTORY_PORT_GUARD = "1"
+VICTORY_PORT_JOURNAL = "1"
+VICTORY_PORT_RT = "1"   # play.ps1:60
+VICTORY_TABLED_GRACE = "0"   # play.ps1:65
+VICTORY_COPIED_GRACE = "0"
+VICTORY_PORT_CONSTANTS_ORDER = "0"   # play.ps1:68
+VICTORY_THIN = "1"   # play.ps1:73
+VICTORY_JOIN_PARTS = "8"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_CARD_CPU_HEAP = "1"   # play.ps1:78
+VICTORY_CARD_WINDOWS_MB = "4096"
+VICTORY_PRELUDE_POOL = "1"
+VICTORY_AMBIENT_SPECULAR = "1"   # play.ps1:89

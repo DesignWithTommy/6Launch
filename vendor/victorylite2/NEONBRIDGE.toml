@@ -1,0 +1,101 @@
+# Neonbridge launcher spec for vendor/victorylite2: didgori-1121's VIctory-Lite (low-memory PCs).
+# Build is README.md:166 (the diagnostics build, which Play-Lite.cmd:12 takes first); env is Play-Lite.cmd.
+# (Not vendor/lite: that is vix0e0e's VIctory-LITE.)
+
+name = "victorylite2"
+fork = "VIctory"
+gpu = "NVIDIA 6 GB"   # the card it is tuned for (Play-Lite.cmd:3: RTX 2060 Mobile 6 GB, 16 GB RAM; the picker's filter)
+rank = 48   # i95 rank: score 56.8 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "VIctory-Lite 32437f2 (GPL-3.0): a VIctory fork for low-memory PCs (16 GB RAM, 6 GB VRAM): prison scene 10-12 fps on an RTX 2060 Mobile with DLSS Quality at 720p, reaches the open world at 5-11 fps (author); not yet run here"
+upstream = "https://github.com/didgori-1121/victory-lite"
+updated = "2026-11-28 13:24"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 2   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:166
+exe = "target/diag/victory.exe"   # Play-Lite.cmd:12 (target\diag before target\release)
+cwd = "."   # Play-Lite.cmd:128 (pushd the repository root: victory.toml, bindings.ini)
+run = ["run", "{game_exe}", "--console", "series-s", "--execute"]   # Play-Lite.cmd:129
+prewarm = ["shaders", "{game}/shaders.rpf", "--jobs", "{jobs}"]   # Setup-Lite.cmd:39 (then `warm --jobs`, Setup-Lite.cmd:35, after one play to the first scene)
+watch = ["apps", "crates", "xtask", "Cargo.toml", "Cargo.lock"]   # Cargo.toml:3 members
+game_env = "VICTORY_GAME_DIR"   # Play-Lite.cmd:19
+cache_env = "VICTORY_CACHE_DIR"
+agility = false   # no D3D12SDKVersion export in the tree
+
+# NVIDIA Streamline SDK v2.14.16 (scripts/get-nvidia-sdks.ps1:7, run by Get-NVIDIA-DLSS.cmd) from NVIDIA-RTX/Streamline releases, its bin\x64 into %LOCALAPPDATA%\6ixpack\streamline (VICTORY_STREAMLINE_DIR below)
+setup = [
+  "streamline: powershell -NoProfile -Command \"$d=Join-Path $env:LOCALAPPDATA '6ixpack\\streamline'; if (-not (Test-Path (Join-Path $d 'sl.interposer.dll'))) { $t=Join-Path $env:TEMP 'streamline-sdk-v2.14.16.zip'; Invoke-WebRequest -UseBasicParsing https://github.com/NVIDIA-RTX/Streamline/releases/download/v2.14.16/streamline-sdk-v2.14.16.zip -OutFile $t; $x=Join-Path $env:TEMP 'streamline-sdk-v2.14.16'; Expand-Archive -Force $t $x; New-Item -ItemType Directory -Force $d | Out-Null; $b=(Get-ChildItem $x -Recurse -Directory -Filter x64 | Where-Object { $_.Parent.Name -eq 'bin' } | Select-Object -First 1).FullName; Copy-Item (Join-Path $b '*') $d -Recurse -Force; Remove-Item -Recurse -Force $t,$x }\" [asks first: download]",
+]
+
+preset_no_dlss = ["VICTORY_DLSS=0", "VICTORY_OUTPUT="]   # Play-Lite.cmd:113-116: without the DLSS files, 1080p and no DLSS
+preset_own_mouse = ["VICTORY_MNK_BINDINGS=", "VICTORY_MOUSE_LOOK=1", "VICTORY_MOUSE_WARP=1"]   # Play-Lite.cmd:99-102: without bindings.ini
+preset_dark_floor = ["VICTORY_AMBIENT=1.5+0.3"]   # Play-Lite.cmd:87: "for a floor in dark rooms"
+
+[controls]   # README.md:176-178
+left_stick = "W A S D"
+right_stick = "I J K L"
+a = "Enter"
+b = "Backspace"
+x = "X"
+y = "Y"
+
+[env]   # Play-Lite.cmd:28-119
+VICTORY_THIN = "1"
+VICTORY_JOIN_PARTS = "8"
+VICTORY_RELAY = "2"
+VICTORY_RELAY_COPY = "1"
+VICTORY_WIDE_BACK = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_CARD_STEPS = "2"
+VICTORY_CARD_AWAKE = "1"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_INDIRECT_WINDOW = "1"
+VICTORY_INDIRECT_BATCH = "2"
+VICTORY_UPLOAD_AHEAD = "1"
+VICTORY_SHOW_AFTER = "1"
+VICTORY_MAP_THREADS = "1"
+VICTORY_WC_NO_BACK = "1"
+VICTORY_WC_NO_BACK_MIN_KB = "1024"
+VICTORY_SOFT_VIEWS = "copies"
+VICTORY_RIPE_BLOCKS = "0"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_TEXTURE_CATCHUP = "0"
+VICTORY_TEXTURE_STAGE_MS = "16"
+VICTORY_LEVELS_ON_DEMAND = "0"
+VICTORY_PRELUDE_UPLOADS = "1"
+VICTORY_SHOW_NEW_LATER = "1"
+VICTORY_POOL_SMALL = "0"
+VICTORY_TABLED_REREAD = "1"
+VICTORY_QUEUE_HOST_TEXTURES = "0"
+VICTORY_HEAP_SYNC_FIRST = "1"
+VICTORY_SYNC_IN_PLACE = "1"
+VICTORY_SPANS_QUICK = "1"
+VICTORY_SYNC_FINE = "1"
+VICTORY_HEAP_SYNC_AT_SUBMIT = "1"
+VICTORY_AMBIENT_AIR = "1.5"
+VICTORY_AMBIENT_SPECULAR = "1"
+VICTORY_EARLY_DEPTH = "1"
+VICTORY_LEAVE_OUT = "02384a60fda6f2d0,731a39171b568298"
+VICTORY_PIPELINE_BOOK = "1"
+VICTORY_SLOT_EVICT = "1"   # Play-Lite.cmd:68-70
+VICTORY_ALLOCATOR_TRIM = "1"
+VICTORY_BUDGET_PACK = "1"
+VICTORY_PIPELINE_LOWEST = "0"   # Play-Lite.cmd:74
+VICTORY_WINDOW_KB = "64"   # Play-Lite.cmd:77-78
+VICTORY_WINDOW_TAILS = "1"
+VICTORY_WINDOW_EVICT = "1"   # Play-Lite.cmd:81
+VICTORY_TEXTURE_POOL = "0"   # Play-Lite.cmd:83-84
+VICTORY_TEXTURE_ROOM_PERCENT = "90"
+VICTORY_CARD_ROOM_FOR_TARGETS_MB = "1024"   # Play-Lite.cmd:86
+VICTORY_AMBIENT = "1.5"   # Play-Lite.cmd:88
+VICTORY_WINDOW_SCALE = "2"   # Play-Lite.cmd:91-92
+VICTORY_MOUSE_CAPTURE = "1"
+VICTORY_MNK_BINDINGS = "bindings.ini"   # Play-Lite.cmd:95-98 (bindings.ini is in the tree; relative to cwd)
+VICTORY_MOUSE_LOOK = "0"
+VICTORY_MOUSE_WARP = "0"
+VICTORY_MOUSE_SENS = "3.0"   # Play-Lite.cmd:103
+VICTORY_STREAMLINE_DIR = "%LOCALAPPDATA%\\6ixpack\\streamline"   # Play-Lite.cmd:108 (the setup step's folder)
+VICTORY_DLSS = "1"   # Play-Lite.cmd:109-112
+VICTORY_DLSS_MODE = "quality"
+VICTORY_OUTPUT = "1280x720"
+VICTORY_LOG = "info"   # Play-Lite.cmd:118-119
+VICTORY_D3D12_DRED = "light"
