@@ -1,4 +1,4 @@
-"""Writes scripts/rank.py's ranks into vendor/*/NEONBRIDGE.toml and reorders README's table. Run by bump-upstreams.sh."""
+"""Writes scripts/rank.py's ranks into vendor/*/NEONBRIDGE.toml and reorders STANDINGS.md's table. Run by bump-upstreams.sh."""
 import json, re, os, sys
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ranks = json.load(open(sys.argv[1]))
@@ -17,7 +17,7 @@ for r, s, src, n, u in ranks:
     if t2 != t:
         open(p, 'w', encoding='utf-8', newline='\n').write(t2)
 new = {}
-md = open('README.md', encoding='utf-8').read().split('\n')
+md = open('STANDINGS.md', encoding='utf-8').read().split('\n')
 rows, start, end = [], None, None
 for i, l in enumerate(md):
     if re.match(r'^\| \d+ \| [\d.]+ \| \[', l):
@@ -37,5 +37,5 @@ for l in rows:
     out.append((int(re.match(r'^\| (\d+)', l).group(1)), l))
 out.sort(key=lambda x: x[0])
 md[start:end + 1] = [l for _, l in out]
-open('README.md', 'w', encoding='utf-8', newline='\n').write('\n'.join(md))
+open('STANDINGS.md', 'w', encoding='utf-8', newline='\n').write('\n'.join(md))
 print(len(out), 'rows')

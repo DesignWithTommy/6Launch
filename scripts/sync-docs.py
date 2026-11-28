@@ -1,7 +1,7 @@
-"""Keeps docs/CREDITS.md and the website (index.html) in step with vendor/ and README.md.
+"""Keeps docs/CREDITS.md and the website (index.html) in step with vendor/ and STANDINGS.md.
 
 Run by scripts/bump-upstreams.sh. Credits: adds any vendored runtime whose upstream
-is not yet credited. Website: rewrites the ranked runtime list from README's table.
+is not yet credited. Website: rewrites the standings from STANDINGS.md.
 """
 import html, pathlib, re
 
@@ -44,12 +44,52 @@ cr.write_text(c, encoding="utf-8", newline="\n")
 
 ix = root / "docs/index.html"
 h = ix.read_text(encoding="utf-8")
-names = []
-for l in (root / "README.md").read_text(encoding="utf-8").split("\n"):
-    m = re.match(r"^\| (\d+) \| [\d.]+ \| \[([^\]]+)\]", l)
-    if m:
-        names.append((int(m.group(1)), m.group(2)))
-items = "".join(f"<li>{html.escape(n)}</li>" for _, n in sorted(names))
-h = re.sub(r"(<h2>Runtimes in the launcher</h2>.*?<ol>\n?)<li>.*?(\n?</ol>)", lambda m: m.group(1) + items + m.group(2), h, count=1, flags=re.S)
+
+
+def md(t):
+    t = html.escape(t.strip(), quote=False)
+    t = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", r'<a href="\2" rel="noopener">\1</a>', t)
+    t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
+    t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
+    return t
+
+
+def cells(l):
+    return [c.strip() for c in l.strip().strip("|").split("|")]
+
+
+lines = (root / "STANDINGS.md").read_text(encoding="utf-8").split("\n")
+full = {}
+for l in lines:
+    m = re.match(r"^\| \[[^\]]+\]\((https://github\.com/[^)]+?)/?\) \|", l)
+    if m and not re.match(r"^\| \d+ \|", l):
+        c = cells(l)
+        if len(c) >= 4:
+            full[m.group(1).lower()] = (c[1], c[2], c[3])
+rows = []
+for l in lines:
+    if not re.match(r"^\| \d+ \| [\d.]+ \| \[", l):
+        continue
+    c = cells(l)
+    if len(c) < 6:
+        continue
+    r, sc, rt, gpu, rep, ours = c[:6]
+    m = re.match(r"\[([^\]]+)\]\((https://github\.com/[^)]+?)/?\)", rt)
+    if not m:
+        continue
+    name, url = m.groups()
+    fork, long, ours_long = full.get(url.lower(), ("", rep, ours))
+    gk = "nvidia" if "nvidia" in gpu.lower() else "amd" if "amd" in gpu.lower() else "any"
+    tested = "" if ours.strip() in ("—", "-", "") else " tested"
+    detail = f'<p>{md(long)}</p>' + (f'<p class="ours"><b>On our RTX 4060:</b> {md(ours_long)}</p>' if tested else "") + (f'<p class="fork">Based on {md(fork)}</p>' if fork else "")
+    rows.append(
+        f'<details class="rt{tested}" data-gpu="{gk}" data-name="{html.escape(name.lower())}">'
+        f'<summary><span class="rank">{r}</span><span class="name">{html.escape(name)}</span>'
+        f'<span class="gpu">{md(gpu)}</span><span class="score">{sc}</span>'
+        f'<span class="rep">{md(rep)}</span></summary>'
+        f'<div class="more">{detail}<a class="src" href="{url}" rel="noopener">Source on GitHub &rarr;</a></div></details>')
+block = "\n".join(rows)
+h = re.sub(r"(<!--standings:start-->).*?(<!--standings:end-->)", lambda m: m.group(1) + "\n" + block + "\n" + m.group(2), h, count=1, flags=re.S)
+h = re.sub(r'(<span id="count">)\d*(</span>)', lambda m: f"{m.group(1)}{len(rows)}{m.group(2)}", h)
 ix.write_text(h, encoding="utf-8", newline="\n")
-print(f"sync-docs: {len(add)} credits added, {len(names)} runtimes on the site")
+print(f"sync-docs: {len(add)} credits added, {len(rows)} runtimes on the site")
