@@ -5,7 +5,7 @@ rank = 58   # i95 rank: score 55.0 by PortWatch VI's formula (from the author's 
 about = "LNX-victory 05ad122 (GPL-3.0): VIctory tuned for 8 GB NVIDIA; reaches the prison yard at about 4 fps (3.3-4.6) Series X, 7-8 fps Series S + FSR, RTX 5060 Ti 8 GB (its README); not yet run here"
 upstream = "https://github.com/Linox-IDK/LNX-victory"
 updated = "2026-11-27 13:52"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 16   # GitHub stars when last checked
+stars = 17   # GitHub stars when last checked
 # Settings are README.md:183-197 ("our settings for an 8 GB NVIDIA card"): release build, Series X.
 build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:184 (+--locked)
 watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
