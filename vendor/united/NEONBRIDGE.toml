@@ -6,7 +6,7 @@ gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filte
 rank = 38   # i95 rank: score 59.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Victory-United 731df25 (GPL-3.0): VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with scripted movement, three 7-minute runs, Series S; 'not playable yet'; not yet run here"
 upstream = "https://github.com/Fayberr/Victory-United"
-updated = "2026-11-28 05:32"   # the pinned upstream commit's date (scripts/runtime-info.py)
+updated = "2026-11-28 06:46"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 11   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:59
 exe = "target/diag/victory.exe"   # play.ps1:80 ($Build = diag)
