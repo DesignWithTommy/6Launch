@@ -59,6 +59,7 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 | 18 | 62.5 | [Kitty6](https://github.com/kitty-core/Kitty6) | NVIDIA | 20.5 fps median in the opening scene | — |
 | 19 | 62.1 | [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) | AMD | 10.5 fps on Series X with its patches on | — |
 | 20 | 62 | [victory-unified](https://github.com/Itsbatt/victory-unified) | NVIDIA 8 GB | "A unified fork" tuned for an RTX 3070 8 GB: 2 to 3 fps, about 58 minutes without a crash | — |
+| 21 | 61.5 | [CGBJ (cool_fox)](https://github.com/DoubleGhosty/cool_fox) | NVIDIA | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed | — |
 | 22 | 61.5 | [Flamingo](https://github.com/realblastex/flamingo) | NVIDIA | 8.6 fps average over a 24-minute session, RTX 4070, unconfirmed | ⚠️ Runs at ~20 fps on average, but models are very dark and… |
 | 23 | 61 | [ApexVI](https://github.com/KevinPratap/ApexVI) | NVIDIA 6-8 GB | Tuned for 6-8 GB laptop cards: a controllable character at 6.35 to 7.5 fps, 14-15 min… | — |
 | 24 | 60.5 | [SlaktarnVI](https://github.com/Slaktarn700/SlaktarnVI) | AMD | Linux/Proton on an RX 9070 XT: 19-25 fps | — |
@@ -91,9 +92,6 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 | 51 | 54.1 | [darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) | NVIDIA | A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070 | — |
 | 52 | 53.1 | [MiniVI](https://github.com/Androtim/MiniVI) | Any 8 GB | Built for 8 GB VRAM and 16-32 GB RAM, with an F3 FPS/VRAM overlay | — |
 | 53 | 50.3 | [VIctory](https://github.com/Marvisak/VIctory) | Any | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | — |
-| 54 | 30 | [Five Star Recomp](https://github.com/ThatRecompDev/five-star-recomp) | Any | Intro and opening cutscene at 30 fps, world surfaces still black | — |
-| 55 | 10 | [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) | Any | Boot harness: frame loop and first UI screen | — |
-| 56 | 10 | [PercyScarlett](https://github.com/rpatty-dev/PercyScarlett) | NVIDIA | Lit opening prison scene on Series S, 2-3 fps on an RTX 2060 SUPER | — |
 | – | – | VIctory-Belobug-AMD (removed) | AMD | 5 to 8 fps over a 15-minute drive, RX 7900 XTX | ❌ Removed from the loader: the author's GitHub account was… |
 | – | – | VIctory-7900XTX (removed) | AMD | 13 to 17 fps in a city street at Series X 1440p, RX 7900 XTX | ❌ Removed from the loader: the author's GitHub account was… |
 | – | – | Vertex (removed) | NVIDIA | "Not playable yet." 6.9 fps median in a 25-minute run, RTX 5070 | ❌ Removed from the loader: the author deleted or hid the… |
@@ -105,6 +103,7 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 
 | Runtime | Based on | Its author reports in full | Here in full |
 |---|---|---|---|
+| [CGBJ (cool_fox)](https://github.com/DoubleGhosty/cool_fox) | VIctory | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed; an outside build reports a 22.4 fps median on the boat, also unverified; zero-copy buffers now on by default; the original repo is no longer on GitHub | Not run yet |
 | [VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) | VIctory-7900XTX | CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted (DLSS needs NVIDIA files i95 doesn't fetch; without them it runs Series X at native 1440p, uncapped) | Not run yet |
 | [DexNom RayTime](https://github.com/DexNom/VIctory) | VIctory | 1 fps with ray tracing on, 3.5 to 4 without, RX 7900 XTX | Not run yet |
 | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | VIctory | The tracker's leader and playable by its own report: a 21.1 fps median over a 30-minute session played by hand, Series S profile, RTX 4090 | ✅ The `4060` preset: 38 min in 3D at 10.3 fps on average (30 in quiet rooms, under 1 in busy scenes), then out of graphics memory. Rough picture. Plain Series S: 3 to 4 fps (paged to disk); `8gb`: 5 fps; Series X (its default) crashes in the first cutscene on 8 GB |
@@ -157,9 +156,6 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 | [darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) | victory-fork | A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070 | Not run yet |
 | [MiniVI](https://github.com/Androtim/MiniVI) | cool_fox | Built for 8 GB VRAM and 16-32 GB RAM, with an F3 FPS/VRAM overlay; 4 GB and AMD modes | Not run yet |
 | [VIctory](https://github.com/Marvisak/VIctory) | (the original) | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | Not run yet |
-| [Five Star Recomp](https://github.com/ThatRecompDev/five-star-recomp) | own (C#) | Intro and opening cutscene at 30 fps, world surfaces still black; needs the .NET SDK; early | Not run yet |
-| [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) | own (C) | Boot harness: frame loop and first UI screen; needs Visual Studio 2022 C tools; early | Not run yet |
-| [PercyScarlett](https://github.com/rpatty-dev/PercyScarlett) | VIctory | Lit opening prison scene on Series S, 2-3 fps on an RTX 2060 SUPER; early, from PortWatch's watch list | Not run yet |
 | VIctory-Belobug-AMD (removed) | VIctory | 5 to 8 fps over a 15-minute drive, RX 7900 XTX | ❌ Removed from the loader: the author's GitHub account was deleted, so the source can no longer be downloaded |
 | VIctory-7900XTX (removed) | VIctory | 13 to 17 fps in a city street at Series X 1440p, RX 7900 XTX | ❌ Removed from the loader: the author's GitHub account was deleted, so the source can no longer be downloaded |
 | Vertex (removed) | VIctory | "Not playable yet." 6.9 fps median in a 25-minute run, RTX 5070 | ❌ Removed from the loader: the author deleted or hid the repository, so the source can no longer be downloaded |
@@ -169,36 +165,6 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 
 </details>
 
-<details><summary><b>Early projects not in i95 yet</b> (they don't reach the game's world on Windows)</summary>
-
-| Project | What it is (PortWatch's summary, unverified) |
-|---|---|
-| [xbox-emulator](https://github.com/omonkeyz/xbox-emulator) | Rust runtime that runs dumped Xbox Series builds as normal Windows processes, continuing the TomBox project |
-| [xcl](https://github.com/xcl-dev/xcl) | Wine-style layer running game code natively |
-| [ScarlettX](https://github.com/Freminet/ScarlettX) | Clean-room high-level emulator of the Scarlett OS and GDK runtime |
-| [TuxBox](https://github.com/brcly/TuxBox) | Native-first layer for unpacked Xbox Series games, tested mostly on Linux through Proton |
-| [OpenScarlett](https://github.com/californiaAlmonds/OpenScarlett) | MIT-licensed C++20 translation layer targeting D3D12 and Vulkan |
-| [scarlett-layer](https://github.com/jadeowaowa/scarlett-layer) | Loader plus injected hook DLL that redirects console-only calls to Windows shims, with its own d3d12_xs wrapper and shader lifter |
-| [Xbox2Windows](https://github.com/R0Y00/Xbox2Windows) | Static recompilation research turning Xbox Series code and shaders into Windows C++ and DXIL, with over 50 contributors |
-| [keylime](https://github.com/ethan00013/keylime) | A C++20 runtime written from scratch, with Vulkan graphics and its own RDNA2-to-SPIR-V translator |
-| [xvalkyrie](https://github.com/sammwyy/xvalkyrie) | Wine-style C++ layer for Xbox One and Series titles with native code and RDNA2-to-HLSL shaders |
-| [GTAVI-Recomp](https://github.com/JamesCicada/GTAVI-Recomp) | Targets the PS5 build through AnyPS5 and will not work from leaked files, so game research is blocked |
-| [anyxboxseries](https://github.com/edupode/anyxboxseries) | GTA VI-only translation layer with a PE mapper borrowed from Xbox2Windows, an early scalar shader lifter and a sample game that tests presentation and input |
-| [SCARAB](https://github.com/p-portela/SCARAB) | Found that the console d3d12_xs uses the same 28 interface IDs as PC D3D12, so standard calls can be forwarded and only the console extensions need building |
-| [AnyBox](https://github.com/Dark3581/AnyBox) | Relinks GDK executables against reimplemented system libraries, AnyPS5-style |
-| [GrandTheftXbox](https://github.com/zohaiblazuli/GrandTheftXbox) | Wine-style layer planned for Series and One titles |
-| [NativeX-Runtime](https://github.com/ProhorovIlja/NativeX-Runtime) | Clean-room test programs for how Game Core software meets Windows, covering loading, memory, presentation and input, plus a radar that watches other projects |
-| [DedSec](https://github.com/Hylanderry/DedSec) | Portuguese-language GTA VI port targeting DirectX 12 with an RDNA2-to-HLSL translator |
-| [Xbgtasix](https://github.com/ljm-233/Xbgtasix) | Chinese-language layer that places stand-in xgameruntime, xmem and d3d12_xs DLLs next to an executable, plus sourced research notes on the archive, shader and texture formats |
-| [SeriesX-Emulator](https://github.com/anrq0/SeriesX-Emulator) | C++ emulator that interprets x86-64 code instead of running it natively, with a launcher and seven XGameRuntime functions |
-| [ScarlettCompat](https://github.com/SSTGxf/ScarlettCompat) | C++ layer with its own PE loader and Xbox function registry |
-| [xlaunch-vi](https://github.com/JPTuba9/xlaunch-vi) | Multi-contributor C++ layer with a PE loader, a D3D12 backend and an RDNA2 shader translator that matches AMD-compiled test shaders bit for bit |
-| [OpenScarlett](https://github.com/OpenCommunityEdition/OpenScarlett) | AGPL C++ layer, separate from the other OpenScarlett, that swaps console DLLs for PC Direct3D 12 ones and translates console GPU code |
-| [port-of-the-americas](https://github.com/Steinkoloss/port-of-the-americas) | Linux layer that runs GTA VI's own exe under Proton with replacement console DLLs on a patched vkd3d-proton |
-| [G6Recomp](https://github.com/Kajcsi/G6Recomp) | Carefully tested C++ loader and console-runtime rewrite for GTA VI, with its own code throughout |
-| [palmetto](https://github.com/luizwidmer/palmetto) | Open continuation of Leonida after its repo went private |
-
-</details>
 
 **Not in i95:** ztrx (#6) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub. omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. VIctory-macOS-halfwave50 is macOS only (2.9-4.5 fps on a MacBook Pro).
 

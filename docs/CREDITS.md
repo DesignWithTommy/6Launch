@@ -30,9 +30,6 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/apexvi` | [ApexVI](https://github.com/KevinPratap/ApexVI) | KevinPratap, on VIctory | GPL-3.0 |
 | `vendor/grimkaaah` | [Victory Grimkaaah](https://github.com/Grimkaaah/Victory-Grimkaaah) | Grimkaaah, on VIctory | GPL-3.0 |
 | `vendor/pilotebox` | [PiloteBox](https://github.com/PiloteCode/PiloteBox) | PiloteCode, on VIctory | GPL-3.0 |
-| `vendor/percyscarlett` | [PercyScarlett](https://github.com/rpatty-dev/PercyScarlett) | rpatty-dev | GPL-2.0 |
-| `vendor/fivestar` | [Five Star Recomp](https://github.com/ThatRecompDev/five-star-recomp) | ThatRecompDev | GPL-3.0 |
-| `vendor/boottest` | [GTA6-BootTest](https://github.com/OnlyMoisties/GTA6-BootTest) | OnlyMoisties | none (fetched, not copied) |
 | `vendor/scarlettport` | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | Ziggy (ZigZagBoi1), Vlad Bondarenko (vladbondarenko97), grooving6; its `runtime/victory` is the VIctory authors' and its `runtime/xcl` the xcl authors' | GPL-3.0-or-later; `runtime/xcl` GPL-2.0-only (its `LICENSE.md`) |
 | `vendor/unified` | [victory-unified](https://github.com/Itsbatt/victory-unified) | Itsbatt, with fxceless, Belobug, DexNom, Zettrox and the VIctory contributors | GPL-3.0-or-later |
 | `vendor/united` | [Victory-United](https://github.com/Fayberr/Victory-United) | Fayberr | GPL-3.0 |

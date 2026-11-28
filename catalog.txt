@@ -270,24 +270,6 @@ VICTORY_REAPER = "1"   # newest (-Safe drops it)
 VICTORY_LDS_FLAGS = "1"   # newest (-Safe drops it)
 VICTORY_NARROW_RAW_LOADS = "1"   # newest (-Safe drops it)
 VICTORY_LEGACY_FMAD = "1"   # newest (-Safe drops it)
-=== boottest 32683d8fe2841bddeb0b437109e97bc32cf55724
-# Launcher spec for vendor/boottest: OnlyMoisties' GTA6-BootTest, C stand-in DLLs and a debugger harness.
-# Build and run are its README "Build and run" and run.bat (32683d8). No licence: fetched from GitHub, never copied.
-# Its real-GPU path needs AMD's RDNA2 ISA XML (not included), so this runs the boot harness only. Early: unranked.
-name = "boottest"
-fork = "GTA6-BootTest"
-gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 55   # i95 rank: score 10 by PortWatch VI's formula (its own assessment; scripts/rank.py)
-about = "GTA6-BootTest 32683d8 (no licence): boots, streams archives, runs the frame loop and draws its first UI screen; harness stops the game after 60 s; needs Visual Studio 2022 C tools; early, not yet run here"
-upstream = "https://github.com/OnlyMoisties/GTA6-BootTest"
-updated = "2026-11-23 20:09"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 45   # GitHub stars when last checked
-build = ["powershell", "-NoProfile", "-Command", "(Get-Content src/build.bat) -notmatch 'vcvars64' | Set-Content src/i95-build.bat; cmd /c src\\i95-build.bat; exit $LASTEXITCODE"]   # README.md:33: src\build.bat without its line that calls VS Community's vcvars64 (i95 gives it the Build Tools environment)
-vcvars = true
-watch = ["src"]
-exe = "bin/harness.exe"   # run.bat:9
-run = ["{game_exe}", "{root}/bin/stubs", "{root}/logs", "60", "run", "-skip"]   # run.bat:9
-agility = false
 === cblvictory 4bb264b5961bc13dea5984d71890ecef14f0ed56
 name = "cblvictory"
 fork = "VIctory"
@@ -700,26 +682,6 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== fivestar 44da838a49fc6326810d7cc790b07768a90cd93f
-# Launcher spec for vendor/fivestar: ThatRecompDev's Five Star Recomp, a C# loader and shader translator for
-# GTA VI 1.0.2.1. Build and run are its README and docs/running.md (b42886f). Early: unranked, listed last.
-name = "fivestar"
-fork = "Five Star Recomp"
-gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 54   # i95 rank: score 30 by PortWatch VI's formula (its own assessment; scripts/rank.py)
-about = "Five Star Recomp 44da838 (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
-upstream = "https://github.com/ThatRecompDev/five-star-recomp"
-updated = "2026-11-27 18:41"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 235   # GitHub stars when last checked
-build = ["dotnet", "build", "FiveStar.slnx"]   # README.md:46
-watch = ["src", "FiveStar.slnx", "global.json"]
-exe = "artifacts/bin/FiveStar.Cli/debug/fivestar.exe"   # docs/running.md:20
-run = ["run", "{game}"]   # docs/running.md:12,26
-prewarm = ["setup", "{game}"]   # README.md:58-59: the one-time setup (re-runs skip finished steps)
-agility = false
-
-preset_warm = ["--warm"]   # docs/running.md:95: builds journaled pipelines before the boot
-preset_debug = ["--debug"]   # docs/running.md:26
 === flamingo 0d0128ff65d564c86969f567583e2b8f3c2446ab
 # Neonbridge launcher spec for vendor/flamingo: realblastex's Flamingo, a victory
 # fork vendored clean. Build, run and env are its README.md "Building and running"
@@ -2041,29 +2003,6 @@ VICTORY_SKIP_WC_BACK = "1"
 VICTORY_SKIP_WC_KEEP = "1048576"
 VICTORY_MERGE_SUBMISSIONS = "1"
 VICTORY_LOG = "warn"
-=== percyscarlett e44c465e47ab5b29ca87777cd00875e2ae0d8c0d
-# Launcher spec for vendor/percyscarlett: rpatty-dev's PercyScarlett, a Rust layer whose GTA VI runtime is the
-# VIctory copy in runtime/victory. Build and run are its scripts/play-prologue.ps1 (e44c465). Early: unranked, listed last.
-name = "percyscarlett"
-fork = "PercyScarlett"
-gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 56   # i95 rank: score 10 by PortWatch VI's formula (its own assessment; scripts/rank.py)
-about = "PercyScarlett e44c465 (GPL-2.0): reaches the lit opening prison scene on Series S, 2-3 fps on an RTX 2060 SUPER 8 GB; shaded areas too dark; early, not yet run here"
-upstream = "https://github.com/rpatty-dev/PercyScarlett"
-updated = "2026-11-25 04:58"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 46   # GitHub stars when last checked
-build = ["cargo", "build", "--release", "-p", "victory", "--manifest-path", "runtime/victory/Cargo.toml"]   # play-prologue.ps1:20-23
-watch = ["runtime/victory/apps", "runtime/victory/crates", "runtime/victory/Cargo.toml", "runtime/victory/Cargo.lock"]
-exe = "runtime/victory/target/release/victory.exe"   # play-prologue.ps1:16
-run = ["run", "{game_exe}", "--execute", "--console", "series-s"]   # play-prologue.ps1:47 (README: Series S profile)
-game_env = "VICTORY_GAME_DIR"
-cache_env = "VICTORY_CACHE_DIR"
-agility = true   # play-prologue.ps1:28-39 puts Agility 1.614.1 beside the exe
-
-preset_series_x = ["--console=series-x", "VICTORY_DISPLAY_MODE=1920x1080"]   # play-prologue.ps1:43
-
-[env]
-VICTORY_LEVELS_ON_DEMAND = "1"   # play-prologue.ps1:42: about 3 GB less video memory
 === pilotebox 75321b262feeaabe28c7019a8974bdee425663e0
 # Launcher spec for vendor/pilotebox: PiloteCode's PiloteBox, a VIctory-based layer tuned for NVIDIA cards.
 # Build and run are its README "Quick start" (75321b2): `pilotebox play` sets its own measured settings.
