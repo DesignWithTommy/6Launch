@@ -1,7 +1,7 @@
 name = "neptune"
 fork = "VIctory"
 gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 15   # i95 rank: score 63.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 16   # i95 rank: score 63.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Neptune (neptune-dolberth-nvidia-8gb) 99b231f (GPL-3.0): no fps figure in its README, tuned for 8 GB NVIDIA + 6-core Ryzen + 16 GB RAM; not yet run here"
 upstream = "https://github.com/Dolberthi/neptune-dolberth-nvidia-8gb"
 updated = "2026-11-26 18:37"   # the pinned upstream commit's date (scripts/runtime-info.py)

@@ -1,0 +1,58 @@
+# Neonbridge launcher spec for vendor/skornuta: skornuta's victory-fork.
+# Build and env are its play.ps1 / run-neptune.cmd (release build).
+
+name = "skornuta"
+fork = "VIctory"
+gpu = "NVIDIA"   # the card it is tuned for (README; the picker's filter)
+rank = 46   # i95 rank: score 56.6 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "skornuta/victory-fork e94251a (GPL-3.0): open world ~9-12 fps, menus 30 fps (author); not yet run here"
+upstream = "https://github.com/skornuta/victory-fork"
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]
+exe = "target/release/victory.exe"
+run = ["run", "{game_exe}", "--execute"]   # play.ps1:156
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]
+watch = ["apps", "crates", "src", "Cargo.toml", "Cargo.lock", "CMakeLists.txt"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+preset_series_s = ["--console=series-s"]   # play.ps1 switch
+
+[env]   # play.ps1
+VICTORY_CARD_WINDOWS_MB = "4096"
+VICTORY_BAKE_TEXTURES_MS = "10000"
+VICTORY_EARLY_TEXTURES_MS = "40"
+VICTORY_WAVE_OWN_LDS_GROUPS = "64,128"
+VICTORY_WIDE_MERGE = "1"
+VICTORY_RELAY_OWN_QUEUE = "1"
+VICTORY_UNDER_WRITES_WORDS = "1"
+VICTORY_UNDER_WRITES_RUNS = "100000"
+VICTORY_UNDER_WRITES_MASKS = "1"
+VICTORY_RELAY = "2"
+VICTORY_WIDE_REFRESH = "1"
+VICTORY_ASK_ONCE = "1"
+VICTORY_TEXTURE_NO_WAIT = "1"
+VICTORY_CARD_REHASH_RUNS = "1"
+VICTORY_JOIN_COPIES = "1"
+VICTORY_D3D12_BACKGROUND = "0"
+VICTORY_LATE_WAIT_LISTS = "1024"
+VICTORY_WINDOW_TAILS = "1"
+VICTORY_TEXTURE_STAGE_MB = "512"
+VICTORY_CARD_BUFFERS_MIN_KB = "64"
+VICTORY_ASK_QUIET = "8"
+VICTORY_COPY_CHANGED = "1"
+VICTORY_QUIET_BACK = "1"
+VICTORY_LIST_POOL_MOST = "2048"
+VICTORY_LIST_POOL_MB = "2048"
+VICTORY_WIDE_THREADS = "12"
+VICTORY_UNDER_WRITES_MASKS_LEAST = "1"
+VICTORY_INDIRECT_RAW = "2"
+VICTORY_TEXTURE_HASH_EVERY = "32"
+VICTORY_LEVELS_ON_DEMAND = "1"
+VICTORY_WINDOW_KB = "1024"
+VICTORY_CARD_BUFFERS_MB = "1536"
+VICTORY_CARD_WINDOW_UPLOAD = "1"
+VICTORY_DROP_DXIL = "1"
+VICTORY_DESC_DATA = "1"
+VICTORY_VRAM_IDLE_MS = "15000,2500,1000"
+VICTORY_PIPELINE_WAIT_MS = "2500"

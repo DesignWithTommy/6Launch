@@ -1,7 +1,7 @@
 name = "lnx"
 fork = "LNX-victory"
 gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 53   # i95 rank: score 55.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 59   # i95 rank: score 55.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "LNX-victory 05ad122 (GPL-3.0): VIctory tuned for 8 GB NVIDIA; reaches the prison yard at about 4 fps (3.3-4.6) Series X, 7-8 fps Series S + FSR, RTX 5060 Ti 8 GB (its README); not yet run here"
 upstream = "https://github.com/Linox-IDK/LNX-victory"
 updated = "2026-11-27 13:52"   # the pinned upstream commit's date (scripts/runtime-info.py)

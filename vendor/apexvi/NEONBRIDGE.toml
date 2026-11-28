@@ -3,7 +3,7 @@
 name = "apexvi"
 fork = "VIctory"
 gpu = "NVIDIA 6-8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 25   # i95 rank: score 61.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 26   # i95 rank: score 61.0 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "ApexVI 9a17be6 (GPL-3.0): a controllable character at 6.35 to 7.5 fps by scene, 14 to 15 min runs without a crash, laptop RTX 4050 6 GB, Series S 1080p; not yet run here"
 upstream = "https://github.com/KevinPratap/ApexVI"
 updated = "2026-11-26 20:45"   # the pinned upstream commit's date (scripts/runtime-info.py)

@@ -1,0 +1,26 @@
+# Neonbridge launcher spec for vendor/mangrove: Joaco9020's mangrove.
+# Build and env are its pc/play.bat and pc/settings.bat (release build).
+
+name = "mangrove"
+fork = "VIctory"
+gpu = "NVIDIA 8 GB"   # the card it is tuned for (README; the picker's filter)
+rank = 51   # i95 rank: score 56.5 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+about = "mangrove 1e53b0d (GPL-3.0): a VIctory fork for 8 GB cards: player control in the prologue at 2.5 fps, RTX 3070 (author); not yet run here"
+upstream = "https://github.com/Joaco9020/mangrove"
+build = ["cargo", "build", "--release", "--locked", "-p", "victory"]
+exe = "target/release/victory.exe"
+run = ["run", "{game_exe}", "--execute"]   # pc/play.bat:18
+prewarm = ["shaders", "{game}/shaders.rpf", "{game_exe}", "{game}/XboxBvhBuilder.dll", "{game}/amd_fidelityfx_upscaler_xbox.dll", "--jobs", "{jobs}"]
+watch = ["apps", "crates", "src", "Cargo.toml", "Cargo.lock", "CMakeLists.txt"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+
+[env]   # pc/settings.bat
+VICTORY_LOG = "info,victory_gpu::descriptor::host=error"
+VICTORY_TEXTURE_GUARD = "0"
+VICTORY_SHADER_OPT = "0"
+VICTORY_TEXTURE_ROOM_PERCENT = "94"
+VICTORY_LATE_WAIT = "2"
+VICTORY_PIPELINE_WAIT_MS = "24"
+VICTORY_POOL_NO_ASSERT = "1"

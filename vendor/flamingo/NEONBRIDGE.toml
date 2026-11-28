@@ -5,7 +5,7 @@
 name = "flamingo"
 fork = "victory-fork"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 24   # i95 rank: score 61.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 25   # i95 rank: score 61.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Flamingo 0d0128f (GPL-3.0): 8.6 fps average over a 24-minute session, RTX 4070, unconfirmed; not yet run here"
 upstream = "https://github.com/realblastex/flamingo"
 updated = "2026-11-27 06:19"   # the pinned upstream commit's date (scripts/runtime-info.py)
