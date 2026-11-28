@@ -2102,7 +2102,7 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     }
     // The loader window (NEONBRIDGE_SPLASH=0: none): patches, build, setup,
     // the shader warm, then the launch; it closes at the first frame.
-    // Logging is on for every run (NEONBRIDGE_LOG=0 turns it off): with no
+    // Logging is off unless NEONBRIDGE_LOG=1 (the Advanced box): with no
     // --log (a CLI run), 6ixpack\logs\<runtime>_<time>.log, the output also
     // echoed to this console.
     let echo = log.is_none();
