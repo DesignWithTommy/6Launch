@@ -37,7 +37,7 @@ T=$(mktemp -d); if gh api repos/4lwayz/portwatch-vi/contents/data/tracker.json -
 python -I scripts/sync-docs.py >&2
 # Flag runtimes the README table does not link (matched on the toml's upstream URL, case-insensitive).
 for d in vendor/*/; do
-  u=$(sed -n 's#^upstream *= *"\(https://github.com/[^"]*\)".*##p' "$d/NEONBRIDGE.toml" 2>/dev/null | head -1); u=${u%/}; u=${u%.git}
+  u=$(grep -m1 '^upstream' "$d/NEONBRIDGE.toml" 2>/dev/null | grep -o 'https://github.com/[^"]*'); u=${u%/}; u=${u%.git}
   [ -n "$u" ] && ! grep -qiF "($u)" README.md && echo "README missing: $(basename "$d") $u" >&2
 done
 cat "${TMPDIR:-/tmp}/bumped.txt"
