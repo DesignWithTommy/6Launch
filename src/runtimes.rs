@@ -1707,9 +1707,9 @@ fn fill(s: &str, p: &Places) -> String {
 
 /// Runs `cmd` with stdout and stderr into `log` (or this console), adding
 /// run.sh's heartbeat lines; kills it after `timeout` seconds.
-/// NEONBRIDGE_LOG=0 is the only way to turn run logging off.
+/// Off by default; NEONBRIDGE_LOG=1 (the Advanced box) turns run logging on.
 pub fn logging() -> bool {
-    std::env::var("NEONBRIDGE_LOG").map_or(true, |v| v.trim() != "0")
+    std::env::var("NEONBRIDGE_LOG").is_ok_and(|v| v.trim() == "1")
 }
 
 /// The run reached its --timeout (and was killed).

@@ -351,7 +351,7 @@ const TOGGLES: &[(&str, &str, &str, bool)] = &[
     ("overlay", "NEONBRIDGE_RUNTIME_OVERLAY", "Runtime's own overlay (its fps / debug counters)", true),
     ("controls", "NEONBRIDGE_CONTROLS", "Controls overlay (F1 shows / hides)", true),
     ("shared", "NEONBRIDGE_SHARED", "One save folder for every victory runtime", false),
-    ("log", "NEONBRIDGE_LOG", "Save a log of each run", true),
+    ("log", "NEONBRIDGE_LOG", "Save a log of each run", false),
     ("runtimelog", "NEONBRIDGE_RUNTIME_LOG", "Extra runtime logging (VICTORY_LOG / RUST_LOG info)", false),
     ("diag", "NEONBRIDGE_DIAG", "Diagnostics (DRED breadcrumbs, separate debug build)", false),
 ];
