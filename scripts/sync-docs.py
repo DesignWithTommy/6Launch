@@ -42,7 +42,7 @@ if add:
     c = c.rstrip("\n") + "\n" + "\n".join(add) + "\n"
 cr.write_text(c, encoding="utf-8", newline="\n")
 
-ix = root / "index.html"
+ix = root / "docs/index.html"
 h = ix.read_text(encoding="utf-8")
 names = []
 for l in (root / "README.md").read_text(encoding="utf-8").split("\n"):

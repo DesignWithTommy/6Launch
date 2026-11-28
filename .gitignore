@@ -10,6 +10,11 @@ __pycache__/
 # Working notes stay local
 /docs/*
 !/docs/CREDITS.md
+!/docs/index.html
+!/docs/robots.txt
+!/docs/sitemap.xml
+!/docs/.nojekyll
+!/docs/d259538f3f2f424480c0b9c34fd6f3ba.txt
 # Crash dumps, run output, side-session notes and loose patches stay local
 *.dmp
 *.crash.log
