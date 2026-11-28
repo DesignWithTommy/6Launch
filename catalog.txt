@@ -547,14 +547,14 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== darkvictory a0e895479218c9277bc4851dae336c5df45ffc49
+=== darkvictory d65742f447d2ead5697ab717298e8d5d5cc0b4ab
 # Launcher spec for vendor/darkvictory: darksidexc's Dark-Victory (RX 6600 + i7-14700KF).
 # Build, run and env are its README and scripts/play.ps1 (default: Series S, not -Safe; FidelityFX parts in preset_fsr4).
 name = "darkvictory"
 fork = "VIctory"
 gpu = "AMD 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 41   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "Dark-Victory a0e8954 (GPL-3.0): stable around 10 fps (9.5-10.7) on an RX 6600; 20 fps is its target; not yet run here"
+about = "Dark-Victory d65742f (GPL-3.0): stable around 10 fps (9.5-10.7) on an RX 6600; 20 fps is its target; not yet run here"
 upstream = "https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI"
 updated = "2026-11-27 03:49"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 50   # GitHub stars when last checked
@@ -700,14 +700,14 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== fivestar 2c16b3c9a82e9bfc5dbcd8216fd511ff1316a0e3
+=== fivestar 44da838a49fc6326810d7cc790b07768a90cd93f
 # Launcher spec for vendor/fivestar: ThatRecompDev's Five Star Recomp, a C# loader and shader translator for
 # GTA VI 1.0.2.1. Build and run are its README and docs/running.md (b42886f). Early: unranked, listed last.
 name = "fivestar"
 fork = "Five Star Recomp"
 gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 54   # i95 rank: score 30 by PortWatch VI's formula (its own assessment; scripts/rank.py)
-about = "Five Star Recomp 2c16b3c (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
+about = "Five Star Recomp 44da838 (GPL-3.0): boots to the intro, first-run screens and the opening cutscene at 30 fps; world surfaces still black, about 1 s a world frame; first setup takes hours and 100+ GB; early, not yet run here"
 upstream = "https://github.com/ThatRecompDev/five-star-recomp"
 updated = "2026-11-27 18:41"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 235   # GitHub stars when last checked
@@ -1355,7 +1355,7 @@ VICTORY_PIPELINE_PRIORITY = "normal"
 VICTORY_SHADER_LOOP_LIMIT = "1024"
 VICTORY_TEXTURE_SKIP_MIPS = "1"
 VICTORY_PRESENT_PLANE = "0"
-=== m1lk 3224658810020daeea952cfd22fa2aaed0adb416
+=== m1lk 6f44bc964c8322c6fc656746bfe0d7099b93b110
 # Launcher spec for vendor/m1lk: 3cvil's M1LK (low-end NVIDIA: 8 GB VRAM + 16 GB RAM, RTX 4060 Laptop reference).
 # Build, run and env are its README, Setup-M1LK.ps1 and m1lk-play (apps/victory/src/play_launcher.rs): Series X, ray tracing at its config default.
 # Env: M1LK_* is copied to VICTORY_* at start (crates/victory-core/src/env_alias.rs:1-10); the launcher sets VICTORY_* so both spellings work.
@@ -1363,7 +1363,7 @@ name = "m1lk"
 fork = "VIctory"   # README.md:7 (VIctory + the DexNom fork)
 gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 50   # i95 rank: score 54.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "M1LK 3224658 (GPL-3.0): about 4.5 fps walking median on an RTX 4060 Laptop 8 GB / 16 GB RAM (Series S, no RT); not yet run here"   # README.md:3,33
+about = "M1LK 6f44bc9 (GPL-3.0): about 4.5 fps walking median on an RTX 4060 Laptop 8 GB / 16 GB RAM (Series S, no RT); not yet run here"   # README.md:3,33
 upstream = "https://github.com/3cvil/M1LK"
 updated = "2026-11-27 20:22"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 6   # GitHub stars when last checked
@@ -1710,14 +1710,14 @@ VICTORY_DISCORD = "0"
 VICTORY_ASYNC_SUBMIT = "1"
 VICTORY_ASYNC_PRESENT = "1"
 VICTORY_WINDOW_SIZE = "fullscreen"
-=== nvidia a4d05e7fd0af904130809c334a6008d62c24db6a
+=== nvidia 8fc22547c81a0ae6e2e9d0669f776854016fb8a1
 # Neonbridge launcher spec for vendor/nvidia: trustno1-coder's VIctory-NVIDIA (NVIDIA speed set on the 7900XTX base).
 # Build and env are scripts/play-foxhound.ps1 (play-nvidia.ps1 now calls it): release build, Series X at 1440p, no frame cap; DLSS only with NVIDIA's files, so off here.
 name = "nvidia"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 1   # i95 rank: score 90.0 by PortWatch VI's formula (its own assessment; scripts/rank.py)
-about = "VIctory-NVIDIA a4d05e7 (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
+about = "VIctory-NVIDIA 8fc2254 (GPL-3.0): CGBJ renderer with DLSS: 26 to 30 fps in the opening rooms and the first boat ride, RTX 5070, generated frames off and not counted; here without DLSS: Series X at native 1440p, uncapped"
 upstream = "https://github.com/trustno1-coder/VIctory-NVIDIA"
 updated = "2026-11-27 19:58"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 3693   # GitHub stars when last checked
@@ -2187,14 +2187,14 @@ VICTORY_MEMORY_MAP = "0"
 VICTORY_FILE_PHYSICAL = "auto"
 VICTORY_STAGING_BAR = "0"
 VICTORY_SEND_BAR = "0"
-=== rdna c0d38c34edcdecb7e1f11a3a83ab2856fa4d8a55
+=== rdna 0acbf5d4cb170b131af94a83a234b3e93933ad8f
 # Launcher spec for vendor/rdna: XaviFortes's VIctory-RDNA (RDNA3-tuned VIctory, RX 7900 XT).
 # Build, run and env are its README and scripts/play-rdna.ps1 + rdna-preset.json (default: base + fast, Series X).
 name = "rdna"
 fork = "VIctory"
 gpu = "AMD"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 6   # i95 rank: score 68.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "VIctory-RDNA c0d38c3 (GPL-3.0): 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds; not yet run here"
+about = "VIctory-RDNA 0acbf5d (GPL-3.0): 19.1 to 23.1 fps medians at Series X 4K in one capture under 10 minutes, RX 7900 XT; about 40 minutes by hand on earlier builds; not yet run here"
 upstream = "https://github.com/XaviFortes/VIctory-RDNA"
 updated = "2026-11-27 16:51"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 31   # GitHub stars when last checked
@@ -3227,7 +3227,7 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== victory 2eade68cade9b2f8cd2511cc97328e83f58508c3
+=== victory 9e907466c27001adf66c3f479412b15e093725b9
 # Neonbridge launcher spec for vendor/victory (src/runtimes.rs reads it).
 # Settings are play-victory.ps1's (ScarlettPort scripts, credit to its authors);
 # its user choices (VICTORY_FAST_BOOT, VICTORY_SAVE_SLOT, VICTORY_AUTO_INPUT)
@@ -3236,7 +3236,7 @@ name = "victory"
 fork = "victory-fork"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 29   # i95 rank: score 59.8 by PortWatch VI's formula (its own assessment; scripts/rank.py)
-about = "VIctory-fxceless 2eade68 (GPL-3.0): its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and light, 5 to 9 min runs ending in a crash in the game's script code, RTX 4070; without it about 11 fps at the first boat mission"
+about = "VIctory-fxceless 9e90746 (GPL-3.0): its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and light, 5 to 9 min runs ending in a crash in the game's script code, RTX 4070; without it about 11 fps at the first boat mission"
 upstream = "https://github.com/fxceless/victory-fork"
 updated = "2026-11-27 15:14"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 3364   # GitHub stars when last checked
@@ -3468,13 +3468,13 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== vilocity ae6eee25d2f023d7eee90985857cb9c317dc163d
+=== vilocity 6595b8a5e932bf3cb5f31dd250d9c3e03c10c45c
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"
 fork = "Vilocity"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 5   # i95 rank: score 68.3 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "Vilocity ae6eee2 (GPL-3.0): 33 fps median through the opening and 25 to 29 in the open world, 12 minutes of each unattended without a crash or driver timeout, Series S, RTX 5080; 'not playable yet'; not yet run here"
+about = "Vilocity 6595b8a (GPL-3.0): 33 fps median through the opening and 25 to 29 in the open world, 12 minutes of each unattended without a crash or driver timeout, Series S, RTX 5080; 'not playable yet'; not yet run here"
 upstream = "https://github.com/voidopcode/vilocity"
 updated = "2026-11-27 20:06"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 50   # GitHub stars when last checked
@@ -3587,12 +3587,12 @@ rs = "H"
 dpad = "Arrows"
 view = "Tab"
 menu = "Esc"
-=== viscosity a0a5dd5b4e96676ccb8cb259f710bb021123fc3f
+=== viscosity daf9b0c884015834d2e17cf28dd62c82d52fb722
 name = "viscosity"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
 rank = 33   # i95 rank: score 59.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "VIscosity a0a5dd5 (GPL-3.0): 17.9 fps median on an RTX 5070 Ti 16 GB (Series S, world at 1080p, diag build); not yet run here"
+about = "VIscosity daf9b0c (GPL-3.0): 17.9 fps median on an RTX 5070 Ti 16 GB (Series S, world at 1080p, diag build); not yet run here"
 upstream = "https://github.com/FrancescoGelosoEterea/VIscosity"
 updated = "2026-11-27 18:32"   # the pinned upstream commit's date (scripts/runtime-info.py)
 stars = 15   # GitHub stars when last checked

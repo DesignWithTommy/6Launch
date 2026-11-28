@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The update loop (run by hand or by Claude, no bot): each vendor/<name> pinned to a GitHub repo moves to that
-# repo's newest default-branch commit (UPSTREAM and catalog.txt). The settings in
-# each NEONBRIDGE.toml are re-checked by hand: a commit touching launch files is held.
+# repo's newest default-branch commit (UPSTREAM and catalog.txt);
+# every runtime moves, launch-file changes included; nothing is held.
 set -u
 changed=()
 for d in vendor/*/; do
@@ -12,16 +12,6 @@ for d in vendor/*/; do
   new=$(gh api "repos/$repo/commits/HEAD" -q .sha 2>/dev/null) || { echo "$n: $repo unreachable"; continue; }
   old=$(head -1 "$d/UPSTREAM" | tr -d '[:space:]')
   [ ${#new} -eq 40 ] && [ "$new" != "$old" ] || continue
-  # A commit touching the author's launch scripts, settings or README may change what
-  # the toml should say: held for a hand check (listed in the run summary).
-  # A failed compare, or GitHub's 300-file cap (the list may be cut), is held too.
-  files=$(gh api "repos/$repo/compare/$old...$new" -q '.files[].filename' 2>/dev/null) || files="(compare failed)"
-  if [ "$files" = "(compare failed)" ] || [ "$(printf '%s\n' "$files" | wc -l)" -ge 300 ] ||
-     printf '%s\n' "$files" | grep -qiE '\.(ps1|cmd|bat|toml|json|sh|py|cs)$|readme|settings\.rs|(^|/)launcher/|(^|/)scripts/|apps/[^/]+/src/(main|play_launcher)\.rs'; then
-    echo "$n: held for review (${new:0:7} changes launch files)"
-    echo "- $n $repo ${old:0:7}..${new:0:7}" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
-    continue
-  fi
   printf '%s\n' "$new" > "$d/UPSTREAM"
   sed -i "/^about/s/${old:0:7}/${new:0:7}/" "$t"
   changed+=("$n ${new:0:7}")
