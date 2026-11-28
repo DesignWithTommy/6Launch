@@ -50,8 +50,16 @@ fn has_source_file(p: &Path) -> bool {
     })
 }
 
-/// The full commit in vendor/<name>/UPSTREAM.
+/// The full commit in vendor/<name>/UPSTREAM, or NEONBRIDGE_PIN_<NAME> (a full
+/// commit) to run an older or newer one of that runtime.
 fn pin(dir: &Path) -> Option<String> {
+    let name = dir.file_name()?.to_string_lossy().to_uppercase().replace('-', "_");
+    if let Ok(c) = std::env::var(format!("NEONBRIDGE_PIN_{name}")) {
+        let c = c.trim().to_lowercase();
+        if c.len() == 40 && c.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Some(c);
+        }
+    }
     let text = fs::read_to_string(dir.join("UPSTREAM")).ok()?;
     let c = text.lines().next()?.trim().to_owned();
     (c.len() == 40 && c.chars().all(|c| c.is_ascii_hexdigit())).then_some(c)
