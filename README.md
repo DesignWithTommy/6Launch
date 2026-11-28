@@ -6,7 +6,7 @@ Try them all from one window.
 
 i95 is a Windows launcher for the projects trying to run the Xbox Series version of GTA VI on PC. It doesn't include or download the game, and there are no game files, keys or protection bypasses in it.
 
-**It builds every runtime from source on your PC.** Each runtime's source code is pinned to one commit you can read on GitHub, and i95 compiles it locally with Rust, so you never run an .exe someone else built. That's safer than downloading prebuilt runtime exes, which is how fake "GTA 6 PC" malware spreads.
+**It builds every runtime from source on your PC.** Each runtime's source code is pinned to one commit you can read on GitHub, and i95 compiles it locally with Rust, so you never run an .exe someone else built (the one exception, RAZDA4A-XEN, ships only a prebuilt exe and is marked so). That's safer than downloading prebuilt runtime exes, which is how fake "GTA 6 PC" malware spreads.
 
 ## Get started
 
@@ -20,12 +20,13 @@ On an 8 GB card, pick a runtime's `8gb` or `series_s` preset: most runtimes defa
 
 - **One list of runtimes**, ranked like the race tracker, each with its author's own default launch settings.
 - **Stays current without an update**: at start it reads the runtime list from [catalog.txt](catalog.txt) here. Each runtime is moved to its author's newest commit several times a day (scripts/bump-upstreams.sh, no bot), and any commit that changes the author's launch settings is read before it goes in. Every launcher picks up the list on its next start. No new release is needed. Offline it uses the list it shipped with.
-- **Builds and rebuilds** a runtime only when its source changed, and keeps each runtime's shader cache when it does (a fork that keyed its cache on its own exe, KLBF Lab, is patched to key on its shader translator instead; `NEONBRIDGE_SHADER_KEY_PATCH=0` turns that off).
+- **Builds and rebuilds** a runtime only when its source changed, and keeps each runtime's shader cache when it does Runtimes run as their authors ship them: i95's own patches, shared saves and shared caches are off unless you turn them on (`NEONBRIDGE_PATCHES=1`, `NEONBRIDGE_SHARED=1`).
 - **Prepares shaders** before the game starts, with a loading screen that shows real progress. Your own picture at `%LOCALAPPDATA%\6ixpack\splash.bmp` shows on the loading screen.
 - **Checks your PC first**: graphics card features (D3D12, Shader Model 6.6, mesh shaders), RAM and free disk, and names what's missing.
 - **Presets** per runtime, such as Series S, 8 GB cards, 16 GB laptops, DLSS to 4K, 16 GB of RAM (Vice-Tay's `4060` preset: 38 min at ~10 fps on an RTX 4060 here) and crash diagnostics, plus any extra setting a runtime reads.
-- **In game**: one fps panel for every runtime, Vice-Tay's HUD (fps, frame-time graph, GPU and memory, CPU cores; F3 hides it), in place of each runtime's own; a controls overlay; the display kept awake.
+- **In game**: one fps panel for every runtime, each runtime's own overlay kept (`NEONBRIDGE_RUNTIME_OVERLAY=0` swaps it for i95's); a controls overlay; the display kept awake.
 - **After a run**: explains why it ended by reading the log, writes a short timeline, and can file an issue report.
+- **Updates itself** from the latest release at start (`NEONBRIDGE_UPDATE=0` skips it), and remembers your last runtime, preset, settings and output folder.
 - **Asks before downloading** a runtime's source or an optional extra. The one thing it fetches without asking is the small runtime list, catalog.txt.
 
 **None of these runtimes is confirmed playable yet.** The tracker's bar for playable is 20 fps and 30 minutes without a crash. Only Vice-Tay reports clearing it (a 30-minute session at a 21.1 fps median on an RTX 4090), and nobody outside the project has checked it.
@@ -148,18 +149,16 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 
 ![The controls overlay](assets/controls.png)
 
-How each runtime is built, prepared and started is in [DEVELOPERS.md](DEVELOPERS.md#how-each-runtime-is-wired).
-
 ## FAQ
 
 - **Does it work on Windows 10?** Not for every runtime. KLBF Lab needs Shader Model 6.6, and Windows 10's built-in DirectX 12 stops at 6.5; KLBF doesn't load Microsoft's newer DirectX 12 (the Agility SDK), so it crashes on Windows 10. Vilocity does load it.
 - **Can I play GTA 6 on PC with this?** Not yet. Every runtime here is still being worked on.
 - **Is this a download or a crack?** No. There are no game files, keys or protection bypasses.
-- **Whose work is this?** Mostly the people who make the runtimes. i95 is the launcher around them. See [CREDITS.md](CREDITS.md).
+- **Whose work is this?** Mostly the people who make the runtimes. i95 is the launcher around them. See [CREDITS.md](docs/CREDITS.md).
 
 ## Credits
 
-Every runtime and every project i95 borrows from is in [CREDITS.md](CREDITS.md), with its authors, licence and version. Thanks to all of them, and to [vuyp](https://github.com/vuyp) for the [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)), where the ranks come from.
+Every runtime and every project i95 borrows from is in [CREDITS.md](docs/CREDITS.md), with its authors, licence and version. Thanks to all of them, and to [vuyp](https://github.com/vuyp) for the [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)) and [PortWatch VI](https://portwatch-vi.xyz/), whose scoring the ranks use.
 
 ## Licence
 

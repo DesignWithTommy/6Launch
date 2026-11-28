@@ -1170,8 +1170,8 @@ fn package_release(tuxbox: PathBuf, dir: &Path, all: Option<&str>) -> Result<(),
     }
     fs::write(stage.join("README.txt"), RELEASE_README.replace('\n', "\r\n"))?;
     if all.is_some() {
-        for f in ["README.md", "CREDITS.md"] {
-            fs::copy(root.join(f), stage.join(f)).map_err(|e| format!("{f}: {e}"))?;
+        for (f, src) in [("README.md", "README.md"), ("CREDITS.md", "docs/CREDITS.md")] {
+            fs::copy(root.join(src), stage.join(f)).map_err(|e| format!("{f}: {e}"))?;
         }
         let (done, skipped) = runtimes::package(&stage)?;
         for r in done {

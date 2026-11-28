@@ -8,8 +8,8 @@ target/
 __pycache__/
 /*.jpg
 # Working notes stay local
-/TODO.md
-/docs/
+/docs/*
+!/docs/CREDITS.md
 # Crash dumps, run output, side-session notes and loose patches stay local
 *.dmp
 *.crash.log
@@ -23,7 +23,6 @@ __pycache__/
 # --package output
 /dist/
 vendor/m-*/
-DEVELOPERS.md
 
-vendor/cta/tree
 vendor/cta/crates
+/runs*-shots/
