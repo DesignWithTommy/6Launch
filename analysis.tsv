@@ -1,0 +1,74 @@
+# upstream	line	tags  (from ClaudeTheftAuto docs/RUNTIMES.md master table; read by scripts/sync-docs.py)
+3cvil/m1lk	DexNom	RAMFIT INPLACE
+advantyx/victyx	not diffed yet	GPUCUT
+androtim/minivi	trustno1	
+baddevelopper/vkaramelovi	cool_fox (pre-port)	
+bolado-dev/mandy-port	fxceless	
+bymsec/victory-rx580	not diffed yet	NOMESH
+caionickpi/kaynvi-fork-gta6	Belobug (AMD)	VRAMFIT
+cocainebunnylaboratories/cblvictoryvi	fxceless	
+computermakemegta6/victory-bigcheese	cool_fox	RAMFIT
+crossducking/razda4a-xen	prebuilt	GPUCUT
+cutebooty/victory-8gb	fxceless	VRAMFIT
+darksidexc/dark-victory-rx6600-i714700kf-vi	cool_fox	GPUCUT
+darkworldhm/victory-fork-darkworldhm	fxceless	
+dathinel/victory-4gb	fxceless	VRAMFIT
+desertgamer/viport	own (renamed crates)	
+designwithtommy/claudetheftauto	ours (pieces)	INPLACE RAMFIT
+dexnom/victory	fxceless	LOOP PICFIX
+didgori-1121/victory-lite	not diffed yet	VRAMFIT RAMFIT
+dolberthi/neptune-dolberth-nvidia-8gb	mixed	THREADS VRAMFIT RAMFIT
+doubleghosty/cool_fox	cool_fox root	THREADS INPLACE
+edsuuu/vi-br-port	cool_fox (pre-port)	PICFIX
+elaboratecl/victory-amd-4k	cool_fox	RAMFIT
+fayberr/victory-united	Vice-Tay	
+francescogelosoeterea/viscosity	cool_fox (pre-port)	INPLACE
+fxceless/victory-fork	fxceless root	INPLACE LOOP
+grimkaaah/victory-grimkaaah	cool_fox	PICFIX
+itsbatt/victory-unified	cool_fox	VRAMFIT
+joaco9020/mangrove	fxceless	
+jozefdetremmerie/ccs03	fxceless	
+ka1qux/brvictory-ka1qux	RDNA	INPLACE LOOP
+kemerd/victory-nvidia-rt	trustno1	THREADS GPUCUT
+kevinpratap/apexvi	fxceless	VRAMFIT
+kitty-core/kitty6	cool_fox	
+komanderdg88/vinividivici	fxceless	THREADS LOOP
+kylepelham/el1xr	own	GPUCUT
+linox-idk/lnx-victory	fxceless	VRAMFIT
+loopersalty/anyxboxx	own (+Vice-Tay)	
+lovercatys/ruff-lab	KLBF	GPUCUT
+marvisak/victory	base	
+mavis140/mavis-9070xt	cool_fox	THREADS
+miaohaixiang1-netizen/cool-fox-12gb	cool_fox (pre-port)	VRAMFIT PICFIX
+myokex/victory-amd	fxceless	
+naixue2233/victory-naixue2233	fxceless	
+pastiijay/klbf-lab	fxceless	GPUCUT PICFIX LOOP
+pepezin-ai/victory-nvidia	trustno1	GPUCUT
+peppacodes/playablegames-peppa	trustno1	RAMFIT
+projectleonida/mandy	trustno1	GPUCUT PICFIX
+projectleonidal/leonida	mixed (see flag)	
+qekz/amd-7000s	not diffed yet	GPUCUT RAMFIT PICFIX
+randomguy12000/victorious	cool_fox	THREADS
+readmet3xt-lab/foxhound	trustno1	GPUCUT DLSS
+realblastex/flamingo	fxceless	THREADS
+rorodev6/victory	fxceless	GPUCUT
+skornuta/victory-fork	fxceless (Neptune build)	
+slaktarn700/slaktarnvi	cool_fox	
+soldsawn/victory-nvidia-8gb	fxceless	VRAMFIT PICFIX
+spaghetih/victory-sley-fork	cool_fox	
+sponex-hub/victory-8gb	not diffed yet	VRAMFIT GPUCUT
+stellarr-studio/kelvaroq	own layer	INPLACE
+taynangt/vice-tay	cool_fox	THREADS INPLACE RAMFIT SLOTS
+tiadiff/victory-nvidia-lowstutter	trustno1	LOOP SLOTS
+tinygusie2/victory-amd	fxceless	
+tolimanl/victory-hydra	cool_fox	GPUCUT
+trustno1-coder/victory-nvidia	cool_fox	CARDCMP SLOTS GPUCUT PICFIX THREADS
+uiliannn/vitoriabr	fxceless	VRAMFIT
+veria70/danziloader-cpp	own (C++)	
+vix0e0e/victory-lite	cool_fox	VRAMFIT
+voidopcode/vilocity	own (2 engines)	GPUCUT
+whiteh4cker-tr/victory_sm86	trustno1	GPUCUT
+xavifortes/victory-rdna	Vice-Tay	INPLACE LOOP
+xcl-dev/xcl	own	
+yaekai/victory-scarlett-3070	cool_fox	VRAMFIT
+zigzagboi1/scarlettport	own crates + cool_fox	
