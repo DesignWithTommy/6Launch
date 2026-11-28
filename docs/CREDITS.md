@@ -1,6 +1,6 @@
 # Credits
 
-i95 is a launcher around other people's work. Each runtime under `vendor/` is built unchanged from its upstream at the commit in its `UPSTREAM` file. An hourly update moves that commit to the author's newest, so [catalog.txt](catalog.txt) has the current one. Each keeps its own licence, and all credit for it goes to its authors. Authors are listed as their upstream history names them.
+i95 is a launcher around other people's work. Each runtime under `vendor/` is built unchanged from its upstream at the commit in its `UPSTREAM` file. A regular update (every 15 minutes) moves that commit to the author's newest, so [catalog.txt](catalog.txt) has the current one. Each keeps its own licence, and all credit for it goes to its authors. Authors are listed as their upstream history names them.
 
 ## Vendored runtimes
 
@@ -64,7 +64,7 @@ All of the VIctory forks build on [VIctory](https://github.com/Marvisak/VIctory)
 
 ## Leaderboard
 
-Ranks come from [vuyp](https://github.com/vuyp)'s [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) ([repo](https://github.com/vuyp/gta6-pc-race)), using its own ordering (src/build.py rank_key).
+Ranks are i95's own, with [PortWatch VI](https://portwatch-vi.xyz/)'s scoring formula (scripts/rank.py); thanks to [vuyp](https://github.com/vuyp)'s [GTA VI PC race tracker](https://vuyp.github.io/gta6-pc-race/) for the leads.
 - [ruff-lab](https://github.com/LoverCatys/ruff-lab) by LoverCatys, GPL-3.0 (vendor/rufflab)
 - [Vilocity](https://github.com/voidopcode/vilocity) by voidopcode, GPL-3.0-or-later per its Cargo.toml (vendor/vilocity)
 - [DexNom RayTime](https://github.com/DexNom/VIctory) by DexNom, GPL-3.0 (vendor/dexnom)
@@ -75,4 +75,21 @@ Ranks come from [vuyp](https://github.com/vuyp)'s [GTA VI PC race tracker](https
 - [RAZDA4A-XEN](https://github.com/crossducking/RAZDA4A-XEN) by crossducking, GPL-3.0 (vendor/razda4a)
 - [Victory-United](https://github.com/Fayberr/Victory-United) by Fayberr, GPL-3.0 (vendor/united)
 - i95-Victory, our own fork of Kelvaroq with fixes from VI-BR-PORT, soldsawn/victory-nvidia-8gb and VItoriaBr, GPL-3.0 (vendor/i95-victory; credits in its source/CREDITS.md)
-
+- [victory-amd](https://github.com/tinygusie2/victory-amd) by tinygusie2, GPL-3.0 (vendor/amdr13)
+- [CCS03](https://github.com/JozefDeTremmerie/CCS03) by JozefDeTremmerie, GPL-3.0 (vendor/ccs03)
+- [Dark-Victory-RX6600-I714700KF-VI](https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI) by darksidexc, GPL-3.0 (vendor/darkvictory)
+- [foxhound](https://github.com/readmet3xt-lab/foxhound) by readmet3xt-lab, GPL-3.0 (vendor/foxhound)
+- [leonida](https://github.com/ProjectLeonidaL/leonida) by ProjectLeonidaL, GPL-3.0 (vendor/leonida)
+- [LNX-victory](https://github.com/Linox-IDK/LNX-victory) by Linox-IDK, GPL-3.0 (vendor/lnx)
+- [M1LK](https://github.com/3cvil/M1LK) by 3cvil, GPL-3.0 (vendor/m1lk)
+- [MiniVI](https://github.com/Androtim/MiniVI) by Androtim, GPL-3.0 (vendor/minivi)
+- [Victory-naixue2233](https://github.com/naixue2233/Victory-naixue2233) by naixue2233, GPL-3.0 (vendor/naixue)
+- [neptune-dolberth-nvidia-8gb](https://github.com/Dolberthi/neptune-dolberth-nvidia-8gb) by Dolberthi, GPL-3.0 (vendor/neptune)
+- [playablegames-peppa](https://github.com/Peppacodes/playablegames-peppa) by Peppacodes, GPL-3.0 (vendor/peppa)
+- [victory-scarlett-3070](https://github.com/Yaekai/victory-scarlett-3070) by Yaekai, GPL-3.0 (vendor/scarlett3070)
+- [SlaktarnVI](https://github.com/Slaktarn700/SlaktarnVI) by Slaktarn700, GPL-3.0 (vendor/slaktarn)
+- [victory-sley-fork](https://github.com/Spaghetih/victory-sley-fork) by Spaghetih, GPL-3.0 (vendor/sleyfork)
+- [VIctory_sm86](https://github.com/whiteh4cker-tr/VIctory_sm86) by whiteh4cker-tr, GPL-3.0 (vendor/sm86)
+- [victory-4gb](https://github.com/Dathinel/victory-4gb) by Dathinel, GPL-3.0 (vendor/victory4gb)
+- [victory-8gb](https://github.com/CuteBooty/victory-8gb) by CuteBooty, GPL-3.0 (vendor/victory8gb)
+- [VIscosity](https://github.com/FrancescoGelosoEterea/VIscosity) by FrancescoGelosoEterea, GPL-3.0 (vendor/viscosity)

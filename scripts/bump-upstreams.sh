@@ -43,4 +43,5 @@ for d in sorted(pathlib.Path("vendor").iterdir()):
 pathlib.Path("catalog.txt").write_text("\n".join(out) + "\n", encoding="utf-8", newline="\n")
 P
 printf '%s\n' "${changed[@]:-}" | sed '/^$/d' > "${TMPDIR:-/tmp}/bumped.txt"
+python -I scripts/sync-docs.py >&2
 cat "${TMPDIR:-/tmp}/bumped.txt"
