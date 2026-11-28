@@ -1744,7 +1744,7 @@ fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<
                     if t.len() >= 300 {
                         t.pop_front();
                     }
-                    t.push_back(line.clone());
+                    t.push_back(strip_ansi(&line));
                 }
                 let mut out = sink.lock().unwrap_or_else(|e| e.into_inner());
                 let _ = writeln!(out, "{line}");
@@ -1800,7 +1800,7 @@ fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<
     println!("[launch] {name} exited ({status})");
     if !status.success() {
         let code = status.code().map_or_else(|| status.to_string(), |c| format!("{c} (0x{:08X})", c as u32));
-        let report = if killed(&started, timeout) { None } else { crash_report(name, &code, &cmd, &tail.lock().unwrap_or_else(|e| e.into_inner())) };
+        let report = if killed(&started, timeout) { None } else { crash_report(name, &code, &format!("{cmd:?}"), &tail.lock().unwrap_or_else(|e| e.into_inner())) };
         let report = report.map_or_else(String::new, |p| format!("\nCrash report: {}", p.display()));
         return Err(format!("{name} exited with code {code}.\nLog: {}{report}", log.map_or_else(|| "this console".to_owned(), |p| p.display().to_string())).into());
     }
@@ -1810,12 +1810,34 @@ fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<
 /// Writes %LOCALAPPDATA%\6ixpack\crashes\<runtime>-<unix time>.txt for a run that
 /// exited abnormally: i95's version, the exit code, the command, i95's own
 /// switches and the run's last 300 lines. Local only; nothing is sent.
-fn crash_report(name: &str, code: &str, cmd: &Command, tail: &std::collections::VecDeque<String>) -> Option<PathBuf> {
+/// A log line without its terminal colour codes (ESC [ ... letter), for dialogs and reports.
+pub fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut it = s.chars().peekable();
+    while let Some(c) = it.next() {
+        if c == '\u{1b}' {
+            if it.peek() == Some(&'[') {
+                it.next();
+                while let Some(&n) = it.peek() {
+                    it.next();
+                    if n.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
+        out.push(c);
+    }
+    out
+}
+
+fn crash_report(name: &str, code: &str, cmd: &str, tail: &std::collections::VecDeque<String>) -> Option<PathBuf> {
     let dir = pack_dir().join("crashes");
     fs::create_dir_all(&dir).ok()?;
     let t = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).ok()?.as_secs();
     let p = dir.join(format!("{name}-{t}.txt"));
-    let mut s = format!("i95 {}\nruntime: {name}\nexit code: {code}\ncommand: {:?}\n", env!("CARGO_PKG_VERSION"), cmd);
+    let mut s = format!("i95 {}\nruntime: {name}\nexit code: {code}\ncommand: {cmd}\n", env!("CARGO_PKG_VERSION"));
     for (k, v) in std::env::vars().filter(|(k, _)| k.starts_with("NEONBRIDGE_")) {
         s.push_str(&format!("{k}={v}\n"));
     }
@@ -1971,7 +1993,7 @@ fn warm(name: &str, mut cmd: Command, cache: &Path, to: f32) -> Result<(), Strin
         if tail.len() == 12 {
             tail.pop_front();
         }
-        tail.push_back(l.clone());
+        tail.push_back(strip_ansi(&l));
         // A done/total count (xcl, TuxBox, Five Star) carries its own total.
         if let Some((d, Some(m))) = crate::progress::count(&l) {
             total = Some(m);
@@ -2035,7 +2057,14 @@ fn warm(name: &str, mut cmd: Command, cache: &Path, to: f32) -> Result<(), Strin
     }
     match child.wait() {
         Ok(s) if s.success() => Ok(()),
-        s => Err(format!("{name}: the shader warm failed ({}), so the game was not started. Its last lines:\n{}", s.map_or_else(|e| e.to_string(), |s| s.to_string()), tail.into_iter().collect::<Vec<_>>().join("\n"))),
+        s => {
+            // A warm that crashes (issue #2: dexnom, 0xc0000005 after 3 min) must not keep
+            // the game from starting: the runtime translates what is missing as it plays.
+            let code = s.map_or_else(|e| e.to_string(), |s| s.to_string());
+            let report = crash_report(&format!("{name}-warm"), &code, "shader warm", &tail);
+            println!("[launch] {name}: the shader warm failed ({code}); starting the game anyway{}", report.map_or_else(String::new, |p| format!(" (crash report: {})", p.display())));
+            Ok(())
+        }
     }
 }
 

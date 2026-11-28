@@ -325,7 +325,7 @@ fn run() {
         let (sw, sh) = (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
         let title = wide("i95");
         let hwnd = CreateWindowExW(
-            WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+            WS_EX_TOOLWINDOW,
             class.as_ptr(),
             title.as_ptr(),
             WS_POPUP | WS_VISIBLE,
@@ -721,6 +721,8 @@ unsafe fn cover_game(hwnd: HWND) {
         GetWindowRect(hwnd, &mut now);
         // Every tick: the full-screen title puts itself on top again.
         let _ = now;
-        SetWindowPos(hwnd, HWND_TOPMOST, origin.x, origin.y, r.right, r.bottom, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        // Owned by the game: above it, but not above other apps (issue #1).
+        SetWindowLongPtrW(hwnd, GWLP_HWNDPARENT, game as isize);
+        SetWindowPos(hwnd, HWND_TOP, origin.x, origin.y, r.right, r.bottom, SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
 }
