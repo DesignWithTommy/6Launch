@@ -4,7 +4,7 @@
 name = "rorodev"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README; the picker's filter)
-rank = 54   # i95 rank: score 55.8 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 52   # i95 rank: score 55.8 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "rorodev6/victory 8604369 (GPL-3.0): VIctory with an fps counter and shader fixes; prologue 7-9 fps (author); not yet run here"
 upstream = "https://github.com/rorodev6/victory"
 updated = "2026-11-25 14:28"   # the pinned upstream commit's date (scripts/runtime-info.py)

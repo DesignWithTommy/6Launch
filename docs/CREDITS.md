@@ -29,11 +29,9 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/rufflab` | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | LoverCatys | GPL-3.0 |
 | `vendor/apexvi` | [ApexVI](https://github.com/KevinPratap/ApexVI) | KevinPratap, on VIctory | GPL-3.0 |
 | `vendor/grimkaaah` | [Victory Grimkaaah](https://github.com/Grimkaaah/Victory-Grimkaaah) | Grimkaaah, on VIctory | GPL-3.0 |
-| `vendor/pilotebox` | [PiloteBox](https://github.com/PiloteCode/PiloteBox) | PiloteCode, on VIctory | GPL-3.0 |
 | `vendor/scarlettport` | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | Ziggy (ZigZagBoi1), Vlad Bondarenko (vladbondarenko97), grooving6; its `runtime/victory` is the VIctory authors' and its `runtime/xcl` the xcl authors' | GPL-3.0-or-later; `runtime/xcl` GPL-2.0-only (its `LICENSE.md`) |
 | `vendor/unified` | [victory-unified](https://github.com/Itsbatt/victory-unified) | Itsbatt, with fxceless, Belobug, DexNom, Zettrox and the VIctory contributors | GPL-3.0-or-later |
 | `vendor/united` | [Victory-United](https://github.com/Fayberr/Victory-United) | Fayberr | GPL-3.0 |
-| `vendor/victoryperf` | [victory-perf](https://github.com/vitutu1/victory-perf) | vitutu1; built on victory-fork (fxceless), VIctory (Marvisak) and ScarlettPort (ZigZagBoi1) | GPL-3.0 |
 | `vendor/vibrport` | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | edsuuu; built on VIctory (Marvisak) and victory-fork (fxceless) | GPL-3.0 |
 | `src/hud.rs` (the fps panel over every runtime) | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) `crates/victory-gpu/src/host/panel.rs` | TaynanGT | GPL-3.0 |
 | `vendor/vicetay` | [Vice-Tay](https://github.com/TaynanGT/Vice-Tay) | TaynanGT | GPL-3.0 |
@@ -71,7 +69,6 @@ Ranks are i95's own, with [PortWatch VI](https://portwatch-vi.xyz/)'s scoring fo
 - [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) by soldsawn, GPL-3.0 (vendor/nvidia8gb)
 - [RAZDA4A-XEN](https://github.com/crossducking/RAZDA4A-XEN) by crossducking, GPL-3.0 (vendor/razda4a)
 - [Victory-United](https://github.com/Fayberr/Victory-United) by Fayberr, GPL-3.0 (vendor/united)
-- i95-Victory, our own fork of Kelvaroq with fixes from VI-BR-PORT, soldsawn/victory-nvidia-8gb and VItoriaBr, GPL-3.0 (vendor/i95-victory; credits in its source/CREDITS.md)
 - [victory-amd](https://github.com/tinygusie2/victory-amd) by tinygusie2, GPL-3.0 (vendor/amdr13)
 - [CCS03](https://github.com/JozefDeTremmerie/CCS03) by JozefDeTremmerie, GPL-3.0 (vendor/ccs03)
 - [Dark-Victory-RX6600-I714700KF-VI](https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI) by darksidexc, GPL-3.0 (vendor/darkvictory)

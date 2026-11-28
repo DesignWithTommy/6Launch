@@ -4,7 +4,7 @@
 name = "viport"
 fork = "VIPort"
 gpu = "any"   # the card it is tuned for (README; the picker's filter)
-rank = 65   # i95 rank: score 53.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 63   # i95 rank: score 53.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "VIPort 59b7938 (GPL-3.0): an independent Xbox Series runtime; boots and runs menus at 30 fps, world not yet playable (author); not yet run here"
 upstream = "https://github.com/DesertGamer/VIPort"
 updated = "2026-11-26 10:39"   # the pinned upstream commit's date (scripts/runtime-info.py)

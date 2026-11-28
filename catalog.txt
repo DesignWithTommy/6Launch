@@ -1382,47 +1382,6 @@ VICTORY_UPSCALER = "6"
 VICTORY_RENDER_SCALE = "0.667"
 VICTORY_FRAME_INTERVAL_MS = "0"
 VICTORY_LOG = "warn"
-=== i95-victory dfb89ede2d241c9d55126eb8eb80a449c7833259
-# Neonbridge launcher spec for i95-Victory: Kelvaroq's patched victory-fork plus 8 GB fixes (README.md).
-name = "i95-victory"
-fork = "victory-fork"
-gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-about = "i95-Victory dfb89ed: Kelvaroq 0a3c30d + VI-BR-PORT heap marks, TEXTURE_DROP_MIPS, AMBIENT (GPL-3.0); not yet run"
-upstream = "https://github.com/DesignWithTommy/i95-Victory"
-updated = "2026-11-25 23:09"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 0   # GitHub stars when last checked
-build = ["cargo", "build", "--release", "--locked", "-p", "victory", "--bin", "victory"]
-watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
-exe = "target/release/victory.exe"
-diag_build = []
-run = ["run", "{game_exe}", "--console", "series-x", "--execute"]
-prewarm = ["translate", "{game}", "--warm", "all", "--jobs", "{jobs}"]   # prints "warm-up      N shaders so far, S s" (apps/victory/src/translate.rs:211) for the i95 loader
-game_env = "VICTORY_GAME_DIR"
-cache_env = "VICTORY_CACHE_DIR"
-agility = false
-
-preset_8gb = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=5120", "VICTORY_PAGE_WRITES=slots", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080", "VICTORY_HEAP_RECHECK=1", "VICTORY_TEXTURE_DROP_MIPS=2", "VICTORY_AMBIENT=0.6", "VICTORY_RESOLUTION=1920x1080"]   # Kelvaroq's 8gb preset + DROP_MIPS=2 (soldsawn) + AMBIENT=0.6 (VItoriaBr); heap marks are on by default
-preset_8gb_low = ["VICTORY_RELAY=0", "VICTORY_FILL_WAIT=1", "VICTORY_CARD_BUFFERS_MB=1024", "VICTORY_TEXTURE_BUDGET_MB=2560", "VICTORY_PAGE_WRITES=slots", "VICTORY_TEXTURE_NO_WAIT=1", "VICTORY_WIDE_REFRESH=1", "VICTORY_WIDE_MERGE=1", "VICTORY_JOIN_COPIES=1", "VICTORY_DISPLAY_MODE=1920x1080", "VICTORY_HEAP_RECHECK=1", "VICTORY_TEXTURE_DROP_MIPS=2", "VICTORY_AMBIENT=0.6", "VICTORY_RESOLUTION=1920x1080"]   # the same with a 2560 MB texture budget
-
-[env]
-VICTORY_DATA_DIR = "%LOCALAPPDATA%\\6ixpack\\save"   # one save/settings folder for the victory family
-
-[controls]
-left_stick = "W A S D"
-right_stick = "I J K L"
-a = "Enter"
-b = "Backspace"
-x = "X"
-y = "Y"
-lb = "Q"
-rb = "E"
-lt = "Z"
-rt = "C"
-ls = "F"
-rs = "H"
-dpad = "Arrows"
-view = "Tab"
-menu = "Esc"
 === ka1qux 05e4d5017c62f2ccb3ebe98f06a5cdcbe7064563
 # i95 launcher spec for ka1qux/BRVIctory-ka1qux: build from its README "How to run it", run as scripts/play.ps1 does.
 name = "ka1qux"
@@ -2633,30 +2592,6 @@ VICTORY_SKIP_WC_BACK = "1"
 VICTORY_SKIP_WC_KEEP = "1048576"
 VICTORY_MERGE_SUBMISSIONS = "1"
 VICTORY_LOG = "warn"
-=== pilotebox 75321b262feeaabe28c7019a8974bdee425663e0
-# Launcher spec for vendor/pilotebox: PiloteCode's PiloteBox, a VIctory-based layer tuned for NVIDIA cards.
-# Build and run are its README "Quick start" (75321b2): `pilotebox play` sets its own measured settings.
-name = "pilotebox"
-fork = "VIctory"
-gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 30   # i95 rank: score 60.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "PiloteBox 75321b2 (GPL-3.0): 20.5 to 21.5 fps (46.6 to 48.8 ms a frame) in the prologue's first playable scene on 0.13.1, Series X, RTX 5090 (53.7 ms on 0.13.0); Series S at 60.6 ms a frame on 0.13.0; not yet run here"
-upstream = "https://github.com/PiloteCode/PiloteBox"
-updated = "2026-11-27 08:40"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 3   # GitHub stars when last checked
-build = ["cargo", "build", "--release", "-p", "victory"]   # README.md:75
-watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
-exe = "target/release/pilotebox.exe"   # README.md:75
-run = ["play", "--game", "{game}"]   # README.md:77 (Series X by default)
-game_env = "VICTORY_GAME_DIR"
-cache_env = "VICTORY_CACHE_DIR"
-agility = false
-
-preset_series_s = ["--mode", "s"]   # README "Modes": 960x540 upscaled, much lighter on the card
-preset_ray_tracing = ["--rt"]   # README: the ray-tracing structure builder (dark rooms need it)
-preset_safe = ["--safe"]   # README: the newest speed-ups left out
-
-[env]
 === razda4a 0741bedd95c6ec12afed1ae672e1afb8a5bb133c
 # Neonbridge launcher spec for vendor/razda4a: crossducking's RAZDA4A-XEN (a Marvisak/VIctory fork for AMD RDNA).
 # Run and env are its "RAZDA4A XEN.bat" (balanced profile, FSR frame generation on). It ships a prebuilt
@@ -4137,58 +4072,6 @@ VICTORY_REUSE_TARGET_BINDS = "1"
 VICTORY_CARD_REHASH_RUNS = "1"
 VICTORY_UPSCALE_HISTORY = "0.85"
 VICTORY_UPSCALE_HISTORY_MV = "2"
-=== victoryperf 3bc793725bbea0c39569fad872fd35d8d9e6f739
-# i95 launcher spec for vitutu1/victory-perf: build and run from its README ("Recommended Launch Profile").
-name = "victoryperf"
-fork = "victory-fork"
-gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 52   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
-about = "victory-perf 3bc7937 (GPL-3.0): 14 fps in the prison corridor, 9 to 11 in interiors, 4.5 to 6.5 in heavy scenes, Series S at half render scale, RTX 4070 SUPER; lighting stand-ins for dark interiors; not yet run here"
-upstream = "https://github.com/vitutu1/victory-perf"
-updated = "2026-11-25 16:56"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 1   # GitHub stars when last checked
-build = ["cargo", "build", "--release", "-p", "victory", "--locked"]   # README.md:64 (+--locked)
-watch = ["apps", "crates", "Cargo.toml", "Cargo.lock"]
-exe = "target/release/victory.exe"
-run = ["run", "--console", "series-s", "--execute", "{game_exe}"]   # README.md:84
-prewarm = ["precompile", "{game}"]   # apps/victory/src/main.rs:89 (resumable)
-game_env = "VICTORY_GAME_DIR"
-cache_env = "VICTORY_CACHE_DIR"
-agility = false
-
-preset_series_x = ["--console=series-x"]
-preset_full_scale = ["VICTORY_RENDER_SCALE=1.0"]   # README.md:46 (0.2 to 1.0)
-
-[env]   # README.md:72-83, its recommended profile
-VICTORY_CARD_BUFFERS_MIN_MB = "1"
-VICTORY_CARD_BUFFERS_MB = "2048"
-VICTORY_RELAY = "2"
-VICTORY_LATE_WAIT = "3"
-VICTORY_WIDE_BACK = "1"
-VICTORY_LIBRARY_TRIM = "0"
-VICTORY_REBAR = "0"
-VICTORY_COPY_BACK_ONLY_READBACK = "0"
-VICTORY_AMBIENT_STUB = "1"
-VICTORY_SHADOWMASK_STUB = "1"
-VICTORY_OWN_UPSCALER = "1"
-VICTORY_RENDER_SCALE = "0.5"
-
-[controls]
-left_stick = "W A S D"
-right_stick = "I J K L"
-a = "Enter"
-b = "Backspace"
-x = "X"
-y = "Y"
-lb = "Q"
-rb = "E"
-lt = "Z"
-rt = "C"
-ls = "F"
-rs = "H"
-dpad = "Arrows"
-view = "Tab"
-menu = "Esc"
 === vilocity 6595b8a5e932bf3cb5f31dd250d9c3e03c10c45c
 # i95 launcher spec for voidopcode/vilocity: author build and run from its README.
 name = "vilocity"

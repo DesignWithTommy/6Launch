@@ -1,7 +1,7 @@
 name = "naixue"
 fork = "Victory-naixue2233"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 41   # i95 rank: score 58.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 40   # i95 rank: score 58.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Victory-naixue2233 1b50b3f (GPL-3.0): victory-fork with ztrx GPU work and crash/OOM fixes, about 11 fps at the first boat mission on an RTX 4070 12 GB (its README, with its measured switches); not yet run here"
 upstream = "https://github.com/naixue2233/Victory-naixue2233"
 updated = "2026-11-26 22:34"   # the pinned upstream commit's date (scripts/runtime-info.py)
