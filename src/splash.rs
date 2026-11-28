@@ -231,6 +231,39 @@ fn top_level_windows() -> Vec<HWND> {
     out
 }
 
+/// True when `pid` is a child, grandchild, ... of this process.
+fn descends_from_us(pid: u32) -> bool {
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::*;
+    let me = std::process::id();
+    let mut parent = std::collections::HashMap::new();
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snap.is_null() || snap == windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE {
+            return false;
+        }
+        let mut e: PROCESSENTRY32W = std::mem::zeroed();
+        e.dwSize = size_of::<PROCESSENTRY32W>() as u32;
+        if Process32FirstW(snap, &mut e) != 0 {
+            loop {
+                parent.insert(e.th32ProcessID, e.th32ParentProcessID);
+                if Process32NextW(snap, &mut e) == 0 {
+                    break;
+                }
+            }
+        }
+        CloseHandle(snap);
+    }
+    let mut p = pid;
+    for _ in 0..16 {
+        match parent.get(&p) {
+            Some(&q) if q == me => return true,
+            Some(&q) if q != 0 && q != p => p = q,
+            _ => return false,
+        }
+    }
+    false
+}
+
 fn image_name(pid: u32) -> Option<String> {
     unsafe {
         let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
@@ -702,7 +735,9 @@ unsafe fn cover_game(hwnd: HWND) {
         let fg = unsafe { GetForegroundWindow() };
         let mut pid = 0;
         unsafe { GetWindowThreadProcessId(fg, &mut pid) };
-        if !fg.is_null() && pid != std::process::id() {
+        // Only a window of a process i95 started (a runtime or its game), never
+        // whatever app the user has in front (issue #1: the browser was covered).
+        if !fg.is_null() && pid != std::process::id() && descends_from_us(pid) {
             GAME.store(fg as isize, Ordering::Release);
         }
     }
