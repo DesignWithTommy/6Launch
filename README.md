@@ -20,6 +20,7 @@ On an 8 GB card, pick a runtime's `8gb` or `series_s` preset: most runtimes defa
 - **Stays current without an update**: at start it reads the runtime list from [catalog.txt](catalog.txt) here. Each runtime is moved to its author's newest commit several times a day (scripts/bump-upstreams.sh, no bot), and any commit that changes the author's launch settings is read before it goes in. Every launcher picks up the list on its next start. No new release is needed. Offline it uses the list it shipped with.
 - **Builds and rebuilds** a runtime only when its source changed, and keeps each runtime's shader cache when it does. Runtimes run as their authors ship them: i95's own patches, shared saves and shared caches are off unless you turn them on.
 - **Prepares shaders** before the game starts, with a loading screen that shows real progress. Your own `splash.bmp` in the output folder shows on the loading screen.
+- **First launch** asks for the output folder (builds, caches, saves, logs, crash reports) and the game's folder before anything else.
 - **Checks your PC first**: graphics card features (D3D12, Shader Model 6.6, mesh shaders), RAM and free disk, and names what's missing.
 - **Presets** per runtime, such as Series S, 8 GB cards, 16 GB laptops, DLSS to 4K, 16 GB of RAM (Vice-Tay's `4060` preset: 38 min at ~10 fps on an RTX 4060 here) and crash diagnostics, plus any extra setting a runtime reads.
 - **In game**: each runtime's own overlay as its author ships it, a controls overlay (F1), and the display kept awake. i95 adds no fps counter of its own.

@@ -987,6 +987,38 @@ fn change_output(hwnd: HWND) {
     }
 }
 
+/// First launch (no setup.txt in the default folder): the output folder and the
+/// game folder must both be chosen before the launcher opens. Cancel quits.
+fn first_run(hwnd: HWND) -> bool {
+    let done = crate::runtimes::default_pack().join("setup.txt");
+    // Earlier users already chose both (a saved output folder or game): not asked again.
+    if done.is_file() || crate::runtimes::default_pack().join("location.txt").is_file() || saved().is_file() {
+        let _ = fs::write(&done, "1");
+        return true;
+    }
+    message(hwnd, "Welcome to i95. First choose the output folder: builds, shader caches, saves, logs and crash reports go there (it needs tens of GB free). Then choose the game's package folder.", MB_ICONINFORMATION);
+    let start = crate::runtimes::pack_dir();
+    let Some(out) = pick_folder(hwnd, Some(&start)) else { return false };
+    if let Err(e) = crate::runtimes::set_pack(Some(&out)) {
+        message(hwnd, &format!("Can't use {}: {e}", out.display()), MB_ICONWARNING);
+        return false;
+    }
+    loop {
+        let start = with_state(|s| s.game.clone()).flatten().or_else(|| std::env::var_os("USERPROFILE").map(|h| PathBuf::from(h).join("Downloads")));
+        let Some(p) = pick_folder(hwnd, start.as_deref()) else { return false };
+        match game_folder(&p.display().to_string()) {
+            Some(g) => {
+                with_state(|s| s.game = Some(g));
+                break;
+            }
+            None => message(hwnd, "That folder has no MicrosoftGame.Config. Pick the game's package folder.", MB_ICONWARNING),
+        }
+    }
+    let _ = fs::write(done, "1");
+    unsafe { InvalidateRect(hwnd, null(), 0) };
+    true
+}
+
 /// Next (or previous) filter; keeps the picked runtime if it is still shown.
 fn cycle_filter(hwnd: HWND, step: isize) {
     let pick = with_state(|s| {
@@ -1564,6 +1596,10 @@ pub fn pick() -> Option<Pick> {
     unsafe {
         ShowWindow(hwnd, SW_SHOW);
         SetFocus(hwnd);
+    }
+    if !first_run(hwnd) {
+        unsafe { DestroyWindow(hwnd) };
+        return None;
     }
     if std::env::var("NEONBRIDGE_PICKER_ADVANCED").is_ok_and(|v| v.trim() == "1") {
         show_advanced();
