@@ -2,7 +2,7 @@
 name = "darkworld"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 60   # i95 rank: score 54.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 61   # i95 rank: score 54.1 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "darkworldhm 840243e (GPL-3.0): A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070"
 upstream = "https://github.com/darkworldhm/victory-fork-darkworldhm"
 updated = "2026-11-26 07:27"   # the pinned upstream commit's date (scripts/runtime-info.py)

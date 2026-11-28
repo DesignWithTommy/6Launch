@@ -1,0 +1,41 @@
+# Launcher spec for vendor/xcl: xcl-dev's XCL, a compatibility layer (not a VIctory fork). Build and run are its README.
+name = "xcl"
+fork = "XCL"
+gpu = "Any"   # README.md:222: any D3D12 GPU with Shader Model 6.6 and mesh shaders
+rank = 66
+about = "XCL e13d625 (GPL-3.0): compatibility layer; starts in ~4 s, 30 fps in the menus, ~5 fps in the 3D world with its NVIDIA branch (RTX 5090), not playable yet; not yet run here"
+upstream = "https://github.com/xcl-dev/xcl"
+updated = "2026-11-28 08:24"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 8781   # GitHub stars when last checked
+build = ["cargo", "build", "--release", "--workspace"]   # README.md:98,253
+watch = ["crates", "Cargo.toml", "Cargo.lock"]
+exe = "target/release/xcl.exe"   # README.md:253
+diag_build = []   # README.md names only the release build (XCL_DRED is a run switch, preset_dred)
+cwd = "target/release"
+run = ["run", "{game}"]   # README.md:110,256
+prewarm = ["shaders", "{game}/shaders.rpf", "--precompile", "--only", "cs", "--pipelines"]   # README.md:259
+agility = true   # README.md:222-227: inbox D3D12Core stops at SM 6.5; Agility D3D12Core.dll in <exe dir>\\D3D12
+setup = [
+  "agility: powershell -NoProfile -Command \"New-Item -ItemType Directory -Force target\\release\\D3D12 | Out-Null; Copy-Item $env:LOCALAPPDATA\\6ixpack\\agility-1.614.1\\*.dll target\\release\\D3D12\"",   # Agility 1.614.1 pre-staged locally; no download
+]
+preset_dred = ["XCL_DRED=1"]   # README.md:358
+
+[env]
+
+# Keyboard and mouse as the gamepad (README.md:175-209), shown by the controls overlay (F1); a real controller plays as well.
+[controls]
+left_stick = "W A S D"
+right_stick = "Mouse"
+a = "Space / Enter"
+b = "Esc / Backspace"
+x = "Q"
+y = "E"
+lb = "Wheel down"
+rb = "Wheel up"
+lt = "Right mouse"
+rt = "Left mouse"
+ls = "Left Shift"
+rs = "Left Ctrl / Middle mouse"
+dpad = "Arrows"
+view = "Tab"
+menu = "P"

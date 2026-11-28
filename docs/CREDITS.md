@@ -100,3 +100,5 @@ Ranks are i95's own, with [PortWatch VI](https://portwatch-vi.xyz/)'s scoring fo
 - [victory](https://github.com/rorodev6/victory) by rorodev6, GPL-3.0 (vendor/rorodev)
 - [victory-fork](https://github.com/skornuta/victory-fork) by skornuta, GPL-3.0 (vendor/skornuta)
 - [VIPort](https://github.com/DesertGamer/VIPort) by DesertGamer, GPL-3.0 (vendor/viport)
+- [mandy](https://github.com/projectleonida/mandy) by projectleonida, GPL-3.0 (vendor/mandy)
+- [xcl](https://github.com/xcl-dev/xcl) by xcl-dev, GPL-3.0 (vendor/xcl)

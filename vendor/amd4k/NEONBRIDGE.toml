@@ -4,7 +4,7 @@
 name = "amd4k"
 fork = "VIctory"
 gpu = "AMD"   # the card it is tuned for (README; the picker's filter)
-rank = 41   # i95 rank: score 58.0 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 42   # i95 rank: score 58.0 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "VIctory-AMD-4K 0b75d2d (GPL-3.0): native 4K Series X on AMD: 13.0-16.1 fps, Ryzen 5 5600, RX 6800 16 GB, 16 GB RAM; not yet run here"
 upstream = "https://github.com/elaboratecl/victory-amd-4k"
 updated = "2026-11-28 06:05"   # the pinned upstream commit's date (scripts/runtime-info.py)

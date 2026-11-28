@@ -1,0 +1,69 @@
+# Launcher spec for vendor/mandy: projectleonida's Mandy, the continuation of Leonida; its D3D12 runtime (d3d12/).
+# Build, run and env are scripts/play-d3d12.ps1 with no switches (its default), which calls d3d12/scripts/play-nvidia.ps1.
+name = "mandy"
+fork = "Leonida"
+gpu = "NVIDIA"   # d3d12/README.md: tuned to run fastest on NVIDIA
+rank = 37
+about = "Mandy e06955b (GPL-3.0): Leonida's continuation; its D3D12 runtime is playable in the world at 12 to 13 fps with the HUD, map and pause menu; its default here: Series X at 1440p, the title's own upscaler, no DLSS; not yet run here"
+upstream = "https://github.com/projectleonida/mandy"
+updated = "2026-11-28 08:28"   # the pinned upstream commit's date (scripts/runtime-info.py)
+stars = 3126   # GitHub stars when last checked
+build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "leonida", "--features", "diagnostics,mimalloc", "--manifest-path", "d3d12/Cargo.toml"]   # d3d12/scripts/build-nvidia.ps1:25 (no DLSS files: diagnostics,mimalloc, :20)
+watch = ["d3d12/apps", "d3d12/crates", "d3d12/Cargo.toml", "d3d12/Cargo.lock"]
+exe = "d3d12/target/diag/leonida.exe"   # scripts/play-d3d12.ps1:62 (its play build is the diag profile)
+diag_build = []   # its play build already is the diagnostics build
+run = ["run", "{game_exe}", "--execute", "--console", "series-x"]   # d3d12/scripts/play-nvidia.ps1:450; Series X is play-d3d12.ps1's default (:79-81)
+prewarm = ["shaders", "{game}/shaders.rpf"]   # play-nvidia.ps1:423,432 (its warm --used step, :435, runs in-game from the pipeline book)
+game_env = "LEONIDA_GAME_DIR"   # play-d3d12.ps1:71
+cache_env = "LEONIDA_CACHE_DIR"   # play-d3d12.ps1:72
+agility = false
+
+preset_series_s = ["--console=series-s", "LEONIDA_OUTPUT=", "LEONIDA_RENDER_SCALE=", "LEONIDA_OWN_UPSCALER=", "LEONIDA_UPSCALE=stretch"]   # play-d3d12.ps1 -SeriesS without DLSS files (play-nvidia.ps1:193-195)
+preset_16gb_ram = ["LEONIDA_WINDOWS_BAR_MB=3072"]   # play-nvidia.ps1:248-251: what it sets itself under 48 GB of RAM
+preset_quality = ["LEONIDA_RELAY=1", "LEONIDA_CARD_STEPS=0"]   # play-nvidia.ps1:202 -Quality
+preset_ray_tracing = ["LEONIDA_BVH_BUILDER=1", "LEONIDA_AMBIENT=0", "LEONIDA_AMBIENT_MOST=", "LEONIDA_BVH_MISS=", "LEONIDA_RT_RESOLVE=", "LEONIDA_ACTIVATE_RAYS="]   # play-nvidia.ps1:204-205 -RayTracing
+
+[env]   # d3d12/scripts/play-nvidia.ps1:107-168 $settings, then play-d3d12.ps1's defaults (Series X, -Resolution 1440, no -RayTracing)
+LEONIDA_TEXTURE_NO_WAIT = "0"
+LEONIDA_RELAY = "2"
+LEONIDA_CARD_STEPS = "2"
+LEONIDA_WIDE_BACK = "1"
+LEONIDA_CARD_REHASH_RUNS = "1"
+LEONIDA_JOIN_COPIES = "1"
+LEONIDA_INDIRECT_WINDOW = "1"
+LEONIDA_RELAY_COPY = "1"
+LEONIDA_FETCH_CHECK = "1"
+LEONIDA_INDIRECT_BATCH = "1"
+LEONIDA_MAP_THREADS = "1"
+LEONIDA_TITLE_PRIORITIES = "0"
+LEONIDA_CARD_AWAKE = "1"
+LEONIDA_SHOW_AFTER = "1"
+LEONIDA_AMBIENT = "0.8"
+LEONIDA_AMBIENT_MOST = "2"
+LEONIDA_D3D12_DRED = "light"
+LEONIDA_THIN = "1"
+LEONIDA_JOIN_PARTS = "8"
+LEONIDA_UPLOAD_AHEAD = "1"
+LEONIDA_AMBIENT_AIR = "1.5"
+LEONIDA_NAN_SCRUB = "1"
+LEONIDA_STATIC_SAMPLERS_LINEAR = "PS_Composite"
+LEONIDA_EARLY_DEPTH = "1"
+LEONIDA_PLACED_TITLE = "1"
+LEONIDA_PIPELINE_WAIT_MS = "10000"
+LEONIDA_DYNAMIC_SLOTS = "524288"
+LEONIDA_CARD_BUFFERS_MIN_MB = "1"
+LEONIDA_CARD_BUFFERS_MIN_KB = "64"
+LEONIDA_CARD_BUFFERS_MB = "1536"
+LEONIDA_FILL_TITLE = "1"
+LEONIDA_WC_NO_BACK = "1"
+LEONIDA_OUTPUT = "2560x1440"   # play-nvidia.ps1:180-182 (Series X, 1440 lines)
+LEONIDA_RENDER_SCALE = "1"   # play-nvidia.ps1:186 (1440 / 1440)
+LEONIDA_OWN_UPSCALER = "1"   # play-nvidia.ps1:187
+LEONIDA_BVH_MISS = "1"   # play-nvidia.ps1:211 (no -RayTracing)
+LEONIDA_RT_RESOLVE = "1"   # play-nvidia.ps1:216
+LEONIDA_ACTIVATE_RAYS = "1"   # play-nvidia.ps1:216
+LEONIDA_SKIP_PIPELINES = "6f225b641c5b0708,5dc3b25986622949,926c46bab3b86bd6,2889c21328c69e58,6871d6e4b3ac9a10,888af37a584acf98,a10179ab7eda0dc3"   # play-nvidia.ps1:236-237 (water)
+LEONIDA_PIPELINE_BOOK = "1"   # play-nvidia.ps1:269 (no -NoPrecompile)
+LEONIDA_MENU_SMOOTH_MOTION = "0"   # play-nvidia.ps1:310 (Smooth Motion off, play-d3d12.ps1:77)
+LEONIDA_MENU_CONSOLE = "series-x"   # play-nvidia.ps1:311
+
