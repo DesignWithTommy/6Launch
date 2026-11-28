@@ -2223,10 +2223,6 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         if diag() {
             env.push(("VICTORY_D3D12_DRED".to_owned(), "1".to_owned()));
         }
-        // Runtime logging on by default (victory's own VICTORY_LOG level too).
-        if logging() {
-            env.push(("VICTORY_LOG".to_owned(), "info".to_owned()));
-        }
     }
     env.extend(spec.env.iter().map(|(k, v)| (k.clone(), fill(v, &places))));
     // One save folder for the family, even where a toml names another (after
@@ -2247,9 +2243,6 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
     // _FPS_CAP / _VSYNC / _MONITOR, mapped to each runtime's own variables.
     if let Some(d) = crate::display::from_env() {
         env.extend(crate::display::all_env(&d));
-    }
-    if logging() && !env.iter().any(|(k, _)| k == "RUST_LOG") {
-        env.push(("RUST_LOG".to_owned(), "info".to_owned()));
     }
     // Our environment wins over the toml, except the VICTORY_* leftovers
     // clear_leftovers took out of the runtime's environment: those count as unset.
