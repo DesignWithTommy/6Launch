@@ -4,7 +4,7 @@
 name = "danzi"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README; the picker's filter)
-rank = 14   # i95 rank: score 64.0 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 13   # i95 rank: score 64.0 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "DanziLoader-Cpp 993fd7b (GPL-3.0): a C++20 port of the DanziLoader / VIctory runtime: prison to the boat pursuit, 16+ min in one process, ~11 fps in Chapter 1 at Series S and half render scale, RTX 5080; not yet run here"
 upstream = "https://github.com/Veria70/DanziLoader-Cpp"
 updated = "2026-11-26 16:11"   # the pinned upstream commit's date (scripts/runtime-info.py)

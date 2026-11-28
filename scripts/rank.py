@@ -26,7 +26,7 @@ OURS=dict(cta=P(10),mandy=P(12.5,.1,.25),vicetay=P(21.1,.1,.5,.8),anyxboxx=P(24,
  ccs03=P(5,.1),lnx=P(5.5),victory8gb=P(0,.25,.25,1),peppa=P(23.5,0,.25,.55),leonida=P(10),sleyfork=P(20.6),
  scarlett3070=P(18.5),foxhound=P(18.5),sm86=P(28.5),slaktarn=P(22),viscosity=P(17.9),darkvictory=P(10),m1lk=P(4),
  minivi=P(0),victory4gb=P(6.75),neptune=P(14,0,.25,.55),kitty6=P(20.5,0,.25,.25),karamelo=P(11),coolfox12=P(7.7),
- apexvi=P(7,0,.25,.55),nvidiart=P(21.9),nvidia8gb=P(9),nvidiafg=P(11),razda4a=P(19.3,0,.25,.55),grimkaaah=P(24.3,0,.25,.25),pilotebox=P(21),victorious=P(26,0,.25,.55),danzi=P(11,.1,.25,.55),mandyport=P(7),lowstutter=P(0),amd4k=P(14.5),hydra=P(19),viport=P(0),rorodev=P(8),lite=P(16),el1xr=P(24.4,0,.25,.55),skornuta=P(10.5),bigcheese=P(17),mangrove=P(2.5,0,.25,.25))
+ apexvi=P(7,0,.25,.55),nvidiart=P(21.9),nvidia8gb=P(9),nvidiafg=P(11),grimkaaah=P(24.3,0,.25,.25),pilotebox=P(21),victorious=P(26,0,.25,.55),danzi=P(11,.1,.25,.55),mandyport=P(7),lowstutter=P(0),amd4k=P(14.5),hydra=P(19),viport=P(0),rorodev=P(8),lite=P(16),el1xr=P(24.4,0,.25,.55),skornuta=P(10.5),bigcheese=P(17),mangrove=P(2.5,0,.25,.25))
 rows=[]
 for f in glob.glob('vendor/*/NEONBRIDGE.toml'):
     n=f.replace('\\','/').split('/')[-2]; t=open(f,encoding='utf-8').read()

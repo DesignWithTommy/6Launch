@@ -3,7 +3,7 @@
 name = "leonida"
 fork = "Leonida"
 gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 51   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 50   # i95 rank: score 56.5 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "Leonida 369106b (GPL-3.0): static recompilation; about 10 fps in the first rooms with its newer switches; not yet run here"
 upstream = "https://github.com/ProjectLeonidaL/leonida"
 updated = "2026-11-28 10:50"   # the pinned upstream commit's date (scripts/runtime-info.py)

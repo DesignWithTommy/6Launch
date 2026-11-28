@@ -3,7 +3,7 @@
 name = "coolfox12"
 fork = "VIctory"
 gpu = "NVIDIA 8-12 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 55   # i95 rank: score 55.7 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 54   # i95 rank: score 55.7 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "cool-fox-12gb 67298e8 (GPL-3.0): cool_fox with VIctory-NVIDIA's 8 GB patches; 7.7 fps at half render scale, 2–3 fps native; not on the tracker; not yet run here"
 upstream = "https://github.com/miaohaixiang1-netizen/cool-fox-12gb"
 updated = "2026-11-26 06:45"   # the pinned upstream commit's date (scripts/runtime-info.py)

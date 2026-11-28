@@ -24,7 +24,6 @@ i95 is a launcher around other people's work. Each runtime under `vendor/` is bu
 | `vendor/nvidiart` | [VIctory-NVIDIA-RT](https://github.com/Kemerd/VIctory-NVIDIA-RT) | Kemerd | GPL-3.0 |
 | `vendor/nvidiafg` | [VIctory-NVIDIA (pepezin-ai)](https://github.com/pepezin-ai/VIctory-NVIDIA) | pepezin-ai | GPL-3.0 |
 | `vendor/nvidia8gb` | [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) | soldsawn | GPL-3.0 |
-| `vendor/razda4a` | [RAZDA4A-XEN](https://github.com/crossducking/RAZDA4A-XEN) | crossducking | GPL-3.0 |
 | `vendor/rdna` | [VIctory-RDNA](https://github.com/XaviFortes/VIctory-RDNA) | XaviFortes | GPL-3.0 |
 | `vendor/rufflab` | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | LoverCatys | GPL-3.0 |
 | `vendor/apexvi` | [ApexVI](https://github.com/KevinPratap/ApexVI) | KevinPratap, on VIctory | GPL-3.0 |
@@ -67,7 +66,6 @@ Ranks are i95's own, with [PortWatch VI](https://portwatch-vi.xyz/)'s scoring fo
 - [VIctory-NVIDIA-RT](https://github.com/Kemerd/VIctory-NVIDIA-RT) by Kemerd, GPL-3.0 (vendor/nvidiart)
 - [VIctory-NVIDIA (pepezin-ai)](https://github.com/pepezin-ai/VIctory-NVIDIA) by pepezin-ai, GPL-3.0 (vendor/nvidiafg)
 - [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) by soldsawn, GPL-3.0 (vendor/nvidia8gb)
-- [RAZDA4A-XEN](https://github.com/crossducking/RAZDA4A-XEN) by crossducking, GPL-3.0 (vendor/razda4a)
 - [Victory-United](https://github.com/Fayberr/Victory-United) by Fayberr, GPL-3.0 (vendor/united)
 - [victory-amd](https://github.com/tinygusie2/victory-amd) by tinygusie2, GPL-3.0 (vendor/amdr13)
 - [CCS03](https://github.com/JozefDeTremmerie/CCS03) by JozefDeTremmerie, GPL-3.0 (vendor/ccs03)

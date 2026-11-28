@@ -4,7 +4,7 @@
 name = "skornuta"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README; the picker's filter)
-rank = 46   # i95 rank: score 56.6 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 45   # i95 rank: score 56.6 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "skornuta/victory-fork e94251a (GPL-3.0): open world ~9-12 fps, menus 30 fps (author); not yet run here"
 upstream = "https://github.com/skornuta/victory-fork"
 updated = "2026-11-25 16:39"   # the pinned upstream commit's date (scripts/runtime-info.py)

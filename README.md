@@ -50,62 +50,61 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 | 9 | 67.3 | [VIctorious](https://github.com/randomguy12000/VIctorious) | AMD | ~26 fps driving in the world, Series S, RX 9070 XT | — |
 | 10 | 66.8 | [El1xr](https://github.com/kylepelham/El1xr) | NVIDIA | 23.1-25.7 fps at 4K, RTX 5090 | — |
 | 11 | 66.5 | [playablegames-peppa](https://github.com/Peppacodes/playablegames-peppa) | NVIDIA | 23.5 fps over 12 minutes in a house interior, RTX 5080 16 GB | — |
-| 12 | 65.1 | [RAZDA4A-XEN](https://github.com/crossducking/RAZDA4A-XEN) | AMD | For AMD RDNA: 15.2 to 23.4 fps native in the open world, 29 to 31 shown with FSR 3.1… | — |
-| 13 | 64.9 | [mavis-9070xt](https://github.com/mavis140/mavis-9070xt) | AMD | 18.9 fps median over a 27-minute session, Series X at 1440p, ray tracing off, RX 9070 XT… | — |
-| 14 | 64 | [DanziLoader-Cpp](https://github.com/Veria70/DanziLoader-Cpp) | NVIDIA | ~11 fps in Chapter 1, prison to the boat pursuit, RTX 5080 | — |
-| 15 | 63.7 | [Victory Grimkaaah](https://github.com/Grimkaaah/Victory-Grimkaaah) | AMD | AMD only: 24.3 fps average in busy world scenes | — |
-| 16 | 63.3 | [Neptune](https://github.com/Dolberthi/neptune-dolberth-nvidia-8gb) | NVIDIA 8 GB | Tuned for 8 GB NVIDIA, 6-core Ryzen, 16 GB RAM | — |
-| 17 | 63.3 | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | AMD 8 GB | Built for 8 GB cards and 16 GB RAM: 6 to 7 fps by scene at 720p upscaled, 30 to 39 min… | — |
-| 18 | 63.1 | [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) | NVIDIA | 6.0 fps median in the first room on its defaults, 38 minutes in the world, RTX 4060 Ti | — |
-| 19 | 62.9 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | NVIDIA | "About 24 fps median in the world in Full HD", 30 | ⚠️ On its new Vice-Tay base: reaches 3D at 0.5 to 3 fps in… |
-| 20 | 62.6 | [VIctory_sm86](https://github.com/whiteh4cker-tr/VIctory_sm86) | NVIDIA | 27-30 fps in the opening on an RTX 3090 | — |
-| 21 | 62.5 | [Kitty6](https://github.com/kitty-core/Kitty6) | NVIDIA | 20.5 fps median in the opening scene | — |
-| 22 | 62.1 | [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) | AMD | 10.5 fps on Series X with its patches on | — |
-| 23 | 62 | [victory-unified](https://github.com/Itsbatt/victory-unified) | NVIDIA 8 GB | "A unified fork" tuned for an RTX 3070 8 GB: 2 to 3 fps, about 58 minutes without a crash | — |
-| 24 | 61.5 | [CGBJ (cool_fox)](https://github.com/DoubleGhosty/cool_fox) | NVIDIA | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed | — |
-| 25 | 61.5 | [Flamingo](https://github.com/realblastex/flamingo) | NVIDIA | 8.6 fps average over a 24-minute session, RTX 4070, unconfirmed | ⚠️ Runs at ~20 fps on average, but models are very dark and… |
-| 26 | 61 | [ApexVI](https://github.com/KevinPratap/ApexVI) | NVIDIA 6-8 GB | Tuned for 6-8 GB laptop cards: a controllable character at 6.35 to 7.5 fps, 14-15 min… | — |
-| 27 | 60.5 | [SlaktarnVI](https://github.com/Slaktarn700/SlaktarnVI) | AMD | Linux/Proton on an RX 9070 XT: 19-25 fps | — |
-| 28 | 60.5 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | NVIDIA 8 GB | 24 fps on a scripted prison walk and 21 fps in the opening cutscene, RTX 4060 Ti 8 GB | ❌ The game stops about 20 s in |
-| 29 | 60.4 | [VIctory-NVIDIA-RT](https://github.com/Kemerd/VIctory-NVIDIA-RT) | NVIDIA | A faster VIctory-NVIDIA with ultrawide, Reflex, HDR10, DLSS and frame generation: 21.9… | — |
-| 30 | 60 | [victory-sley-fork](https://github.com/Spaghetih/victory-sley-fork) | NVIDIA | 20.6 fps median at about 6,000 draws, 11-15 in dense night scenes | — |
-| 31 | 59.8 | [victory-fork](https://github.com/fxceless/victory-fork) | NVIDIA | Its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and… | ✅ Intro at 30 fps, 3D scene ~1 fps |
-| 32 | 59.6 | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | NVIDIA 8 GB | 4 to 6 fps on its current settings | ✅ 3D prison scene at 2 to 3 fps |
-| 33 | 59.5 | [VIctory-Hydra](https://github.com/tolimanl/victory-hydra) | NVIDIA | ~18-20 fps at 1080p, RTX 3060 | — |
-| 34 | 59.3 | [foxhound](https://github.com/readmet3xt-lab/foxhound) | NVIDIA | DLSS and frame generation: 30 fps cap on a 4070 SUPER, 16-21 in heavier scenes | — |
-| 35 | 59.3 | [victory-scarlett-3070](https://github.com/Yaekai/victory-scarlett-3070) | NVIDIA 8 GB | Tuned for 8 GB NVIDIA | — |
-| 36 | 59.1 | [VIscosity](https://github.com/FrancescoGelosoEterea/VIscosity) | NVIDIA | 17.9 fps median on an RTX 5070 Ti | — |
-| 37 | 59 | [Mandy](https://github.com/projectleonida/mandy) | NVIDIA | Leonida's continuation: playable in the world at 12 to 13 fps, with the HUD, map and pause menu | — |
-| 38 | 59 | [Victory-United](https://github.com/Fayberr/Victory-United) | Any | VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with… | — |
-| 39 | 58.8 | [VIctory-BigCheese](https://github.com/computermakemegta6/VIctory-BigCheese) | NVIDIA | 17 fps held in the open world, 16 GB RAM | — |
-| 40 | 58.5 | [VIctory-LITE](https://github.com/vix0e0e/VIctory-LITE) | NVIDIA 4 GB | 13-20 fps in the prologue, 19-22 on the boat mission | — |
-| 41 | 58.5 | [Victory-naixue2233](https://github.com/naixue2233/Victory-naixue2233) | NVIDIA | About 11 fps at the first boat mission on an RTX 4070 | — |
-| 42 | 58 | [VIctory-AMD-4K](https://github.com/elaboratecl/victory-amd-4k) | AMD | 13.0-16.1 fps at native 4K, RX 6800 | — |
-| 43 | 57.6 | [CBL VIctory](https://github.com/cocainebunnylaboratories/cblvictoryvi) | NVIDIA | Now on Vice-Tay's renderer: about 12-15 fps at Series X 1440p, RTX 5080 | — |
-| 44 | 56.8 | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion | — |
-| 45 | 56.8 | [VIctory-NVIDIA (pepezin-ai)](https://github.com/pepezin-ai/VIctory-NVIDIA) | NVIDIA | DLSS frame generation fixed: 11 fps rendered, 44 shown at 4x, RTX 5070 12 GB in the… | — |
-| 46 | 56.6 | [skornuta/victory-fork](https://github.com/skornuta/victory-fork) | NVIDIA | ~9-12 fps in the open world | — |
-| 47 | 56.5 | [victory-amd](https://github.com/myokex/victory-amd) | AMD | 2 to 3 fps in the world over 8-minute runs, RTX 4070 | — |
-| 48 | 56.5 | [CCS03](https://github.com/JozefDeTremmerie/CCS03) | NVIDIA 8 GB | Lucia's prologue played to chapter 1 | — |
-| 49 | 56.5 | [CTA](https://github.com/DesignWithTommy/ClaudeTheftAuto) | NVIDIA 8 GB | i95's own runtime for the RTX 4060: rewrites the game's hottest stores live; steady frame 95 to 105 ms (~10 fps) | — |
-| 50 | 56.5 | [Dark-Victory](https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI) | AMD 8 GB | About 10 fps on an RX 6600 | — |
-| 51 | 56.5 | [Leonida](https://github.com/ProjectLeonidaL/leonida) | Any | About 10 fps in the first rooms with its newer switches | — |
-| 52 | 56.5 | [mangrove](https://github.com/Joaco9020/mangrove) | NVIDIA 8 GB | 2.5 fps in the prologue, RTX 3070 | — |
-| 53 | 56.1 | [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) | NVIDIA 8 GB | Tuned for 8 GB NVIDIA | — |
-| 54 | 55.8 | [rorodev6/victory](https://github.com/rorodev6/victory) | NVIDIA | 7-9 fps in the prologue | — |
-| 55 | 55.7 | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | NVIDIA 8-12 GB | cool_fox with VIctory-NVIDIA's 8 GB patches | — |
-| 56 | 55.6 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | NVIDIA | About 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060 | ✅ 3D at 2 to 3 fps |
-| 57 | 55.5 | [mandy-port](https://github.com/bolado-dev/mandy-port) | NVIDIA 8 GB | ~7 fps in the world, aiming at 15 | — |
-| 58 | 55.4 | [victory-4gb](https://github.com/Dathinel/victory-4gb) | NVIDIA 4 GB | 6.5 to 7 fps in open-world free play on a 4 GB RTX 3050 Laptop | — |
-| 59 | 55 | [LNX-victory](https://github.com/Linox-IDK/LNX-victory) | NVIDIA 8 GB | Prison yard at about 4 fps | — |
-| 60 | 54.5 | [victory-amd r13](https://github.com/tinygusie2/victory-amd) | AMD | About 3-5 fps in the open world on an RX 9060 XT | — |
-| 61 | 54.5 | [M1LK](https://github.com/3cvil/M1LK) | NVIDIA 8 GB | Tuned for 8 GB VRAM and 16 GB RAM: playable at about 4 fps on an RTX 4060 Laptop 8 GB | — |
-| 62 | 54.1 | [darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) | NVIDIA | A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070 | — |
-| 63 | 53.1 | [VIctory-NVIDIA-LowStutter](https://github.com/tiadiff/VIctory-NVIDIA-LowStutter) | NVIDIA | No fps reported; fewer pipeline stalls | — |
-| 64 | 53.1 | [MiniVI](https://github.com/Androtim/MiniVI) | Any 8 GB | Built for 8 GB VRAM and 16-32 GB RAM, with an F3 FPS/VRAM overlay | — |
-| 65 | 53.1 | [VIPort](https://github.com/DesertGamer/VIPort) | any | Boots and runs menus at 30 fps; world not yet playable | — |
-| 66 | 50.3 | [VIctory](https://github.com/Marvisak/VIctory) | Any | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | — |
-| 67 | 35 | [XCL](https://github.com/xcl-dev/xcl) | Any | Compatibility layer: 30 fps in the menus, ~5 fps in the 3D world with its NVIDIA branch (RTX 5090), not playable yet | — |
+| 12 | 64.9 | [mavis-9070xt](https://github.com/mavis140/mavis-9070xt) | AMD | 18.9 fps median over a 27-minute session, Series X at 1440p, ray tracing off, RX 9070 XT… | — |
+| 13 | 64 | [DanziLoader-Cpp](https://github.com/Veria70/DanziLoader-Cpp) | NVIDIA | ~11 fps in Chapter 1, prison to the boat pursuit, RTX 5080 | — |
+| 14 | 63.7 | [Victory Grimkaaah](https://github.com/Grimkaaah/Victory-Grimkaaah) | AMD | AMD only: 24.3 fps average in busy world scenes | — |
+| 15 | 63.3 | [Neptune](https://github.com/Dolberthi/neptune-dolberth-nvidia-8gb) | NVIDIA 8 GB | Tuned for 8 GB NVIDIA, 6-core Ryzen, 16 GB RAM | — |
+| 16 | 63.3 | [ruff-lab](https://github.com/LoverCatys/ruff-lab) | AMD 8 GB | Built for 8 GB cards and 16 GB RAM: 6 to 7 fps by scene at 720p upscaled, 30 to 39 min… | — |
+| 17 | 63.1 | [VIniVIdiVIci](https://github.com/KomanderDG88/VIniVIdiVIci) | NVIDIA | 6.0 fps median in the first room on its defaults, 38 minutes in the world, RTX 4060 Ti | — |
+| 18 | 62.9 | [AnyXboxX](https://github.com/LooperSalty/AnyXboxX) | NVIDIA | "About 24 fps median in the world in Full HD", 30 | ⚠️ On its new Vice-Tay base: reaches 3D at 0.5 to 3 fps in… |
+| 19 | 62.6 | [VIctory_sm86](https://github.com/whiteh4cker-tr/VIctory_sm86) | NVIDIA | 27-30 fps in the opening on an RTX 3090 | — |
+| 20 | 62.5 | [Kitty6](https://github.com/kitty-core/Kitty6) | NVIDIA | 20.5 fps median in the opening scene | — |
+| 21 | 62.1 | [BRVIctory-ka1qux](https://github.com/ka1qux/BRVIctory-ka1qux) | AMD | 10.5 fps on Series X with its patches on | — |
+| 22 | 62 | [victory-unified](https://github.com/Itsbatt/victory-unified) | NVIDIA 8 GB | "A unified fork" tuned for an RTX 3070 8 GB: 2 to 3 fps, about 58 minutes without a crash | — |
+| 23 | 61.5 | [CGBJ (cool_fox)](https://github.com/DoubleGhosty/cool_fox) | NVIDIA | 25 fps average in gameplay on an NVIDIA card, relayed by PortWatch and unconfirmed | — |
+| 24 | 61.5 | [Flamingo](https://github.com/realblastex/flamingo) | NVIDIA | 8.6 fps average over a 24-minute session, RTX 4070, unconfirmed | ⚠️ Runs at ~20 fps on average, but models are very dark and… |
+| 25 | 61 | [ApexVI](https://github.com/KevinPratap/ApexVI) | NVIDIA 6-8 GB | Tuned for 6-8 GB laptop cards: a controllable character at 6.35 to 7.5 fps, 14-15 min… | — |
+| 26 | 60.5 | [SlaktarnVI](https://github.com/Slaktarn700/SlaktarnVI) | AMD | Linux/Proton on an RX 9070 XT: 19-25 fps | — |
+| 27 | 60.5 | [VI-BR-PORT](https://github.com/edsuuu/VI-BR-PORT) | NVIDIA 8 GB | 24 fps on a scripted prison walk and 21 fps in the opening cutscene, RTX 4060 Ti 8 GB | ❌ The game stops about 20 s in |
+| 28 | 60.4 | [VIctory-NVIDIA-RT](https://github.com/Kemerd/VIctory-NVIDIA-RT) | NVIDIA | A faster VIctory-NVIDIA with ultrawide, Reflex, HDR10, DLSS and frame generation: 21.9… | — |
+| 29 | 60 | [victory-sley-fork](https://github.com/Spaghetih/victory-sley-fork) | NVIDIA | 20.6 fps median at about 6,000 draws, 11-15 in dense night scenes | — |
+| 30 | 59.8 | [victory-fork](https://github.com/fxceless/victory-fork) | NVIDIA | Its ray-tracing builder is now its default: 0.2 to 3 fps with ray-traced shadows and… | ✅ Intro at 30 fps, 3D scene ~1 fps |
+| 31 | 59.6 | [VItoriaBr](https://github.com/uiliannn/VItoriaBr) | NVIDIA 8 GB | 4 to 6 fps on its current settings | ✅ 3D prison scene at 2 to 3 fps |
+| 32 | 59.5 | [VIctory-Hydra](https://github.com/tolimanl/victory-hydra) | NVIDIA | ~18-20 fps at 1080p, RTX 3060 | — |
+| 33 | 59.3 | [foxhound](https://github.com/readmet3xt-lab/foxhound) | NVIDIA | DLSS and frame generation: 30 fps cap on a 4070 SUPER, 16-21 in heavier scenes | — |
+| 34 | 59.3 | [victory-scarlett-3070](https://github.com/Yaekai/victory-scarlett-3070) | NVIDIA 8 GB | Tuned for 8 GB NVIDIA | — |
+| 35 | 59.1 | [VIscosity](https://github.com/FrancescoGelosoEterea/VIscosity) | NVIDIA | 17.9 fps median on an RTX 5070 Ti | — |
+| 36 | 59 | [Mandy](https://github.com/projectleonida/mandy) | NVIDIA | Leonida's continuation: playable in the world at 12 to 13 fps, with the HUD, map and pause menu | — |
+| 37 | 59 | [Victory-United](https://github.com/Fayberr/Victory-United) | Any | VIctory's best open pull requests on Vice-Tay's code: 8 to 12 fps in the open world with… | — |
+| 38 | 58.8 | [VIctory-BigCheese](https://github.com/computermakemegta6/VIctory-BigCheese) | NVIDIA | 17 fps held in the open world, 16 GB RAM | — |
+| 39 | 58.5 | [VIctory-LITE](https://github.com/vix0e0e/VIctory-LITE) | NVIDIA 4 GB | 13-20 fps in the prologue, 19-22 on the boat mission | — |
+| 40 | 58.5 | [Victory-naixue2233](https://github.com/naixue2233/Victory-naixue2233) | NVIDIA | About 11 fps at the first boat mission on an RTX 4070 | — |
+| 41 | 58 | [VIctory-AMD-4K](https://github.com/elaboratecl/victory-amd-4k) | AMD | 13.0-16.1 fps at native 4K, RX 6800 | — |
+| 42 | 57.6 | [CBL VIctory](https://github.com/cocainebunnylaboratories/cblvictoryvi) | NVIDIA | Now on Vice-Tay's renderer: about 12-15 fps at Series X 1440p, RTX 5080 | — |
+| 43 | 56.8 | [VKarameloVI](https://github.com/badDevelopper/VKarameloVI) | NVIDIA | 11 fps, or 21.8 with NVIDIA Smooth Motion | — |
+| 44 | 56.8 | [VIctory-NVIDIA (pepezin-ai)](https://github.com/pepezin-ai/VIctory-NVIDIA) | NVIDIA | DLSS frame generation fixed: 11 fps rendered, 44 shown at 4x, RTX 5070 12 GB in the… | — |
+| 45 | 56.6 | [skornuta/victory-fork](https://github.com/skornuta/victory-fork) | NVIDIA | ~9-12 fps in the open world | — |
+| 46 | 56.5 | [victory-amd](https://github.com/myokex/victory-amd) | AMD | 2 to 3 fps in the world over 8-minute runs, RTX 4070 | — |
+| 47 | 56.5 | [CCS03](https://github.com/JozefDeTremmerie/CCS03) | NVIDIA 8 GB | Lucia's prologue played to chapter 1 | — |
+| 48 | 56.5 | [CTA](https://github.com/DesignWithTommy/ClaudeTheftAuto) | NVIDIA 8 GB | i95's own runtime for the RTX 4060: rewrites the game's hottest stores live; steady frame 95 to 105 ms (~10 fps) | — |
+| 49 | 56.5 | [Dark-Victory](https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI) | AMD 8 GB | About 10 fps on an RX 6600 | — |
+| 50 | 56.5 | [Leonida](https://github.com/ProjectLeonidaL/leonida) | Any | About 10 fps in the first rooms with its newer switches | — |
+| 51 | 56.5 | [mangrove](https://github.com/Joaco9020/mangrove) | NVIDIA 8 GB | 2.5 fps in the prologue, RTX 3070 | — |
+| 52 | 56.1 | [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) | NVIDIA 8 GB | Tuned for 8 GB NVIDIA | — |
+| 53 | 55.8 | [rorodev6/victory](https://github.com/rorodev6/victory) | NVIDIA | 7-9 fps in the prologue | — |
+| 54 | 55.7 | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | NVIDIA 8-12 GB | cool_fox with VIctory-NVIDIA's 8 GB patches | — |
+| 55 | 55.6 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | NVIDIA | About 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060 | ✅ 3D at 2 to 3 fps |
+| 56 | 55.5 | [mandy-port](https://github.com/bolado-dev/mandy-port) | NVIDIA 8 GB | ~7 fps in the world, aiming at 15 | — |
+| 57 | 55.4 | [victory-4gb](https://github.com/Dathinel/victory-4gb) | NVIDIA 4 GB | 6.5 to 7 fps in open-world free play on a 4 GB RTX 3050 Laptop | — |
+| 58 | 55 | [LNX-victory](https://github.com/Linox-IDK/LNX-victory) | NVIDIA 8 GB | Prison yard at about 4 fps | — |
+| 59 | 54.5 | [victory-amd r13](https://github.com/tinygusie2/victory-amd) | AMD | About 3-5 fps in the open world on an RX 9060 XT | — |
+| 60 | 54.5 | [M1LK](https://github.com/3cvil/M1LK) | NVIDIA 8 GB | Tuned for 8 GB VRAM and 16 GB RAM: playable at about 4 fps on an RTX 4060 Laptop 8 GB | — |
+| 61 | 54.1 | [darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) | NVIDIA | A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070 | — |
+| 62 | 53.1 | [VIctory-NVIDIA-LowStutter](https://github.com/tiadiff/VIctory-NVIDIA-LowStutter) | NVIDIA | No fps reported; fewer pipeline stalls | — |
+| 63 | 53.1 | [MiniVI](https://github.com/Androtim/MiniVI) | Any 8 GB | Built for 8 GB VRAM and 16-32 GB RAM, with an F3 FPS/VRAM overlay | — |
+| 64 | 53.1 | [VIPort](https://github.com/DesertGamer/VIPort) | any | Boots and runs menus at 30 fps; world not yet playable | — |
+| 65 | 50.3 | [VIctory](https://github.com/Marvisak/VIctory) | Any | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | — |
+| 66 | 35 | [XCL](https://github.com/xcl-dev/xcl) | Any | Compatibility layer: 30 fps in the menus, ~5 fps in the 3D world with its NVIDIA branch (RTX 5090), not playable yet | — |
 | – | – | VIctory-Belobug-AMD (removed) | AMD | 5 to 8 fps over a 15-minute drive, RX 7900 XTX | ❌ Removed from the loader: the author's GitHub account was… |
 | – | – | VIctory-7900XTX (removed) | AMD | 13 to 17 fps in a city street at Series X 1440p, RX 7900 XTX | ❌ Removed from the loader: the author's GitHub account was… |
 | – | – | Vertex (removed) | NVIDIA | "Not playable yet." 6.9 fps median in a 25-minute run, RTX 5070 | ❌ Removed from the loader: the author deleted or hid the… |
@@ -139,7 +138,6 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 | [KLBF Lab](https://github.com/PastiiJay/klbf-lab) | VIctory, victory-fork | 14.0 fps average over 37 minutes of play, player in control through the prologue (77 min on an earlier build), RX 9070 XT | Testing again. Its intro crash was i95 leaving TuxBox DLLs in the game folder (fixed). The intro video flickers |
 | [victory-8gb](https://github.com/CuteBooty/victory-8gb) | VIctory | First Chapter I mission played, a 5 h 45 min session without a crash, RTX 3070 8 GB | Not run yet |
 | [playablegames-peppa](https://github.com/Peppacodes/playablegames-peppa) | VIctory | 23.5 fps over 12 minutes in a house interior, RTX 5080 16 GB | Not run yet |
-| [RAZDA4A-XEN](https://github.com/crossducking/RAZDA4A-XEN) | VIctory | For AMD RDNA: 15.2 to 23.4 fps native in the open world, 29 to 31 shown with FSR 3.1 frame generation; a prebuilt exe, no sources; not on the tracker | Not run yet |
 | [mavis-9070xt](https://github.com/mavis140/mavis-9070xt) | VIctory-7900XTX | 18.9 fps median over a 27-minute session, Series X at 1440p, ray tracing off, RX 9070 XT 16 GB | Not run yet |
 | [Victory Grimkaaah](https://github.com/Grimkaaah/Victory-Grimkaaah) | VIctory | AMD only: 24.3 fps average in busy world scenes (ray tracing off), 13.9 with it on, 3-9 min sessions, RX 7900 XTX; on the tracker's watch list | Not run yet |
 | [Neptune](https://github.com/Dolberthi/neptune-dolberth-nvidia-8gb) | VIctory | Tuned for 8 GB NVIDIA, 6-core Ryzen, 16 GB RAM; no fps figure yet | Not run yet |
@@ -192,7 +190,7 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 </details>
 
 
-**Not in i95:** ztrx (#6) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub, and so are PiloteBox, victory-perf and our own i95-Victory, so they were taken out (their last source is kept offline). omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. VIctory-macOS-halfwave50 is macOS only (2.9-4.5 fps on a MacBook Pro).
+**Not in i95:** ztrx (#6) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub, and so are PiloteBox, victory-perf and our own i95-Victory, so they were taken out (their last source is kept offline). RAZDA4A-XEN was taken out because it ships only a prebuilt exe, with no source to build. omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. VIctory-macOS-halfwave50 is macOS only (2.9-4.5 fps on a MacBook Pro).
 
 ## FAQ
 

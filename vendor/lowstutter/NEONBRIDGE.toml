@@ -4,7 +4,7 @@
 name = "lowstutter"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README; the picker's filter)
-rank = 63   # i95 rank: score 53.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 62   # i95 rank: score 53.1 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "VIctory-NVIDIA-LowStutter 1f52318 (GPL-3.0): a low-stutter VIctory-NVIDIA fork for RTX 20-50 (slow pipelines finish in the background instead of 500 ms stalls); no fps reported; not yet run here"
 upstream = "https://github.com/tiadiff/VIctory-NVIDIA-LowStutter"
 updated = "2026-11-27 20:30"   # the pinned upstream commit's date (scripts/runtime-info.py)

@@ -3,7 +3,7 @@
 name = "mandy"
 fork = "Leonida"
 gpu = "NVIDIA"   # d3d12/README.md: tuned to run fastest on NVIDIA
-rank = 37
+rank = 36
 about = "Mandy c1ecf04 (GPL-3.0): Leonida's continuation; its D3D12 runtime is playable in the world at 12 to 13 fps with the HUD, map and pause menu; its default here: Series X at 1440p, the title's own upscaler, no DLSS; not yet run here"
 upstream = "https://github.com/projectleonida/mandy"
 updated = "2026-11-28 10:18"   # the pinned upstream commit's date (scripts/runtime-info.py)
