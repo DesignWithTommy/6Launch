@@ -31,3 +31,4 @@ vendor/m-*/
 
 vendor/cta/crates
 /runs*-shots/
+/vendor/cta/
