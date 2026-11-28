@@ -1,0 +1,26 @@
+# Local only (not in git): CTA, our own runtime, built in place from the ClaudeTheftAuto checkout
+# (tree: a junction to ..\..\..\ClaudeTheftAuto, made by hand). Base: M1LK 6e87980 plus cta-mem.
+name = "cta"
+pin = true
+fork = "M1LK"
+about = "ClaudeTheftAuto (GPL-3.0): our own runtime (cta-mem) on M1LK's parts, built from the local checkout"
+upstream = "https://github.com/DesignWithTommy/ClaudeTheftAuto"
+build = ["cargo", "build", "--release", "-p", "victory", "--bins", "--manifest-path", "tree/Cargo.toml"]
+watch = ["tree/apps", "tree/crates", "tree/Cargo.toml", "tree/Cargo.lock"]
+exe = "tree/target/release/m1lk.exe"
+cwd = "tree/target/release"
+run = ["run", "{game_exe}", "--execute", "--console", "series-s", "--unimplemented", "trap"]
+prewarm = ["warm", "{game}"]
+game_env = "VICTORY_GAME_DIR"
+cache_env = "VICTORY_CACHE_DIR"
+agility = false
+preset_census = ["CTA_MEM=1"]
+preset_off = ["CTA_MEM="]
+
+[env]
+VICTORY_DATA_DIR = "%LOCALAPPDATA%\6ixpack\save"
+VICTORY_DEBUG_HUD = "1"
+VICTORY_NO_WATCHDOG = "1"
+VICTORY_RAY_TRACING = "0"
+VICTORY_DISPLAY_MODE = "1920x1080"
+CTA_MEM = "1"
