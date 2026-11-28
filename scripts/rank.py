@@ -19,7 +19,7 @@ def score(g):
 pw={e['repo'].lower():e for e in d['efforts'] if e.get('repo') and (e.get('gta') or {}).get('loads')}
 P=lambda f,s=0,r=.25,t=0:dict(loads=1,boots=1,menu=1,world=1,playable=1,fps=f,story=s,render=r,stability=t)
 W=lambda:dict(loads=1,boots=1,menu=1,world=1)
-OURS=dict(mandy=P(12.5,.1,.25),vicetay=P(21.1,.1,.5,.8),anyxboxx=P(24,.1,.25),klbf=P(14,.1,.25,.8),victoryperf=P(10),scarlettport=P(7.5),
+OURS=dict(cta=P(10),mandy=P(12.5,.1,.25),vicetay=P(21.1,.1,.5,.8),anyxboxx=P(24,.1,.25),klbf=P(14,.1,.25,.8),victoryperf=P(10),scarlettport=P(7.5),
  amd=P(2.5,0,.25,.25),flamingo=P(8.6,0,.25,.55),ka1qux=P(10.5,0,.25,.55),vilocity=P(29,0,.25,.55),cblvictory=P(13.5),
  unified=P(2.5,0,.25,.8),vinividivici=P(6,0,.25,.8),vibrport=P(22),rufflab=P(6.5,0,.25,.8),darkworld=P(3),
  united=P(10,0,.25,.25),rdna=P(21,0,.25,.8),mavis9070xt=P(18.9,0,.25,.55),cgbj=P(25),naixue=P(11,.1),amdr13=P(4),
@@ -30,7 +30,7 @@ OURS=dict(mandy=P(12.5,.1,.25),vicetay=P(21.1,.1,.5,.8),anyxboxx=P(24,.1,.25),kl
 rows=[]
 for f in glob.glob('vendor/*/NEONBRIDGE.toml'):
     n=f.replace('\\','/').split('/')[-2]; t=open(f,encoding='utf-8').read()
-    if re.search(r'^pin = true',t,re.M): continue
+    if re.search(r'^pin = true',t,re.M) and n not in OURS: continue   # pinned local runtimes rank only with i95's own data (cta)
     u=re.search(r'^upstream = "https://github.com/([^"]+)"',t,re.M).group(1)
     e=pw.get(u.lower()); g=e['gta'] if e else OURS.get(n)
     if g is None: print('NO DATA',n,file=sys.stderr); continue

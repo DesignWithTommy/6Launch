@@ -24,7 +24,7 @@ On an 8 GB card, pick a runtime's `8gb` or `series_s` preset: most runtimes defa
 - **Presets** per runtime, such as Series S, 8 GB cards, 16 GB laptops, DLSS to 4K, 16 GB of RAM (Vice-Tay's `4060` preset: 38 min at ~10 fps on an RTX 4060 here) and crash diagnostics, plus any extra setting a runtime reads.
 - **In game**: each runtime's own overlay as its author ships it, a controls overlay (F1), and the display kept awake. i95 adds no fps counter of its own.
 - **Advanced** (next to Play) has on / off boxes, remembered between runs, so nothing needs a command: the runtime's own overlay, the controls overlay, one save folder for every victory runtime, saving a run log, extra runtime logging and diagnostics (the logs and diagnostics are off by default). It also takes any extra `KEY=VALUE` setting a runtime reads, with **Options list** showing them.
-- **After a run**: explains why it ended by reading the log, writes a short timeline, and can file an issue report.
+- **After a run**: explains why it ended by reading the log, writes a short timeline, and can file an issue report. A run that crashes leaves a crash report (exit code, settings and its last 300 lines, even with logging off) in `%LOCALAPPDATA%\6ixpack\crashes`; nothing is sent anywhere.
 - **Updates itself** from the latest release at start (`NEONBRIDGE_UPDATE=0` skips it), and remembers your last runtime, preset, settings, Advanced boxes and output folder.
 - **Asks before downloading** a runtime's source or an optional extra. The one thing it fetches without asking is the small runtime list, catalog.txt.
 
@@ -86,24 +86,25 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 | 46 | 56.6 | [skornuta/victory-fork](https://github.com/skornuta/victory-fork) | NVIDIA | ~9-12 fps in the open world | — |
 | 47 | 56.5 | [victory-amd](https://github.com/myokex/victory-amd) | AMD | 2 to 3 fps in the world over 8-minute runs, RTX 4070 | — |
 | 48 | 56.5 | [CCS03](https://github.com/JozefDeTremmerie/CCS03) | NVIDIA 8 GB | Lucia's prologue played to chapter 1 | — |
-| 49 | 56.5 | [Dark-Victory](https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI) | AMD 8 GB | About 10 fps on an RX 6600 | — |
-| 50 | 56.5 | [Leonida](https://github.com/ProjectLeonidaL/leonida) | Any | About 10 fps in the first rooms with its newer switches | — |
-| 51 | 56.5 | [mangrove](https://github.com/Joaco9020/mangrove) | NVIDIA 8 GB | 2.5 fps in the prologue, RTX 3070 | — |
-| 52 | 56.1 | [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) | NVIDIA 8 GB | Tuned for 8 GB NVIDIA | — |
-| 53 | 55.8 | [rorodev6/victory](https://github.com/rorodev6/victory) | NVIDIA | 7-9 fps in the prologue | — |
-| 54 | 55.7 | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | NVIDIA 8-12 GB | cool_fox with VIctory-NVIDIA's 8 GB patches | — |
-| 55 | 55.6 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | NVIDIA | About 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060 | ✅ 3D at 2 to 3 fps |
-| 56 | 55.5 | [mandy-port](https://github.com/bolado-dev/mandy-port) | NVIDIA 8 GB | ~7 fps in the world, aiming at 15 | — |
-| 57 | 55.4 | [victory-4gb](https://github.com/Dathinel/victory-4gb) | NVIDIA 4 GB | 6.5 to 7 fps in open-world free play on a 4 GB RTX 3050 Laptop | — |
-| 58 | 55 | [LNX-victory](https://github.com/Linox-IDK/LNX-victory) | NVIDIA 8 GB | Prison yard at about 4 fps | — |
-| 59 | 54.5 | [victory-amd r13](https://github.com/tinygusie2/victory-amd) | AMD | About 3-5 fps in the open world on an RX 9060 XT | — |
-| 60 | 54.5 | [M1LK](https://github.com/3cvil/M1LK) | NVIDIA 8 GB | Tuned for 8 GB VRAM and 16 GB RAM: playable at about 4 fps on an RTX 4060 Laptop 8 GB | — |
-| 61 | 54.1 | [darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) | NVIDIA | A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070 | — |
-| 62 | 53.1 | [VIctory-NVIDIA-LowStutter](https://github.com/tiadiff/VIctory-NVIDIA-LowStutter) | NVIDIA | No fps reported; fewer pipeline stalls | — |
-| 63 | 53.1 | [MiniVI](https://github.com/Androtim/MiniVI) | Any 8 GB | Built for 8 GB VRAM and 16-32 GB RAM, with an F3 FPS/VRAM overlay | — |
-| 64 | 53.1 | [VIPort](https://github.com/DesertGamer/VIPort) | any | Boots and runs menus at 30 fps; world not yet playable | — |
-| 65 | 50.3 | [VIctory](https://github.com/Marvisak/VIctory) | Any | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | — |
-| 66 | 35 | [XCL](https://github.com/xcl-dev/xcl) | Any | Compatibility layer: 30 fps in the menus, ~5 fps in the 3D world with its NVIDIA branch (RTX 5090), not playable yet | — |
+| 49 | 56.5 | [CTA](https://github.com/DesignWithTommy/ClaudeTheftAuto) | NVIDIA 8 GB | i95's own runtime for the RTX 4060: rewrites the game's hottest stores live; steady frame 95 to 105 ms (~10 fps) | — |
+| 50 | 56.5 | [Dark-Victory](https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI) | AMD 8 GB | About 10 fps on an RX 6600 | — |
+| 51 | 56.5 | [Leonida](https://github.com/ProjectLeonidaL/leonida) | Any | About 10 fps in the first rooms with its newer switches | — |
+| 52 | 56.5 | [mangrove](https://github.com/Joaco9020/mangrove) | NVIDIA 8 GB | 2.5 fps in the prologue, RTX 3070 | — |
+| 53 | 56.1 | [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) | NVIDIA 8 GB | Tuned for 8 GB NVIDIA | — |
+| 54 | 55.8 | [rorodev6/victory](https://github.com/rorodev6/victory) | NVIDIA | 7-9 fps in the prologue | — |
+| 55 | 55.7 | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | NVIDIA 8-12 GB | cool_fox with VIctory-NVIDIA's 8 GB patches | — |
+| 56 | 55.6 | [ScarlettPort](https://github.com/ZigZagBoi1/ScarlettPort) | NVIDIA | About 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060 | ✅ 3D at 2 to 3 fps |
+| 57 | 55.5 | [mandy-port](https://github.com/bolado-dev/mandy-port) | NVIDIA 8 GB | ~7 fps in the world, aiming at 15 | — |
+| 58 | 55.4 | [victory-4gb](https://github.com/Dathinel/victory-4gb) | NVIDIA 4 GB | 6.5 to 7 fps in open-world free play on a 4 GB RTX 3050 Laptop | — |
+| 59 | 55 | [LNX-victory](https://github.com/Linox-IDK/LNX-victory) | NVIDIA 8 GB | Prison yard at about 4 fps | — |
+| 60 | 54.5 | [victory-amd r13](https://github.com/tinygusie2/victory-amd) | AMD | About 3-5 fps in the open world on an RX 9060 XT | — |
+| 61 | 54.5 | [M1LK](https://github.com/3cvil/M1LK) | NVIDIA 8 GB | Tuned for 8 GB VRAM and 16 GB RAM: playable at about 4 fps on an RTX 4060 Laptop 8 GB | — |
+| 62 | 54.1 | [darkworldhm](https://github.com/darkworldhm/victory-fork-darkworldhm) | NVIDIA | A snapshot of victory-fork with its own changes: 2 to 4 fps in the world, RTX 4070 | — |
+| 63 | 53.1 | [VIctory-NVIDIA-LowStutter](https://github.com/tiadiff/VIctory-NVIDIA-LowStutter) | NVIDIA | No fps reported; fewer pipeline stalls | — |
+| 64 | 53.1 | [MiniVI](https://github.com/Androtim/MiniVI) | Any 8 GB | Built for 8 GB VRAM and 16-32 GB RAM, with an F3 FPS/VRAM overlay | — |
+| 65 | 53.1 | [VIPort](https://github.com/DesertGamer/VIPort) | any | Boots and runs menus at 30 fps; world not yet playable | — |
+| 66 | 50.3 | [VIctory](https://github.com/Marvisak/VIctory) | Any | The opening mission at about 1 fps on an RX 6700 XT, "not playable" | — |
+| 67 | 35 | [XCL](https://github.com/xcl-dev/xcl) | Any | Compatibility layer: 30 fps in the menus, ~5 fps in the 3D world with its NVIDIA branch (RTX 5090), not playable yet | — |
 | – | – | VIctory-Belobug-AMD (removed) | AMD | 5 to 8 fps over a 15-minute drive, RX 7900 XTX | ❌ Removed from the loader: the author's GitHub account was… |
 | – | – | VIctory-7900XTX (removed) | AMD | 13 to 17 fps in a city street at Series X 1440p, RX 7900 XTX | ❌ Removed from the loader: the author's GitHub account was… |
 | – | – | Vertex (removed) | NVIDIA | "Not playable yet." 6.9 fps median in a 25-minute run, RTX 5070 | ❌ Removed from the loader: the author deleted or hid the… |
@@ -169,6 +170,7 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 | [Dark-Victory](https://github.com/darksidexc/Dark-Victory-RX6600-I714700KF-VI) | VIctory | About 10 fps on an RX 6600 | Not run yet |
 | [Leonida](https://github.com/ProjectLeonidaL/leonida) | own (static recompilation) | About 10 fps in the first rooms with its newer switches; not a VIctory fork | Not run yet |
 | [XCL](https://github.com/xcl-dev/xcl) | own (compatibility layer) | Starts in ~4 s, a steady 30 fps in the menus; with its NVIDIA integration branch it reaches the 3D world at ~5 fps on an RTX 5090; the world's picture is incomplete and it does not keep running there long | Not run yet |
+| [CTA](https://github.com/DesignWithTommy/ClaudeTheftAuto) | own (pieces) | Our own Rust runtime built from pieces of the others: page-fault stores rewritten live (299 of 318 sites), fills done on the card; steady frame 95 to 105 ms | Built from the local checkout |
 | [Mandy](https://github.com/projectleonida/mandy) | Leonida | Its D3D12 runtime is playable in the world: 12 to 13 fps standing at the save point (75 to 82 ms median frame), with the HUD, map and pause menu; its Vulkan runtime is not playable yet | Not run yet |
 | [victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb) | VIctory | Tuned for 8 GB NVIDIA (Wave32): 8 to 10 fps on an RTX 4060 Laptop 8 GB at 1080p; not on the tracker | Not run yet |
 | [cool-fox-12gb](https://github.com/miaohaixiang1-netizen/cool-fox-12gb) | CGBJ | cool_fox with VIctory-NVIDIA's 8 GB patches; 7.7 fps at half render scale, 2–3 fps native; not on the tracker | Not run yet |
@@ -206,4 +208,4 @@ Every runtime and every project i95 borrows from is in [CREDITS.md](docs/CREDITS
 
 GPL-3.0-or-later ([LICENSE](LICENSE)). Each runtime keeps its own licence in `vendor/<name>/LICENSE`. The VIctory forks and ScarlettPort are GPL-3.0, and i95's own TuxBox-based code is Apache-2.0. Grand Theft Auto, GTA and Rockstar Games are trademarks of Take-Two Interactive. Xbox is a trademark of Microsoft. i95 isn't affiliated with or endorsed by them.
 
-<sub>Keywords: GTA 6 PC, GTA VI PC, GTA 6 launcher, Grand Theft Auto VI Windows, Xbox Series X|S to PC, Scarlett, VIctory, victory-fork, AnyXboxX, Kelvaroq, KLBF Lab, Flamingo, Belobug, VItoriaBr, ScarlettPort, Vilocity, cool_fox, Mandy, XCL.</sub>
+<sub>Keywords: GTA 6 PC, GTA VI PC, GTA 6 launcher, Grand Theft Auto VI Windows, Xbox Series X|S to PC, Scarlett, VIctory, victory-fork, AnyXboxX, Kelvaroq, KLBF Lab, Flamingo, Belobug, VItoriaBr, ScarlettPort, Vilocity, cool_fox, Mandy, XCL, ClaudeTheftAuto, CTA.</sub>

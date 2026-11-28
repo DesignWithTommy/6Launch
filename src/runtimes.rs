@@ -1733,10 +1733,19 @@ fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<
     if game {
     }
     let frames = Arc::new(Mutex::new((0u64, false)));
+    // The run's last lines, kept even with logging off, for a crash report.
+    let tail = Arc::new(Mutex::new(std::collections::VecDeque::<String>::new()));
     let pump = |r: Box<dyn std::io::Read + Send>| {
-        let (sink, frames, tag) = (sink.clone(), frames.clone(), name.to_owned());
+        let (sink, frames, tag, tail) = (sink.clone(), frames.clone(), name.to_owned(), tail.clone());
         std::thread::spawn(move || {
             for line in BufReader::new(r).lines().map_while(Result::ok) {
+                {
+                    let mut t = tail.lock().unwrap_or_else(|e| e.into_inner());
+                    if t.len() >= 300 {
+                        t.pop_front();
+                    }
+                    t.push_back(line.clone());
+                }
                 let mut out = sink.lock().unwrap_or_else(|e| e.into_inner());
                 let _ = writeln!(out, "{line}");
                 if echo {
@@ -1791,9 +1800,32 @@ fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<
     println!("[launch] {name} exited ({status})");
     if !status.success() {
         let code = status.code().map_or_else(|| status.to_string(), |c| format!("{c} (0x{:08X})", c as u32));
-        return Err(format!("{name} exited with code {code}.\nLog: {}", log.map_or_else(|| "this console".to_owned(), |p| p.display().to_string())).into());
+        let report = if killed(&started, timeout) { None } else { crash_report(name, &code, &cmd, &tail.lock().unwrap_or_else(|e| e.into_inner())) };
+        let report = report.map_or_else(String::new, |p| format!("\nCrash report: {}", p.display()));
+        return Err(format!("{name} exited with code {code}.\nLog: {}{report}", log.map_or_else(|| "this console".to_owned(), |p| p.display().to_string())).into());
     }
     Ok(())
+}
+
+/// Writes %LOCALAPPDATA%\6ixpack\crashes\<runtime>-<unix time>.txt for a run that
+/// exited abnormally: i95's version, the exit code, the command, i95's own
+/// switches and the run's last 300 lines. Local only; nothing is sent.
+fn crash_report(name: &str, code: &str, cmd: &Command, tail: &std::collections::VecDeque<String>) -> Option<PathBuf> {
+    let dir = pack_dir().join("crashes");
+    fs::create_dir_all(&dir).ok()?;
+    let t = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).ok()?.as_secs();
+    let p = dir.join(format!("{name}-{t}.txt"));
+    let mut s = format!("i95 {}\nruntime: {name}\nexit code: {code}\ncommand: {:?}\n", env!("CARGO_PKG_VERSION"), cmd);
+    for (k, v) in std::env::vars().filter(|(k, _)| k.starts_with("NEONBRIDGE_")) {
+        s.push_str(&format!("{k}={v}\n"));
+    }
+    s.push_str("\n--- last lines ---\n");
+    for l in tail {
+        s.push_str(l);
+        s.push('\n');
+    }
+    fs::write(&p, s).ok()?;
+    Some(p)
 }
 
 /// One line of a warm step, for the loader: (records or shaders done, the
