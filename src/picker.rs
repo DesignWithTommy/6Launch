@@ -341,8 +341,27 @@ thread_local! {
     static BRUSHES: RefCell<Option<(HBRUSH, HBRUSH)>> = const { RefCell::new(None) };
     static ADVANCED: Cell<HWND> = const { Cell::new(null_mut()) };
     static UI: RefCell<Option<Ui>> = const { RefCell::new(None) };
-    /// The Diagnostics box (off by default; NEONBRIDGE_DIAG=1 for the run when on).
-    static DIAG: Cell<bool> = const { Cell::new(false) };
+    /// The Advanced window's check boxes, in TOGGLES order.
+    static ON: RefCell<Vec<bool>> = const { RefCell::new(Vec::new()) };
+}
+
+/// The Advanced window's switches: (remembered key, variable, label, default).
+/// Each is written to its variable as 1 or 0 at Play.
+const TOGGLES: &[(&str, &str, &str, bool)] = &[
+    ("overlay", "NEONBRIDGE_RUNTIME_OVERLAY", "Runtime's own overlay (its fps / debug counters)", true),
+    ("controls", "NEONBRIDGE_CONTROLS", "Controls overlay (F1 shows / hides)", true),
+    ("shared", "NEONBRIDGE_SHARED", "One save folder for every victory runtime", false),
+    ("log", "NEONBRIDGE_LOG", "Save a log of each run", true),
+    ("runtimelog", "NEONBRIDGE_RUNTIME_LOG", "Extra runtime logging (VICTORY_LOG / RUST_LOG info)", false),
+    ("diag", "NEONBRIDGE_DIAG", "Diagnostics (DRED breadcrumbs, separate debug build)", false),
+];
+
+/// Remembered state, else the variable, else the default.
+fn toggle_start(memory: &[(String, String)], (key, var, _, def): (&str, &str, &str, bool)) -> bool {
+    if let Some((_, v)) = memory.iter().find(|(k, _)| k == key) {
+        return v == "1";
+    }
+    std::env::var(var).map_or(def, |v| v.trim() != "0")
 }
 
 fn with_state<R>(f: impl FnOnce(&mut State) -> R) -> Option<R> {
@@ -908,10 +927,14 @@ fn remember_picks() -> (Option<String>, Vec<String>) {
     for s in &sets {
         memory.push_str(&format!("opt={s}\n"));
     }
-    // Diagnostics is off by default; the box's state is remembered either way.
-    memory.push_str(if DIAG.get() { "diag=1\n" } else { "diag=0\n" });
-    // SAFETY: the picker's thread is the launcher's only one here.
-    unsafe { std::env::set_var("NEONBRIDGE_DIAG", if DIAG.get() { "1" } else { "0" }) };
+    // Each box's state is remembered and set for the run.
+    let on = ON.with(|o| o.borrow().clone());
+    for (i, (key, var, _, _)) in TOGGLES.iter().enumerate() {
+        let v = if on.get(i).copied().unwrap_or(false) { "1" } else { "0" };
+        memory.push_str(&format!("{key}={v}\n"));
+        // SAFETY: the picker's thread is the launcher's only one here.
+        unsafe { std::env::set_var(var, v) };
+    }
     let _ = fs::write(last_pick(), memory);
     (preset, sets)
 }
@@ -1167,7 +1190,9 @@ const WM_MOUSELEAVE: u32 = 0x02A3;
 const ID_OPTS_HELP: usize = 115;
 const ID_OPTIONS: usize = 116;
 const ID_DONE: usize = 117;
-const ID_DIAG: usize = 118;
+/// Check boxes are ID_TOGGLE + their TOGGLES index.
+const ID_TOGGLE: usize = 140;
+const TOGGLE_H: i32 = 30;
 const ID_STATUS: usize = 901;
 const ADV_WIDTH: i32 = 760;
 /// The node editor: source nodes (one per tree) on the left, crate nodes on
@@ -1321,9 +1346,9 @@ fn advanced_command(hwnd: HWND, id: usize, code: usize) {
         return;
     }
     match id {
-        ID_DIAG => unsafe {
-            DIAG.set(!DIAG.get());
-            InvalidateRect(GetDlgItem(hwnd, ID_DIAG as i32), null(), 0);
+        i if (ID_TOGGLE..ID_TOGGLE + TOGGLES.len()).contains(&i) => unsafe {
+            ON.with(|o| if let Some(b) = o.borrow_mut().get_mut(i - ID_TOGGLE) { *b = !*b });
+            InvalidateRect(GetDlgItem(hwnd, i as i32), null(), 0);
         },
         ID_DONE => unsafe {
             ShowWindow(hwnd, SW_HIDE);
@@ -1335,10 +1360,11 @@ fn advanced_command(hwnd: HWND, id: usize, code: usize) {
 
 fn draw_button(d: &DRAWITEMSTRUCT) {
     let (dc, r) = (d.hDC, d.rcItem);
-    if d.CtlID as usize == ID_DIAG {
+    let id = d.CtlID as usize;
+    if (ID_TOGGLE..ID_TOGGLE + TOGGLES.len()).contains(&id) {
         // A check box: a 16 px box (cyan tick when on) and its label.
         fill_rect(dc, r, BACKGROUND);
-        let on = DIAG.get();
+        let on = ON.with(|o| o.borrow().get(id - ID_TOGGLE).copied().unwrap_or(false));
         let cy = (r.top + r.bottom) / 2;
         let bx = rect(r.left, cy - 8, r.left + 16, cy + 8);
         rounded(dc, bx, if on { CYAN } else { PANEL }, if on { CYAN } else { BORDER }, 4, BACKGROUND);
@@ -1346,7 +1372,7 @@ fn draw_button(d: &DRAWITEMSTRUCT) {
             if on {
                 text(dc, "\u{2713}", bx, BACKGROUND, f.strong, DT_CENTER | DT_VCENTER);
             }
-            text(dc, "Diagnostics (DRED breadcrumbs, separate debug build)", rect(r.left + 26, r.top, r.right, r.bottom), TEXT, f.body, DT_LEFT | DT_VCENTER);
+            text(dc, TOGGLES[id - ID_TOGGLE].2, rect(r.left + 26, r.top, r.right, r.bottom), TEXT, f.body, DT_LEFT | DT_VCENTER);
         });
         return;
     }
@@ -1465,7 +1491,9 @@ fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     wc.hCursor = unsafe { LoadCursorW(null_mut(), IDC_ARROW) };
     unsafe { RegisterClassW(&wc) };
     let options_y = 96;
-    let height = options_y + 24 + 96 + 24 + 36 + 24;
+    let toggles_y = options_y + 24 + 96 + 20;
+    let done_y = toggles_y + TOGGLES.len() as i32 * TOGGLE_H + 12;
+    let height = done_y + 36 + 24;
     let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN;
     let mut r = rect(0, 0, ADV_WIDTH, height);
     unsafe { AdjustWindowRect(&mut r, style, 0) };
@@ -1486,9 +1514,11 @@ fn create_advanced(owner: HWND, memory: &[(String, String)]) {
     let opts: Vec<String> = memory.iter().filter(|(k, _)| k == "opt").map(|(_, v)| v.clone()).collect();
     let w = wide(&opts.join("\r\n"));
     unsafe { SetWindowTextW(options, w.as_ptr()) };
-    button(hwnd, "Done", (ADV_WIDTH - 24 - 96, options_y + 24 + 96 + 24, 96, 36), ID_DONE);
-    DIAG.set(crate::runtimes::diag() && !memory.iter().any(|(k, v)| k == "diag" && v == "0"));
-    button(hwnd, "Diagnostics", (24, options_y + 24 + 96 + 24, 420, 36), ID_DIAG);
+    ON.with(|o| *o.borrow_mut() = TOGGLES.iter().map(|t| toggle_start(memory, *t)).collect());
+    for (i, t) in TOGGLES.iter().enumerate() {
+        button(hwnd, t.2, (24, toggles_y + i as i32 * TOGGLE_H, ADV_WIDTH - 48, TOGGLE_H), ID_TOGGLE + i);
+    }
+    button(hwnd, "Done", (ADV_WIDTH - 24 - 96, done_y, 96, 36), ID_DONE);
 
     let ui = Ui { options };
     UI.with(|u| *u.borrow_mut() = Some(ui));
@@ -1500,8 +1530,6 @@ pub fn pick() -> Option<Pick> {
     dark_app();
     let memory = remembered();
     let get = |k: &str| memory.iter().find(|(m, _)| m == k).map(|(_, v)| v.clone());
-    // Diagnostics on unless NEONBRIDGE_DIAG=0 or the box was last left off.
-    DIAG.set(crate::runtimes::diag() && get("diag").as_deref() != Some("0"));
     let rows = rows();
     if rows.is_empty() {
         message(null_mut(), &format!("No runtimes found in {}. Unpack the full i95 release (its vendor folder holds them).", crate::runtimes::vendor().display()), MB_ICONWARNING);

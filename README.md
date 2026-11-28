@@ -1,7 +1,5 @@
 # i95Loader: GTA 6 PC Launcher for every GTA VI Xbox Series runtime (VIctory, Kelvaroq, VItoriaBr and more)
 
-![i95Loader: GTA 6 Xbox Series launcher for Windows PC](assets/banner.png)
-
 Try them all from one window.
 
 i95 is a Windows launcher for the projects trying to run the Xbox Series version of GTA VI on PC. It doesn't include or download the game, and there are no game files, keys or protection bypasses in it.
@@ -20,13 +18,14 @@ On an 8 GB card, pick a runtime's `8gb` or `series_s` preset: most runtimes defa
 
 - **One list of runtimes**, ranked like the race tracker, each with its author's own default launch settings.
 - **Stays current without an update**: at start it reads the runtime list from [catalog.txt](catalog.txt) here. Each runtime is moved to its author's newest commit several times a day (scripts/bump-upstreams.sh, no bot), and any commit that changes the author's launch settings is read before it goes in. Every launcher picks up the list on its next start. No new release is needed. Offline it uses the list it shipped with.
-- **Builds and rebuilds** a runtime only when its source changed, and keeps each runtime's shader cache when it does Runtimes run as their authors ship them: i95's own patches, shared saves and shared caches are off unless you turn them on (`NEONBRIDGE_PATCHES=1`, `NEONBRIDGE_SHARED=1`).
+- **Builds and rebuilds** a runtime only when its source changed, and keeps each runtime's shader cache when it does. Runtimes run as their authors ship them: i95's own patches, shared saves and shared caches are off unless you turn them on.
 - **Prepares shaders** before the game starts, with a loading screen that shows real progress. Your own picture at `%LOCALAPPDATA%\6ixpack\splash.bmp` shows on the loading screen.
 - **Checks your PC first**: graphics card features (D3D12, Shader Model 6.6, mesh shaders), RAM and free disk, and names what's missing.
 - **Presets** per runtime, such as Series S, 8 GB cards, 16 GB laptops, DLSS to 4K, 16 GB of RAM (Vice-Tay's `4060` preset: 38 min at ~10 fps on an RTX 4060 here) and crash diagnostics, plus any extra setting a runtime reads.
-- **In game**: no i95 fps panel; each runtime's own overlay kept (`NEONBRIDGE_RUNTIME_OVERLAY=0` switches it off); a controls overlay; the display kept awake.
+- **In game**: each runtime's own overlay as its author ships it, a controls overlay (F1), and the display kept awake. i95 adds no fps counter of its own.
+- **Advanced** (next to Play) has on / off boxes, remembered between runs, so nothing needs a command: the runtime's own overlay, the controls overlay, one save folder for every victory runtime, saving a run log, extra runtime logging and diagnostics. It also takes any extra `KEY=VALUE` setting a runtime reads, with **Options list** showing them.
 - **After a run**: explains why it ended by reading the log, writes a short timeline, and can file an issue report.
-- **Updates itself** from the latest release at start (`NEONBRIDGE_UPDATE=0` skips it), and remembers your last runtime, preset, settings and output folder.
+- **Updates itself** from the latest release at start (`NEONBRIDGE_UPDATE=0` skips it), and remembers your last runtime, preset, settings, Advanced boxes and output folder.
 - **Asks before downloading** a runtime's source or an optional extra. The one thing it fetches without asking is the small runtime list, catalog.txt.
 
 **None of these runtimes is confirmed playable yet.** The tracker's bar for playable is 20 fps and 30 minutes without a crash. Only Vice-Tay reports clearing it (a 30-minute session at a 21.1 fps median on an RTX 4090), and nobody outside the project has checked it.
@@ -193,20 +192,6 @@ i95 ranks every runtime itself, with [PortWatch VI](https://portwatch-vi.xyz/)'s
 
 
 **Not in i95:** ztrx (#6) and the original CGBJ (#12, run here through DoubleGhosty's cool_fox) are gone from GitHub. omonkey (#10), suri (#11) and Doomsday (#20) are private builds with no public code. VIctory-macOS-halfwave50 is macOS only (2.9-4.5 fps on a MacBook Pro).
-
-## Screenshots
-
-**The launcher.** Pick a runtime and a preset, then press Play. **Advanced** sets extra options for a run.
-
-![The launcher: runtimes, details, preset and the game](assets/picker.png)
-
-**The loader.** Shows what's happening before the game starts.
-
-![The loader building a runtime over your own picture](assets/loader.png)
-
-**On-screen keys and frame rate.**
-
-![The controls overlay](assets/controls.png)
 
 ## FAQ
 

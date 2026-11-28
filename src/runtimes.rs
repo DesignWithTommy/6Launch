@@ -2224,6 +2224,13 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
             env.push(("VICTORY_D3D12_DRED".to_owned(), "1".to_owned()));
         }
     }
+    // Extra runtime logging, off unless NEONBRIDGE_RUNTIME_LOG=1 (Advanced window).
+    if std::env::var("NEONBRIDGE_RUNTIME_LOG").is_ok_and(|v| v.trim() == "1") {
+        if family {
+            env.push(("VICTORY_LOG".to_owned(), "info".to_owned()));
+        }
+        env.push(("RUST_LOG".to_owned(), "info".to_owned()));
+    }
     env.extend(spec.env.iter().map(|(k, v)| (k.clone(), fill(v, &places))));
     // One save folder for the family, even where a toml names another (after
     // the toml's [env], so it wins).
