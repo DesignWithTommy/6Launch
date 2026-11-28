@@ -7,7 +7,7 @@ rank = 24   # i95 rank: score 60.5 by PortWatch VI's formula (from the author's 
 about = "VI-BR-PORT cf3394b (GPL-3.0): 24.0 fps on a scripted prison walk (30 standing, the cap) and 21.2 fps in the opening cutscene, RTX 4060 Ti 8 GB; the author now calls it playable with known picture problems"
 upstream = "https://github.com/edsuuu/VI-BR-PORT"
 updated = "2026-11-27 15:43"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 171   # GitHub stars when last checked
+stars = 173   # GitHub stars when last checked
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # play.ps1:5 (diag is its default; README.md:75 builds release)
 exe = "target/diag/victory.exe"   # play.ps1:30 ($Build = diag)
 diag_build = []   # its default build is already the diagnostics one
