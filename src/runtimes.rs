@@ -2235,9 +2235,8 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         env.retain(|(k, _)| k != "VICTORY_DATA_DIR");
         env.push(("VICTORY_DATA_DIR".to_owned(), family_saves().display().to_string()));
     }
-    // No fps or debug overlays on screen: the runtimes' own are switched off;
-    // NEONBRIDGE_RUNTIME_OVERLAY=1 keeps them.
-    if !std::env::var("NEONBRIDGE_RUNTIME_OVERLAY").is_ok_and(|v| v.trim() == "1") {
+    // The runtimes' own overlays are kept by default; NEONBRIDGE_RUNTIME_OVERLAY=0 switches them off.
+    if std::env::var("NEONBRIDGE_RUNTIME_OVERLAY").is_ok_and(|v| v.trim() == "0") {
         env.retain(|(k, _)| !matches!(k.as_str(), "VICTORY_PANEL" | "FLAMINGO_OSD" | "VICTORY_DEBUG_HUD"));
         env.extend([("VICTORY_PANEL", "0"), ("FLAMINGO_OSD", "0"), ("VICTORY_DEBUG_HUD", "0")].map(|(k, v)| (k.to_owned(), v.to_owned())));
     }

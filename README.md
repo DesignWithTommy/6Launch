@@ -24,7 +24,7 @@ On an 8 GB card, pick a runtime's `8gb` or `series_s` preset: most runtimes defa
 - **Prepares shaders** before the game starts, with a loading screen that shows real progress. Your own picture at `%LOCALAPPDATA%\6ixpack\splash.bmp` shows on the loading screen.
 - **Checks your PC first**: graphics card features (D3D12, Shader Model 6.6, mesh shaders), RAM and free disk, and names what's missing.
 - **Presets** per runtime, such as Series S, 8 GB cards, 16 GB laptops, DLSS to 4K, 16 GB of RAM (Vice-Tay's `4060` preset: 38 min at ~10 fps on an RTX 4060 here) and crash diagnostics, plus any extra setting a runtime reads.
-- **In game**: no fps or debug overlays (`NEONBRIDGE_RUNTIME_OVERLAY=1` keeps a runtime's own); a controls overlay; the display kept awake.
+- **In game**: no i95 fps panel; each runtime's own overlay kept (`NEONBRIDGE_RUNTIME_OVERLAY=0` switches it off); a controls overlay; the display kept awake.
 - **After a run**: explains why it ended by reading the log, writes a short timeline, and can file an issue report.
 - **Updates itself** from the latest release at start (`NEONBRIDGE_UPDATE=0` skips it), and remembers your last runtime, preset, settings and output folder.
 - **Asks before downloading** a runtime's source or an optional extra. The one thing it fetches without asking is the small runtime list, catalog.txt.
