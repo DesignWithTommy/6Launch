@@ -1,7 +1,7 @@
 name = "vitoriabr"
 fork = "VIctory"
 gpu = "NVIDIA 8 GB"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 29   # i95 rank: score 59.6 by PortWatch VI's formula (its own assessment; scripts/rank.py)
+rank = 30   # i95 rank: score 59.6 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "VItoriaBr 15779f8 (GPL-3.0): 4 to 6 fps on its current settings; not yet run here"
 upstream = "https://github.com/uiliannn/VItoriaBr"
 updated = "2026-11-27 05:40"   # the pinned upstream commit's date (scripts/runtime-info.py)

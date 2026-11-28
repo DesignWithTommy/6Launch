@@ -4,7 +4,7 @@
 name = "scarlettport"
 fork = "victory-fork"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 45   # i95 rank: score 55.6 by PortWatch VI's formula (from the author's report; scripts/rank.py)
+rank = 46   # i95 rank: score 55.6 by PortWatch VI's formula (from the author's report; scripts/rank.py)
 about = "ScarlettPort 745d6f3 (GPL-3.0): about 7 to 8 fps in the world with a warm cache on 0.5.2, Series S, RTX 3060; not yet run here"
 upstream = "https://github.com/ZigZagBoi1/ScarlettPort"
 updated = "2026-11-27 19:57"   # the pinned upstream commit's date (scripts/runtime-info.py)

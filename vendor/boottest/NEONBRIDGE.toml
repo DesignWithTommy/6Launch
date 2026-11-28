@@ -4,7 +4,7 @@
 name = "boottest"
 fork = "GTA6-BootTest"
 gpu = "Any"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 54   # i95 rank: score 10 by PortWatch VI's formula (its own assessment; scripts/rank.py)
+rank = 55   # i95 rank: score 10 by PortWatch VI's formula (its own assessment; scripts/rank.py)
 about = "GTA6-BootTest 32683d8 (no licence): boots, streams archives, runs the frame loop and draws its first UI screen; harness stops the game after 60 s; needs Visual Studio 2022 C tools; early, not yet run here"
 upstream = "https://github.com/OnlyMoisties/GTA6-BootTest"
 updated = "2026-11-23 20:09"   # the pinned upstream commit's date (scripts/runtime-info.py)

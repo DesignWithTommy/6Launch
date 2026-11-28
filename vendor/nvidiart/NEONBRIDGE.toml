@@ -3,7 +3,7 @@
 name = "nvidiart"
 fork = "VIctory"
 gpu = "NVIDIA"   # the card it is tuned for (README "Tuned for"; the picker's filter)
-rank = 25   # i95 rank: score 60.4 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
+rank = 26   # i95 rank: score 60.4 by PortWatch VI's formula (i95's assessment from its author's report; scripts/rank.py)
 about = "VIctory-NVIDIA-RT 2f0bc2d (GPL-3.0): Kemerd's faster fork of VIctory-NVIDIA (ultrawide, Reflex, HDR10, DLSS, frame generation): 21.9 fps median, 31.9 best in the open world, RTX 5090 at 1440p with DLSS Quality and no frame generation; here without DLSS"
 upstream = "https://github.com/Kemerd/VIctory-NVIDIA-RT"
 updated = "2026-11-27 19:07"   # the pinned upstream commit's date (scripts/runtime-info.py)
