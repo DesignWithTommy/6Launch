@@ -86,9 +86,6 @@ fn wide(s: &str) -> Vec<u16> {
 /// Shows the overlay over the windows of process `exe` for the rest of the
 /// run, with `rows` (pad label, keys) under the title `runtime`.
 pub fn show(runtime: &str, exe: &std::path::Path, rows: Vec<(String, String)>) {
-    if let Some(name) = exe.file_name().map(|n| n.to_string_lossy().to_lowercase()) {
-        crate::fps::show(name, game_window);
-    }
     if std::env::var("NEONBRIDGE_CONTROLS").is_ok_and(|v| v.trim() == "0") || rows.is_empty() {
         return;
     }
@@ -138,14 +135,6 @@ pub fn preview(runtime: &str, rows: Vec<(String, String)>) {
             return;
         }
         SetForegroundWindow(hwnd);
-        // Made-up frame times so the fps box has something to draw.
-        std::thread::spawn(|| {
-            for i in 0u32.. {
-                let fps = 28.0 + 3.0 * ((i as f64) * 0.7).sin() - if i % 9 == 0 { 9.0 } else { 0.0 };
-                crate::fps::feed(&format!("[preview] {fps:.1} fps, {:.1} ms/frame", 1000.0 / fps));
-                std::thread::sleep(std::time::Duration::from_millis(if i < 60 { 10 } else { 1000 }));
-            }
-        });
         show(runtime, &exe, rows);
         let mut msg: MSG = std::mem::zeroed();
         while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
@@ -216,9 +205,8 @@ fn run(name: String) {
             if let (true, Some(g)) = (show, game) {
                 let mut r: RECT = std::mem::zeroed();
                 GetWindowRect(g, &mut r);
-                // Below the fps box when that is up.
-                let below = if crate::fps::shown() { crate::fps::HEIGHT + 8 } else { 0 };
-                // Top-right, under our fps graph: runtimes draw their own overlays top-left.
+                let below = 0;
+                // Top-right.
                 let mut me: RECT = std::mem::zeroed();
                 GetWindowRect(hwnd, &mut me);
                 SetWindowPos(hwnd, HWND_TOPMOST, r.right - 24 - (me.right - me.left), r.top + 48 + below, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
@@ -319,7 +307,7 @@ unsafe extern "system" fn proc_(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> L
                 }
             }
             DeleteObject(caps as _);
-            text("F1 show / hide   F2 hide   F3 fps", 14, 44 + p.rows.len() as i32 * ROW + 6, DIM, small);
+            text("F1 show / hide   F2 hide", 14, 44 + p.rows.len() as i32 * ROW + 6, DIM, small);
         }
         SelectObject(dc, old_font);
         DeleteObject(big as _);

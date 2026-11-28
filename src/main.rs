@@ -34,8 +34,6 @@ mod timeline;
 mod shaders;
 mod splash;
 mod controls;
-mod fps;
-mod hud;
 
 use std::{
     collections::HashMap,
@@ -1641,7 +1639,6 @@ q
                     splash::status(0.8, "Waiting for the first frame");
                 }
                 timeline::line(&line);
-                fps::feed(&line);
                 eprintln!("{line}");
                 let _ = writeln!(f, "{line}");
             }

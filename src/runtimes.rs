@@ -1743,7 +1743,6 @@ fn supervised(name: &str, mut cmd: Command, log: Option<&Path>, timeout: Option<
                     eprintln!("{line}");
                 }
                 let mut f = frames.lock().unwrap_or_else(|e| e.into_inner());
-                crate::fps::feed(&line);
                 if !crate::splash::closed() && let Some((d, m, title)) = crate::progress::setup_line(&line) {
                     let label = match title {
                         Some(t) => format!("Setting up ({tag}): {t}"),
@@ -2236,10 +2235,9 @@ pub fn run(name: &str, task: Task, game: Option<&Path>, exe: Option<&str>, log: 
         env.retain(|(k, _)| k != "VICTORY_DATA_DIR");
         env.push(("VICTORY_DATA_DIR".to_owned(), family_saves().display().to_string()));
     }
-    // One fps panel for every runtime: i95's (Vice-Tay's HUD, src/hud.rs).
-    // The runtimes' own overlays are switched off; NEONBRIDGE_RUNTIME_OVERLAY=1 keeps them.
-    // Kept by default; NEONBRIDGE_RUNTIME_OVERLAY=0 switches them off.
-    if std::env::var("NEONBRIDGE_RUNTIME_OVERLAY").is_ok_and(|v| v.trim() == "0") {
+    // No fps or debug overlays on screen: the runtimes' own are switched off;
+    // NEONBRIDGE_RUNTIME_OVERLAY=1 keeps them.
+    if !std::env::var("NEONBRIDGE_RUNTIME_OVERLAY").is_ok_and(|v| v.trim() == "1") {
         env.retain(|(k, _)| !matches!(k.as_str(), "VICTORY_PANEL" | "FLAMINGO_OSD" | "VICTORY_DEBUG_HUD"));
         env.extend([("VICTORY_PANEL", "0"), ("FLAMINGO_OSD", "0"), ("VICTORY_DEBUG_HUD", "0")].map(|(k, v)| (k.to_owned(), v.to_owned())));
     }
