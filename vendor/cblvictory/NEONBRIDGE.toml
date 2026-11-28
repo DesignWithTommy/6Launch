@@ -5,7 +5,7 @@ rank = 45   # i95 rank: score 57.6 by PortWatch VI's formula (from the author's 
 about = "cblvictoryvi 4bb264b (GPL-3.0): now on Vice-Tay's renderer: about 12-15 fps at Series X 1440p, RTX 5080"
 upstream = "https://github.com/cocainebunnylaboratories/cblvictoryvi"
 updated = "2026-11-27 14:25"   # the pinned upstream commit's date (scripts/runtime-info.py)
-stars = 18   # GitHub stars when last checked
+stars = 19   # GitHub stars when last checked
 # Now on Vice-Tay's renderer (branch vice-tay-5080-tuning); settings are scripts/play.ps1's defaults on an NVIDIA card
 # (its -Machine auto picks the 4090 profile for NVIDIA), not -Safe, no ray tracing, Series X, full screen, panel on.
 build = ["cargo", "build", "--locked", "--profile", "diag", "-p", "victory", "--features", "diagnostics"]   # README.md:18 (play.ps1 -Build diag, its default)
